@@ -1,9 +1,13 @@
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/db";
+import { decryptTwoFactorSecret, hashRecoveryCode, verifyTotp } from "@/lib/two-factor";
 
 export type Role = "ADMIN" | "MEMBER";
 export type SessionUser = { id: string; email: string; name: string; role: Role };
-export type SafeMember = SessionUser & { active: boolean; createdAt: string; lastLoginAt?: string | null };
+export type SafeMember = SessionUser & { active: boolean; createdAt: string; lastLoginAt?: string | null; twoFactorEnabled: boolean };
+export type PasswordUser = SessionUser & { twoFactorEnabled: boolean };
+
+type SignedPayload = { sub: string; exp: number; purpose: "session" | "2fa" };
 
 function sessionSecret() {
   if (process.env.SESSION_SECRET) return process.env.SESSION_SECRET;
@@ -56,6 +60,7 @@ export async function createMember(input: { email: string; name: string; passwor
     active: user.active,
     createdAt: user.createdAt.toISOString(),
     lastLoginAt: user.lastLoginAt?.toISOString() || null,
+    twoFactorEnabled: user.twoFactorEnabled,
   } satisfies SafeMember;
 }
 
@@ -70,16 +75,17 @@ export async function listMembers() {
     active: user.active,
     createdAt: user.createdAt.toISOString(),
     lastLoginAt: user.lastLoginAt?.toISOString() || null,
+    twoFactorEnabled: user.twoFactorEnabled,
   } satisfies SafeMember));
 }
 
-export async function authenticate(emailInput: string, password: string): Promise<SessionUser | null> {
+export async function authenticatePassword(emailInput: string, password: string): Promise<PasswordUser | null> {
   const email = emailInput.trim().toLowerCase();
   if (!email || !password) return null;
 
   let user = await prisma.user.findUnique({ where: { email } });
 
-  // Bootstrap the first Admin from environment variables exactly once.
+  // Bootstrap the very first Admin from environment variables.
   if (!user) {
     const adminEmail = (process.env.SCENOVA_ADMIN_EMAIL || (process.env.NODE_ENV !== "production" ? "admin@scenova.local" : "")).trim().toLowerCase();
     const adminPassword = process.env.SCENOVA_ADMIN_PASSWORD || (process.env.NODE_ENV !== "production" ? "admin1234" : "");
@@ -91,31 +97,30 @@ export async function authenticate(emailInput: string, password: string): Promis
           passwordHash: hashPassword(adminPassword),
           role: "ADMIN",
           active: true,
-          lastLoginAt: new Date(),
           wallet: { create: {} },
         },
       });
-      return toSessionUser(user);
+    } else {
+      return null;
     }
-    return null;
   }
 
   if (!user.active || !verifyPassword(password, user.passwordHash)) return null;
-
-  const updated = await prisma.user.update({
-    where: { id: user.id },
-    data: { lastLoginAt: new Date() },
-  });
-  return toSessionUser(updated);
+  return { ...toSessionUser(user), twoFactorEnabled: user.twoFactorEnabled };
 }
 
-export function signSession(user: SessionUser) {
-  const payload = Buffer.from(JSON.stringify({ ...user, exp: Date.now() + 1000 * 60 * 60 * 24 * 7 })).toString("base64url");
-  const signature = createHmac("sha256", sessionSecret()).update(payload).digest("base64url");
-  return `${payload}.${signature}`;
+export async function completeLogin(userId: string) {
+  const user = await prisma.user.update({ where: { id: userId }, data: { lastLoginAt: new Date() } });
+  return toSessionUser(user);
 }
 
-export function verifySession(token?: string | null): SessionUser | null {
+function signPayload(payload: SignedPayload) {
+  const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const signature = createHmac("sha256", sessionSecret()).update(encoded).digest("base64url");
+  return `${encoded}.${signature}`;
+}
+
+function verifyPayload(token: string | null | undefined, purpose: SignedPayload["purpose"]) {
   if (!token) return null;
   const [payload, signature] = token.split(".");
   if (!payload || !signature) return null;
@@ -124,10 +129,71 @@ export function verifySession(token?: string | null): SessionUser | null {
   const b = Buffer.from(expected);
   if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
   try {
-    const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as SessionUser & { exp: number };
-    if (parsed.exp < Date.now()) return null;
-    return { id: parsed.id, email: parsed.email, name: parsed.name, role: parsed.role };
+    const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as SignedPayload;
+    if (parsed.exp < Date.now() || parsed.purpose !== purpose || !parsed.sub) return null;
+    return parsed;
   } catch {
     return null;
   }
+}
+
+export function signSession(user: SessionUser) {
+  return signPayload({ sub: user.id, exp: Date.now() + 1000 * 60 * 60 * 24 * 7, purpose: "session" });
+}
+
+export function verifySession(token?: string | null): { userId: string } | null {
+  const payload = verifyPayload(token, "session");
+  return payload ? { userId: payload.sub } : null;
+}
+
+export async function resolveSession(token?: string | null): Promise<SessionUser | null> {
+  const session = verifySession(token);
+  if (!session) return null;
+  const user = await prisma.user.findUnique({ where: { id: session.userId } });
+  if (!user?.active) return null;
+  return toSessionUser(user);
+}
+
+export function signTwoFactorChallenge(userId: string) {
+  return signPayload({ sub: userId, exp: Date.now() + 1000 * 60 * 10, purpose: "2fa" });
+}
+
+export function verifyTwoFactorChallenge(token?: string | null) {
+  const payload = verifyPayload(token, "2fa");
+  return payload ? { userId: payload.sub } : null;
+}
+
+export async function getSecurityState(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, email: true, role: true, active: true, twoFactorEnabled: true, twoFactorConfirmedAt: true },
+  });
+  if (!user?.active) return null;
+  return {
+    id: user.id,
+    email: user.email,
+    role: user.role === "ADMIN" ? "ADMIN" as const : "MEMBER" as const,
+    twoFactorEnabled: user.twoFactorEnabled,
+    twoFactorRequired: user.role === "ADMIN",
+    twoFactorConfirmedAt: user.twoFactorConfirmedAt?.toISOString() || null,
+  };
+}
+
+export async function verifyTwoFactorForUser(userId: string, code: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user?.active || !user.twoFactorEnabled || !user.twoFactorSecret) return false;
+
+  const normalized = code.trim().toUpperCase();
+  if (/^\d{6}$/.test(normalized)) {
+    return verifyTotp(decryptTwoFactorSecret(user.twoFactorSecret), normalized);
+  }
+
+  const hashes = Array.isArray(user.twoFactorRecoveryCodes) ? user.twoFactorRecoveryCodes.filter((item): item is string => typeof item === "string") : [];
+  const attemptedHash = hashRecoveryCode(normalized);
+  const index = hashes.indexOf(attemptedHash);
+  if (index < 0) return false;
+
+  const nextHashes = hashes.filter((_, itemIndex) => itemIndex !== index);
+  await prisma.user.update({ where: { id: userId }, data: { twoFactorRecoveryCodes: nextHashes } });
+  return true;
 }
