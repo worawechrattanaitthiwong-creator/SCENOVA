@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { addLibraryItem, libraryStore, type LibraryKind } from "@/lib/library-store";
-import { verifySession } from "@/lib/auth-core";
+import { resolveSession } from "@/lib/auth-core";
 
 export const runtime = "nodejs";
 
@@ -11,7 +11,7 @@ const ALLOWED_KINDS: LibraryKind[] = ["images", "voices", "characters", "pets", 
 
 async function isAdmin() {
   const store = await cookies();
-  return verifySession(store.get("scenova_session")?.value)?.role === "ADMIN";
+  return (await resolveSession(store.get("scenova_session")?.value))?.role === "ADMIN";
 }
 
 export async function GET() {
