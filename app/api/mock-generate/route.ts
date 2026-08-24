@@ -1,41 +1,38 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { resolveSession } from "@/lib/auth-core";
 import type { Project } from "@/lib/domain";
-import { buildPromptBundle } from "@/lib/prompt-engine";
-import { planEpisodeRender } from "@/lib/render-planner";
-import { MockVideoProvider } from "@/lib/providers/mock-video-provider";
-import type { GenerateVideoRequest } from "@/lib/providers/video-provider";
+import { startAgentRun } from "@/lib/agent/service";
+
+export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  const store = await cookies();
+  const user = await resolveSession(store.get("scenova_session")?.value);
+  if (!user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
+
   try {
-    const body = (await request.json()) as { project: Project; episodeIndex?: number };
-    const project = body.project;
-    const episode = project?.episodes?.[body.episodeIndex ?? 0];
-    if (!project || !episode) return NextResponse.json({ error: "Project/Episode ไม่ถูกต้อง" }, { status: 400 });
+    const body = (await request.json()) as { project?: Project; episodeIndex?: number; maxEpisodes?: number; budgetThb?: number };
+    if (!body.project?.episodes?.[body.episodeIndex ?? 0]) return NextResponse.json({ error: "Project/Episode ไม่ถูกต้อง" }, { status: 400 });
 
-    const plan = planEpisodeRender(project, episode);
-    const prompt = buildPromptBundle(project, episode);
-    const provider = new MockVideoProvider();
-    const tasks = [];
+    const run = await startAgentRun({
+      userId: user.id,
+      project: body.project,
+      episodeIndex: body.episodeIndex,
+      maxEpisodes: body.maxEpisodes || 1,
+      budgetThb: body.budgetThb,
+      mode: "MOCK_AGENT_GENERATION",
+    });
 
-    for (const renderSegment of plan) {
-      const requestPayload: GenerateVideoRequest = {
-        projectId: project.id,
-        episodeId: episode.id,
-        renderSegment,
-        prompt,
-        resolution: project.resolution,
-        imageReferences: [],
-        videoReferences: [],
-        audioReferences: [],
-        idempotencyKey: `${project.id}:${episode.id}:${renderSegment.order}`,
-      };
-      const estimate = await provider.estimateCost(requestPayload);
-      const task = await provider.generate(requestPayload);
-      tasks.push({ ...task, estimate, renderSegment });
-    }
-
-    return NextResponse.json({ provider: provider.id, tasks, note: "Mock only — ยังไม่เรียก Video API จริงและยังไม่หักเครดิต" });
-  } catch {
-    return NextResponse.json({ error: "Mock generation failed" }, { status: 500 });
+    return NextResponse.json({
+      runId: run.id,
+      status: run.status,
+      stage: run.stage,
+      poll: `/api/agent/runs/${run.id}`,
+      note: "Mock generation ถูกย้ายออกจาก HTTP request แล้ว ต้องรัน npm run agent:worker เพื่อประมวลผลคิว",
+    }, { status: 202 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Mock generation enqueue failed";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
