@@ -4,10 +4,14 @@ const BASE32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 const STEP_SECONDS = 30;
 const OTP_DIGITS = 6;
 
-function encryptionKey() {
+function keySource() {
   const source = process.env.TWO_FACTOR_ENCRYPTION_KEY || (process.env.NODE_ENV !== "production" ? process.env.SESSION_SECRET || "scenova-dev-2fa-key" : "");
   if (!source) throw new Error("TWO_FACTOR_ENCRYPTION_KEY_REQUIRED");
-  return createHash("sha256").update(source).digest();
+  return source;
+}
+
+function encryptionKey() {
+  return createHash("sha256").update(keySource()).digest();
 }
 
 export function generateTotpSecret(bytes = 20) {
@@ -85,12 +89,8 @@ export function generateRecoveryCodes(count = 8) {
   });
 }
 
-function recoveryPepper() {
-  return process.env.SESSION_SECRET || "scenova-recovery-dev";
-}
-
 export function hashRecoveryCode(code: string) {
-  return createHash("sha256").update(`${recoveryPepper()}:${code.trim().toUpperCase()}`).digest("hex");
+  return createHash("sha256").update(`${keySource()}:recovery:${code.trim().toUpperCase()}`).digest("hex");
 }
 
 export function hashRecoveryCodes(codes: string[]) {
