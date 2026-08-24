@@ -9,42 +9,40 @@ type Me = { authenticated: boolean; name?: string; email?: string; role?: "ADMIN
 type NavItem = readonly [href: string, icon: string, label: string, short: string];
 
 const MAIN_NAV: NavItem[] = [
-  ["/", "✦", "สร้างหนัง", "Creator"],
-  ["/series", "EP", "โปรเจกต์ / EP", "ทำต่อทีละตอน"],
-  ["/libraries", "▦", "คลัง", "Asset ทั้งหมด"],
-  ["/render", "▶", "งานสร้าง", "Render Queue"],
-  ["/models", "⬡", "โมเดล & ราคา", "Models"],
-  ["/wallet", "●", "เครดิต", "Wallet"],
+  ["/studio", "✦", "Studio", "Production Workspace"],
+  ["/series", "EP", "Series", "Episode Continuity"],
+  ["/libraries", "▦", "Asset Library", "Media & References"],
+  ["/render", "▶", "Render Queue", "Generation Jobs"],
+  ["/models", "⬡", "Model Center", "Models & Pricing"],
+  ["/wallet", "●", "Credit Wallet", "Balance & Usage"],
 ];
 
-const creatorSubNav = [
-  ["/#setup", "ตั้งค่างาน"],
-  ["/#characters", "ตัวละคร"],
-  ["/#scenes", "ฉาก & กล้อง"],
-  ["/#sound", "เสียง"],
-  ["/#review", "ตรวจและสร้าง"],
+const studioSubNav = [
+  ["/studio#setup", "Production Setup"],
+  ["/studio#characters", "Characters"],
+  ["/studio#scenes", "Scene Direction"],
+  ["/studio#sound", "Dialogue & Sound"],
+  ["/studio#review", "Prompt & Render"],
 ] as const;
 
 const seriesSubNav = [
-  ["/series#history", "ประวัติ EP"],
-  ["/series#episode-editor", "ตอนที่กำลังทำ"],
-  ["/series#continuity", "ความต่อเนื่อง"],
-  ["/libraries?tab=videos", "คลิป EP"],
+  ["/series#history", "Series History"],
+  ["/series#episode-editor", "Episode Workspace"],
+  ["/series#continuity", "Continuity"],
+  ["/libraries?tab=videos", "Generated Episodes"],
 ] as const;
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const standalone = pathname === "/login" || pathname === "/portal";
   const [me, setMe] = useState<Me>({ authenticated: false });
-  const [checking, setChecking] = useState(pathname !== "/login");
+  const [checking, setChecking] = useState(!standalone);
   const authLoaded = useRef(false);
 
-  // Authenticate once per mounted app shell. Route changes no longer re-fetch /api/auth/me,
-  // so the left navigation can switch pages immediately instead of showing a full-page loader.
   useEffect(() => {
-    if (pathname === "/login") {
+    if (standalone) {
       setChecking(false);
-      authLoaded.current = false;
       return;
     }
     if (authLoaded.current) return;
@@ -66,10 +64,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         setChecking(false);
         router.replace("/login");
       });
-  }, [pathname, router]);
+  }, [standalone, router]);
 
-  // Warm the route cache after login. Link already prefetches visible items, but explicitly
-  // prefetching the core workspaces makes the first click feel instant even on slower networks.
   useEffect(() => {
     if (!me.authenticated) return;
     const warm = () => {
@@ -77,45 +73,45 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       router.prefetch("/profile");
       if (me.role === "ADMIN") router.prefetch("/admin");
     };
-    const timer = window.setTimeout(warm, 150);
+    const timer = window.setTimeout(warm, 80);
     return () => window.clearTimeout(timer);
   }, [me.authenticated, me.role, router]);
 
   const subNav = useMemo(() => {
     if (pathname.startsWith("/series")) return seriesSubNav;
-    if (pathname.startsWith("/libraries")) return [["/libraries", "คลังทั้งหมด"]] as const;
-    if (pathname.startsWith("/render")) return [["/render", "คิวงาน"], ["/libraries?tab=videos", "คลิปที่เสร็จแล้ว"]] as const;
-    if (pathname.startsWith("/models")) return [["/models", "เปรียบเทียบโมเดล"], ["/", "กลับ Creator"]] as const;
-    if (pathname.startsWith("/wallet")) return [["/wallet", "ยอดเครดิต"], ["/render", "งานที่ใช้เครดิต"]] as const;
-    if (pathname.startsWith("/admin")) return [["/admin", "สมาชิก & Asset"], ["/profile", "ความปลอดภัย"], ["/libraries", "ดูคลัง"]] as const;
-    if (pathname.startsWith("/profile")) return [["/profile", "บัญชี & ความปลอดภัย"], ["/", "กลับ Creator"]] as const;
-    return creatorSubNav;
+    if (pathname.startsWith("/libraries")) return [["/libraries", "Asset Library"]] as const;
+    if (pathname.startsWith("/render")) return [["/render", "Render Queue"], ["/libraries?tab=videos", "Completed Renders"]] as const;
+    if (pathname.startsWith("/models")) return [["/models", "Model Comparison"], ["/studio", "Studio"]] as const;
+    if (pathname.startsWith("/wallet")) return [["/wallet", "Credit Balance"], ["/render", "Usage Jobs"]] as const;
+    if (pathname.startsWith("/admin")) return [["/admin", "Members & Assets"], ["/profile", "Security"], ["/libraries", "Asset Library"]] as const;
+    if (pathname.startsWith("/profile")) return [["/profile", "Account & Security"], ["/studio", "Studio"]] as const;
+    return studioSubNav;
   }, [pathname]);
 
-  if (pathname === "/login") return <>{children}</>;
-  if (checking || !me.authenticated) return <div className={styles.loading}>กำลังเปิด SCENOVA...</div>;
+  if (standalone) return <>{children}</>;
+  if (checking || !me.authenticated) return <div className={styles.loading}>Opening SCENOVA Workspace...</div>;
 
-  const context = pathname.startsWith("/series") ? "EP Workspace" : pathname.startsWith("/libraries") ? "Library" : pathname.startsWith("/render") ? "Render" : pathname.startsWith("/models") ? "Models" : pathname.startsWith("/wallet") ? "Wallet" : pathname.startsWith("/admin") ? "Admin" : pathname.startsWith("/profile") ? "Profile" : "Creator";
+  const context = pathname.startsWith("/series") ? "Series" : pathname.startsWith("/libraries") ? "Asset Library" : pathname.startsWith("/render") ? "Render Queue" : pathname.startsWith("/models") ? "Model Center" : pathname.startsWith("/wallet") ? "Credit Wallet" : pathname.startsWith("/admin") ? "Admin Console" : pathname.startsWith("/profile") ? "Profile" : "Studio";
 
   return (
     <div className={styles.shell}>
       <aside className={styles.sidebar}>
-        <Link href="/" className={styles.brand} prefetch><span className={styles.logo}>S</span><span><b>SCENOVA</b><small>AI Movie & Series Studio</small></span></Link>
-        <nav className={styles.mainNav} aria-label="เมนูหลัก">
+        <Link href="/portal" className={styles.brand} prefetch><span className={styles.logo}>S</span><span><b>SCENOVA</b><small>AI Cinematic Production Studio</small></span></Link>
+        <nav className={styles.mainNav} aria-label="Primary navigation">
           {MAIN_NAV.map(([href, icon, label, short]) => {
-            const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+            const active = pathname.startsWith(href);
             return <Link key={href} href={href} prefetch className={active ? styles.active : ""}><span className={styles.navIcon}>{icon}</span><span className={styles.navText}><b>{label}</b><small>{short}</small></span></Link>;
           })}
         </nav>
         <div className={styles.sidebarBottom}>
-          {me.role === "ADMIN" ? <Link href="/admin" prefetch className={pathname.startsWith("/admin") ? styles.active : ""}><span className={styles.navIcon}>⚙</span><span className={styles.navText}><b>Admin</b><small>สมาชิก & คลังกลาง</small></span></Link> : null}
-          <Link href="/profile" prefetch className={styles.profileCard}><span className={styles.profileAvatar}>{me.name?.slice(0, 1).toUpperCase() || "U"}</span><span><b>{me.name || "Profile"}</b><small>{me.twoFactorEnabled ? "2FA เปิดใช้งาน" : me.role === "ADMIN" ? "ตั้งค่า 2FA" : me.email}</small></span></Link>
+          {me.role === "ADMIN" ? <Link href="/admin" prefetch className={pathname.startsWith("/admin") ? styles.active : ""}><span className={styles.navIcon}>⚙</span><span className={styles.navText}><b>Admin Console</b><small>Members & Central Assets</small></span></Link> : null}
+          <Link href="/profile" prefetch className={styles.profileCard}><span className={styles.profileAvatar}>{me.name?.slice(0, 1).toUpperCase() || "U"}</span><span><b>{me.name || "Profile"}</b><small>{me.twoFactorEnabled ? "2FA Secured" : me.role === "ADMIN" ? "Security Setup" : me.email}</small></span></Link>
         </div>
       </aside>
 
       <div className={styles.workspace}>
         <header className={styles.topbar}>
-          <div className={styles.context}><span>{context}</span><b>{pathname === "/" ? "สร้างงานใหม่" : context}</b></div>
+          <div className={styles.context}><span>SCENOVA</span><b>{context}</b></div>
           <div className={styles.subNav}>{subNav.map(([href, label]) => <Link key={href} href={href} prefetch>{label}</Link>)}</div>
           <Link className={styles.account} href="/profile" prefetch><span>{me.name || "Profile"}</span><i>{me.role === "ADMIN" ? "ADMIN" : "USER"}</i></Link>
         </header>
