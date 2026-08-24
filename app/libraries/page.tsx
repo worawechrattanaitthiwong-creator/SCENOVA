@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import styles from "./library-hub.module.css";
 
@@ -56,15 +55,28 @@ const BUILTIN: Record<Exclude<Tab, "videos">, Item[]> = {
   ],
 };
 
+const isTab = (value: string | null): value is Tab => TABS.some((item) => item.id === value);
+
 export default function LibrariesPage() {
-  const params = useSearchParams();
-  const requested = params.get("tab") as Tab | null;
-  const [tab, setTab] = useState<Tab>(TABS.some((item) => item.id === requested) ? requested! : "images");
+  const [tab, setTab] = useState<Tab>("images");
   const [apiItems, setApiItems] = useState<ApiItem[]>([]);
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [search, setSearch] = useState("");
 
-  useEffect(() => { if (requested && TABS.some((item) => item.id === requested)) setTab(requested); }, [requested]);
+  useEffect(() => {
+    const syncFromLocation = () => {
+      const params = new URLSearchParams(window.location.search);
+      const queryTab = params.get("tab");
+      const hashTab = window.location.hash.replace("#", "");
+      if (isTab(queryTab)) setTab(queryTab);
+      else if (isTab(hashTab)) setTab(hashTab);
+    };
+    syncFromLocation();
+    window.addEventListener("hashchange", syncFromLocation);
+    window.addEventListener("popstate", syncFromLocation);
+    return () => { window.removeEventListener("hashchange", syncFromLocation); window.removeEventListener("popstate", syncFromLocation); };
+  }, []);
+
   useEffect(() => { fetch("/api/library", { cache: "no-store" }).then((r) => r.json()).then((data) => setApiItems(data.items || [])).catch(() => setApiItems([])); }, []);
   useEffect(() => {
     const load = () => { try { setVideos(JSON.parse(localStorage.getItem("scenova-video-library-v1") || "[]")); } catch { setVideos([]); } };
@@ -81,20 +93,29 @@ export default function LibrariesPage() {
 
   const filtered = items.filter((item) => `${item.title} ${item.description} ${item.tag}`.toLowerCase().includes(search.toLowerCase()));
 
+  function selectTab(next: Tab) {
+    setTab(next);
+    setSearch("");
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", next);
+    url.hash = "";
+    window.history.replaceState({}, "", `${url.pathname}${url.search}`);
+  }
+
   function playVoice(title: string) { if (!("speechSynthesis" in window)) return; speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(`สวัสดีค่ะ นี่คือตัวอย่างเสียง ${title} จาก SCENOVA`); u.lang = "th-TH"; speechSynthesis.speak(u); }
 
   return (
     <main className={styles.main}>
       <header className={styles.header}>
-        <div><span>SCENOVA LIBRARY</span><h1>คลังเดียว เลือกประเภทที่ต้องการ</h1><p>ไม่ต้องไล่หลายเมนู ทุก Asset อยู่ในพื้นที่เดียว แล้วเลือกประเภทด้านล่างว่าจะดูภาพ เสียง ตัวละคร สัตว์ บรรยากาศ พล็อต หรือวิดีโอที่สร้างเสร็จ</p></div>
+        <div><span>SCENOVA LIBRARY</span><h1>คลังเดียว เลือกประเภทที่ต้องการ</h1><p>ทุก Asset อยู่ในพื้นที่เดียว เลือกด้านล่างว่าจะดูภาพ เสียง ตัวละคร สัตว์ บรรยากาศ พล็อต หรือวิดีโอที่สร้างเสร็จ</p></div>
         <Link className={styles.adminLink} href="/admin">Admin จัดการคลัง →</Link>
       </header>
 
-      <div className={styles.tabs}>{TABS.map((item) => <button key={item.id} className={tab === item.id ? styles.active : ""} onClick={() => setTab(item.id)}>{item.icon} {item.label}</button>)}</div>
+      <div className={styles.tabs}>{TABS.map((item) => <button key={item.id} className={tab === item.id ? styles.active : ""} onClick={() => selectTab(item.id)}>{item.icon} {item.label}</button>)}</div>
 
       <section className={styles.section}>
-        <div className={styles.sectionHead}><div><h2>{current.label}</h2><p>{current.desc} — เลือกดูตัวอย่างก่อนนำไปใช้ใน Creator หรือ EP</p></div><small>{filtered.length} รายการ</small></div>
-        <div className={styles.toolbar}><input className={styles.search} placeholder={`ค้นหาใน${current.label}...`} value={search} onChange={(e) => setSearch(e.target.value)} /><span className={styles.count}>คลิกการ์ดเพื่อดูรูปแบบก่อนใช้</span></div>
+        <div className={styles.sectionHead}><div><h2>{current.label}</h2><p>{current.desc} — ดูตัวอย่างก่อนนำไปใช้ใน Creator หรือ EP</p></div><small>{filtered.length} รายการ</small></div>
+        <div className={styles.toolbar}><input className={styles.search} placeholder={`ค้นหาใน${current.label}...`} value={search} onChange={(e) => setSearch(e.target.value)} /><span className={styles.count}>เลือกประเภทด้านบน ไม่ต้องเปลี่ยนหน้า</span></div>
         <div className={styles.grid}>
           {filtered.map((item) => (
             <article className={styles.card} key={item.id}>
