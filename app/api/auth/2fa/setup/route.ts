@@ -25,7 +25,7 @@ export async function GET() {
   const secret = generateTotpSecret();
   await prisma.user.update({
     where: { id: user.id },
-    data: { twoFactorSecret: encryptTwoFactorSecret(secret), twoFactorRecoveryCodes: null, twoFactorConfirmedAt: null },
+    data: { twoFactorSecret: encryptTwoFactorSecret(secret), twoFactorRecoveryCodes: [], twoFactorConfirmedAt: null },
   });
 
   return NextResponse.json({
