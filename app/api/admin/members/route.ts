@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { createMember, listMembers, verifySession } from "@/lib/auth-core";
+import { createMember, listMembers, resolveSession } from "@/lib/auth-core";
 
 export const runtime = "nodejs";
 
 async function adminUser() {
   const store = await cookies();
-  const user = verifySession(store.get("scenova_session")?.value);
+  const user = await resolveSession(store.get("scenova_session")?.value);
   return user?.role === "ADMIN" ? user : null;
 }
 
