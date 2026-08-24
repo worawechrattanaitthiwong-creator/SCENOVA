@@ -19,6 +19,9 @@ export default function HomePage() {
   return (
     <>
       <ScenovaStudio />
+      <a href="/wallet" title="Credit Wallet — ระบบเติมเครดิตแบบ Prepaid ไม่มี Membership" style={{ ...quickLinkStyle, bottom: 194, background: "linear-gradient(135deg,#1e1533,#49306f)" }}>
+        Credit Wallet →
+      </a>
       <a href="/reference" title="Reference Lab — วิเคราะห์ Style/Camera จากวิดีโอตัวอย่าง" style={{ ...quickLinkStyle, bottom: 150, background: "linear-gradient(135deg,#271945,#58328e)" }}>
         Reference Lab →
       </a>
