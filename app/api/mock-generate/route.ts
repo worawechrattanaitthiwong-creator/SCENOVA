@@ -3,6 +3,7 @@ import type { Project } from "@/lib/domain";
 import { buildPromptBundle } from "@/lib/prompt-engine";
 import { planEpisodeRender } from "@/lib/render-planner";
 import { MockVideoProvider } from "@/lib/providers/mock-video-provider";
+import type { GenerateVideoRequest } from "@/lib/providers/video-provider";
 
 export async function POST(request: Request) {
   try {
@@ -17,7 +18,7 @@ export async function POST(request: Request) {
     const tasks = [];
 
     for (const renderSegment of plan) {
-      const requestPayload = {
+      const requestPayload: GenerateVideoRequest = {
         projectId: project.id,
         episodeId: episode.id,
         renderSegment,
@@ -27,7 +28,7 @@ export async function POST(request: Request) {
         videoReferences: [],
         audioReferences: [],
         idempotencyKey: `${project.id}:${episode.id}:${renderSegment.order}`,
-      } as const;
+      };
       const estimate = await provider.estimateCost(requestPayload);
       const task = await provider.generate(requestPayload);
       tasks.push({ ...task, estimate, renderSegment });
