@@ -8,24 +8,23 @@ import styles from "./app-shell.module.css";
 type Me = { authenticated: boolean; name?: string; email?: string; role?: "ADMIN" | "MEMBER" };
 
 const MAIN_NAV = [
-  ["/", "✦", "สร้างหนัง", "Studio"],
-  ["/series", "EP", "โปรเจกต์ / EP", "Series"],
+  ["/", "✦", "สร้างหนัง", "Creator"],
+  ["/series", "EP", "โปรเจกต์ / EP", "Projects"],
   ["/models", "⬡", "โมเดล & ราคา", "Models"],
-  ["/libraries", "▦", "คลังทั้งหมด", "Libraries"],
-  ["/director", "◆", "Director Console", "Director"],
-  ["/reference", "◫", "Reference Lab", "Reference"],
+  ["/libraries", "▦", "คลังทั้งหมด", "Assets"],
+  ["/render", "▶", "Render Queue", "Jobs"],
   ["/wallet", "◉", "เครดิต", "Wallet"],
 ] as const;
 
 const SUB_NAV = [
-  ["/libraries#images", "คลังภาพ"],
-  ["/libraries#voices", "คลังเสียง"],
-  ["/libraries#characters", "คลังตัวละคร"],
-  ["/libraries#pets", "คลังสัตว์เลี้ยง"],
-  ["/libraries#ambience", "คลังบรรยากาศ"],
-  ["/libraries#plots", "คลังพล็อต"],
+  ["/#setup", "ตั้งค่างาน"],
+  ["/#characters", "ตัวละคร"],
+  ["/#scenes", "ฉาก & กล้อง"],
+  ["/#sound", "เสียง / SFX"],
+  ["/#review", "Prompt & Render"],
   ["/camera", "Camera Lab"],
   ["/dialogue", "Dialogue"],
+  ["/reference", "Reference Lab"],
 ] as const;
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -85,7 +84,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       <div className={styles.workspace}>
         <header className={styles.topbar}>
-          <div className={styles.subSlider}>
+          <div className={styles.subSlider} aria-label="เมนูย่อย">
             {SUB_NAV.map(([href, label]) => <Link key={href} href={href} prefetch>{label}</Link>)}
           </div>
           <Link className={styles.profileButton} href="/profile" prefetch>
