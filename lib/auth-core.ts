@@ -1,14 +1,15 @@
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "crypto";
+import { prisma } from "@/lib/db";
 
 export type Role = "ADMIN" | "MEMBER";
 export type SessionUser = { id: string; email: string; name: string; role: Role };
-export type MemberRecord = SessionUser & { passwordHash: string; active: boolean; createdAt: string };
+export type SafeMember = SessionUser & { active: boolean; createdAt: string; lastLoginAt?: string | null };
 
-const globalStore = globalThis as unknown as { __scenovaMembers?: Map<string, MemberRecord> };
-export const memberStore = globalStore.__scenovaMembers ?? new Map<string, MemberRecord>();
-if (!globalStore.__scenovaMembers) globalStore.__scenovaMembers = memberStore;
-
-const secret = () => process.env.SESSION_SECRET || (process.env.NODE_ENV === "production" ? "CHANGE_ME_IN_PRODUCTION" : "scenova-dev-session-secret");
+function sessionSecret() {
+  if (process.env.SESSION_SECRET) return process.env.SESSION_SECRET;
+  if (process.env.NODE_ENV !== "production") return "scenova-dev-session-secret";
+  throw new Error("SESSION_SECRET_REQUIRED");
+}
 
 export function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
@@ -24,41 +25,93 @@ export function verifyPassword(password: string, stored: string) {
   return actual.length === expectedBuffer.length && timingSafeEqual(actual, expectedBuffer);
 }
 
-export function createMember(input: { email: string; name: string; password: string }) {
-  const email = input.email.trim().toLowerCase();
-  if (!email || memberStore.has(email)) throw new Error("EMAIL_EXISTS");
-  const record: MemberRecord = {
-    id: `member_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-    email,
-    name: input.name.trim() || email,
-    role: "MEMBER",
-    passwordHash: hashPassword(input.password),
-    active: true,
-    createdAt: new Date().toISOString(),
+function toSessionUser(user: { id: string; email: string; displayName: string | null; role: string }): SessionUser {
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.displayName || user.email,
+    role: user.role === "ADMIN" ? "ADMIN" : "MEMBER",
   };
-  memberStore.set(email, record);
-  return record;
 }
 
-export function listMembers() {
-  return [...memberStore.values()].map(({ passwordHash: _passwordHash, ...member }) => member);
+export async function createMember(input: { email: string; name: string; password: string }) {
+  const email = input.email.trim().toLowerCase();
+  if (!email) throw new Error("INVALID_EMAIL");
+  const exists = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+  if (exists) throw new Error("EMAIL_EXISTS");
+
+  const user = await prisma.user.create({
+    data: {
+      email,
+      displayName: input.name.trim() || email,
+      passwordHash: hashPassword(input.password),
+      role: "MEMBER",
+      active: true,
+      wallet: { create: {} },
+    },
+  });
+
+  return {
+    ...toSessionUser(user),
+    active: user.active,
+    createdAt: user.createdAt.toISOString(),
+    lastLoginAt: user.lastLoginAt?.toISOString() || null,
+  } satisfies SafeMember;
 }
 
-export function authenticate(emailInput: string, password: string): SessionUser | null {
+export async function listMembers() {
+  const users = await prisma.user.findMany({
+    where: { role: "MEMBER" },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return users.map((user) => ({
+    ...toSessionUser(user),
+    active: user.active,
+    createdAt: user.createdAt.toISOString(),
+    lastLoginAt: user.lastLoginAt?.toISOString() || null,
+  } satisfies SafeMember));
+}
+
+export async function authenticate(emailInput: string, password: string): Promise<SessionUser | null> {
   const email = emailInput.trim().toLowerCase();
-  const adminEmail = (process.env.SCENOVA_ADMIN_EMAIL || "admin@scenova.local").toLowerCase();
-  const adminPassword = process.env.SCENOVA_ADMIN_PASSWORD || (process.env.NODE_ENV === "production" ? "" : "admin1234");
-  if (email === adminEmail && adminPassword && password === adminPassword) {
-    return { id: "admin", email: adminEmail, name: "SCENOVA Admin", role: "ADMIN" };
+  if (!email || !password) return null;
+
+  let user = await prisma.user.findUnique({ where: { email } });
+
+  // Bootstrap the first Admin from environment variables exactly once.
+  if (!user) {
+    const adminEmail = (process.env.SCENOVA_ADMIN_EMAIL || (process.env.NODE_ENV !== "production" ? "admin@scenova.local" : "")).trim().toLowerCase();
+    const adminPassword = process.env.SCENOVA_ADMIN_PASSWORD || (process.env.NODE_ENV !== "production" ? "admin1234" : "");
+    if (adminEmail && adminPassword && email === adminEmail && password === adminPassword) {
+      user = await prisma.user.create({
+        data: {
+          email: adminEmail,
+          displayName: "SCENOVA Admin",
+          passwordHash: hashPassword(adminPassword),
+          role: "ADMIN",
+          active: true,
+          lastLoginAt: new Date(),
+          wallet: { create: {} },
+        },
+      });
+      return toSessionUser(user);
+    }
+    return null;
   }
-  const member = memberStore.get(email);
-  if (!member || !member.active || !verifyPassword(password, member.passwordHash)) return null;
-  return { id: member.id, email: member.email, name: member.name, role: member.role };
+
+  if (!user.active || !verifyPassword(password, user.passwordHash)) return null;
+
+  const updated = await prisma.user.update({
+    where: { id: user.id },
+    data: { lastLoginAt: new Date() },
+  });
+  return toSessionUser(updated);
 }
 
 export function signSession(user: SessionUser) {
   const payload = Buffer.from(JSON.stringify({ ...user, exp: Date.now() + 1000 * 60 * 60 * 24 * 7 })).toString("base64url");
-  const signature = createHmac("sha256", secret()).update(payload).digest("base64url");
+  const signature = createHmac("sha256", sessionSecret()).update(payload).digest("base64url");
   return `${payload}.${signature}`;
 }
 
@@ -66,7 +119,7 @@ export function verifySession(token?: string | null): SessionUser | null {
   if (!token) return null;
   const [payload, signature] = token.split(".");
   if (!payload || !signature) return null;
-  const expected = createHmac("sha256", secret()).update(payload).digest("base64url");
+  const expected = createHmac("sha256", sessionSecret()).update(payload).digest("base64url");
   const a = Buffer.from(signature);
   const b = Buffer.from(expected);
   if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
