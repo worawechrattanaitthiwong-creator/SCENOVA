@@ -1,5 +1,5 @@
-import SeriesManagerV2 from "@/components/series-manager-v2";
+import SeriesManagerV3 from "@/components/series-manager-v3";
 
 export default function SeriesPage() {
-  return <SeriesManagerV2 />;
+  return <SeriesManagerV3 />;
 }
