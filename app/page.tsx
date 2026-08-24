@@ -1,5 +1,5 @@
-import ScenovaStudio from "@/components/scenova-studio";
+import { redirect } from "next/navigation";
 
 export default function HomePage() {
-  return <ScenovaStudio />;
+  redirect("/portal");
 }
