@@ -22,17 +22,17 @@ export default function LoginPage() {
     const response = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
     const data = await response.json();
     setLoading(false);
-    if (!response.ok) return setError(data.error || "เข้าสู่ระบบไม่สำเร็จ");
+    if (!response.ok) return setError(data.error || "Authentication failed");
     if (data.twoFactorSetupRequired) return startSetup();
     if (data.twoFactorRequired) { setStage("otp"); return; }
-    goHome();
+    enterPortal();
   }
 
   async function startSetup() {
     setLoading(true); setError("");
     const response = await fetch("/api/auth/2fa/setup", { cache: "no-store" });
     const data = await response.json(); setLoading(false);
-    if (!response.ok) return setError(data.error || "เริ่มตั้งค่า 2FA ไม่สำเร็จ");
+    if (!response.ok) return setError(data.error || "Unable to start 2FA setup");
     setSetup(data); setStage("setup");
   }
 
@@ -40,7 +40,7 @@ export default function LoginPage() {
     event.preventDefault(); setLoading(true); setError("");
     const response = await fetch("/api/auth/2fa/setup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) });
     const data = await response.json(); setLoading(false);
-    if (!response.ok) return setError(data.error || "ยืนยัน Authenticator ไม่สำเร็จ");
+    if (!response.ok) return setError(data.error || "Authenticator verification failed");
     setRecoveryCodes(data.recoveryCodes || []); setStage("recovery");
   }
 
@@ -48,29 +48,29 @@ export default function LoginPage() {
     event.preventDefault(); setLoading(true); setError("");
     const response = await fetch("/api/auth/2fa/verify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) });
     const data = await response.json(); setLoading(false);
-    if (!response.ok) return setError(data.error || "ยืนยันรหัสไม่สำเร็จ");
-    goHome();
+    if (!response.ok) return setError(data.error || "Verification failed");
+    enterPortal();
   }
 
-  function goHome() { router.push("/"); router.refresh(); }
+  function enterPortal() { router.push("/portal"); router.refresh(); }
 
   return (
     <main style={{ minHeight: "100vh", display: "grid", gridTemplateColumns: "1.1fr .9fr", background: "#090909", color: "#f5f5ef" }}>
       <section style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "42px 48px", borderRight: "1px solid #222", background: "linear-gradient(145deg,#0a0a0a,#11100b)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 11 }}><span style={{ width: 42, height: 42, borderRadius: 12, display: "grid", placeItems: "center", background: "#f2c94c", color: "#0a0a0a", fontWeight: 950 }}>S</span><div><b style={{ display: "block", fontSize: 17, letterSpacing: ".08em" }}>SCENOVA</b><small style={{ color: "#777771", fontSize: 10 }}>AI Movie & Series Studio</small></div></div>
-        <div style={{ maxWidth: 560 }}><span style={eyebrow}>SECURE CREATIVE STUDIO</span><h1 style={{ fontSize: 42, lineHeight: 1.08, margin: "10px 0 14px", letterSpacing: "-.04em" }}>สร้างหนังและซีรีส์<br />จากหน้าจอเดียว</h1><p style={heroText}>บัญชี Admin ใช้รหัสผ่าน + Authenticator แบบ TOTP เพื่อป้องกันเครดิต, API และคลังงานของ SCENOVA</p></div>
-        <small style={{ color: "#575752", fontSize: 9 }}>SCENOVA • Black / Yellow Studio UI</small>
+        <div style={{ display: "flex", alignItems: "center", gap: 11 }}><span style={{ width: 42, height: 42, borderRadius: 12, display: "grid", placeItems: "center", background: "#f2c94c", color: "#0a0a0a", fontWeight: 950 }}>S</span><div><b style={{ display: "block", fontSize: 17, letterSpacing: ".08em" }}>SCENOVA</b><small style={{ color: "#777771", fontSize: 10 }}>AI Cinematic Production Studio</small></div></div>
+        <div style={{ maxWidth: 620 }}><span style={eyebrow}>SECURE PRODUCTION WORKSPACE</span><h1 style={{ fontSize: 42, lineHeight: 1.08, margin: "10px 0 14px", letterSpacing: "-.04em" }}>Professional AI Production<br />from a Single Workspace</h1><p style={heroText}>Studio สำหรับ Story Development, Scene Direction, Camera Design, Series Continuity, Prompt Engineering และ Multi-model Rendering พร้อมระบบความปลอดภัยสำหรับ Admin และสมาชิก</p></div>
+        <small style={{ color: "#575752", fontSize: 9 }}>SCENOVA • SECURE CINEMATIC WORKSPACE</small>
       </section>
 
       <section style={{ display: "grid", placeItems: "center", padding: 28 }}>
         <div style={card}>
-          {stage === "password" ? <form onSubmit={login}><span style={eyebrow}>MEMBER ACCESS</span><h2 style={title}>เข้าสู่ระบบ</h2><p style={muted}>ไม่มี Public Sign-up บัญชีสมาชิกสร้างโดย Admin เท่านั้น</p><label style={labelStyle}>อีเมล<input value={email} onChange={(e) => setEmail(e.target.value)} type="email" autoComplete="email" required style={inputStyle} /></label><label style={labelStyle}>รหัสผ่าน<input value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="current-password" required style={inputStyle} /></label>{error ? <ErrorBox text={error} /> : null}<button disabled={loading} style={primary}>{loading ? "กำลังตรวจสอบ..." : "ดำเนินการต่อ"}</button></form> : null}
+          {stage === "password" ? <form onSubmit={login}><span style={eyebrow}>MEMBER ACCESS</span><h2 style={title}>Sign in to SCENOVA</h2><p style={muted}>ไม่มี Public Sign-up บัญชีสมาชิกถูกสร้างและจัดการโดย Admin Console เท่านั้น</p><label style={labelStyle}>Email<input value={email} onChange={(e) => setEmail(e.target.value)} type="email" autoComplete="email" required style={inputStyle} /></label><label style={labelStyle}>Password<input value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="current-password" required style={inputStyle} /></label>{error ? <ErrorBox text={error} /> : null}<button disabled={loading} style={primary}>{loading ? "Authenticating..." : "Continue"}</button></form> : null}
 
-          {stage === "otp" ? <form onSubmit={verifyOtp}><span style={eyebrow}>2-STEP VERIFICATION</span><h2 style={title}>ยืนยันด้วย Authenticator</h2><p style={muted}>เปิดแอป Authenticator แล้วกรอกรหัส 6 หลักปัจจุบัน หรือใช้ Recovery Code เมื่อไม่มีโทรศัพท์</p><label style={labelStyle}>รหัสยืนยัน<input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" autoFocus placeholder="123456" style={{ ...inputStyle, fontSize: 20, letterSpacing: ".18em", textAlign: "center" }} /></label>{error ? <ErrorBox text={error} /> : null}<button disabled={loading} style={primary}>{loading ? "กำลังยืนยัน..." : "ยืนยันและเข้าสู่ระบบ"}</button><button type="button" onClick={() => { setStage("password"); setCode(""); setError(""); }} style={secondary}>กลับไปกรอกรหัสผ่าน</button></form> : null}
+          {stage === "otp" ? <form onSubmit={verifyOtp}><span style={eyebrow}>2-STEP VERIFICATION</span><h2 style={title}>Authenticator Verification</h2><p style={muted}>เปิด Authenticator แล้วกรอกรหัส 6 หลักปัจจุบัน หรือใช้ Recovery Code เมื่อไม่มีอุปกรณ์หลัก</p><label style={labelStyle}>Verification Code<input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" autoFocus placeholder="123456" style={{ ...inputStyle, fontSize: 20, letterSpacing: ".18em", textAlign: "center" }} /></label>{error ? <ErrorBox text={error} /> : null}<button disabled={loading} style={primary}>{loading ? "Verifying..." : "Verify & Continue"}</button><button type="button" onClick={() => { setStage("password"); setCode(""); setError(""); }} style={secondary}>Back to Password</button></form> : null}
 
-          {stage === "setup" ? <form onSubmit={confirmSetup}><span style={eyebrow}>ADMIN SECURITY REQUIRED</span><h2 style={title}>ผูก Authenticator ครั้งแรก</h2><p style={muted}>ใน Google/Microsoft Authenticator กด ＋ → เลือก “Enter setup key / ป้อนคีย์การตั้งค่า” แล้วใช้ข้อมูลด้านล่าง</p><div style={setupBox}><small>ACCOUNT</small><b>{setup?.account}</b><small>SETUP KEY</small><code>{setup?.secret}</code><small>TYPE</small><b>Time based (TOTP) • 6 digits • 30 seconds</b></div><button type="button" onClick={() => setup?.secret && navigator.clipboard.writeText(setup.secret)} style={secondary}>คัดลอก Setup Key</button><label style={labelStyle}>กรอกรหัส 6 หลักที่แอปแสดง<input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" autoFocus placeholder="123456" style={{ ...inputStyle, fontSize: 20, letterSpacing: ".18em", textAlign: "center" }} /></label>{error ? <ErrorBox text={error} /> : null}<button disabled={loading} style={primary}>{loading ? "กำลังเปิด 2FA..." : "ยืนยันและเปิด 2FA"}</button></form> : null}
+          {stage === "setup" ? <form onSubmit={confirmSetup}><span style={eyebrow}>ADMIN SECURITY REQUIRED</span><h2 style={title}>Authenticator Setup</h2><p style={muted}>ใน Google/Microsoft Authenticator กด ＋ → เลือก “Enter setup key” แล้วใช้ข้อมูลด้านล่าง</p><div style={setupBox}><small>ACCOUNT</small><b>{setup?.account}</b><small>SETUP KEY</small><code>{setup?.secret}</code><small>TYPE</small><b>Time based (TOTP) • 6 digits • 30 seconds</b></div><button type="button" onClick={() => setup?.secret && navigator.clipboard.writeText(setup.secret)} style={secondary}>Copy Setup Key</button><label style={labelStyle}>Authenticator Code<input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" autoFocus placeholder="123456" style={{ ...inputStyle, fontSize: 20, letterSpacing: ".18em", textAlign: "center" }} /></label>{error ? <ErrorBox text={error} /> : null}<button disabled={loading} style={primary}>{loading ? "Enabling 2FA..." : "Verify & Enable 2FA"}</button></form> : null}
 
-          {stage === "recovery" ? <div><span style={eyebrow}>RECOVERY CODES</span><h2 style={title}>บันทึกรหัสกู้คืนไว้ก่อน</h2><p style={muted}>แต่ละรหัสใช้ได้ครั้งเดียว ใช้เมื่อโทรศัพท์หรือ Authenticator ใช้งานไม่ได้ ระบบจะแสดงชุดนี้เพียงครั้งเดียว</p><div style={recoveryGrid}>{recoveryCodes.map((item) => <code key={item} style={recoveryCode}>{item}</code>)}</div><button onClick={() => navigator.clipboard.writeText(recoveryCodes.join("\n"))} style={secondary}>คัดลอกทั้งหมด</button><button onClick={goHome} style={primary}>บันทึกแล้ว → เข้า SCENOVA</button></div> : null}
+          {stage === "recovery" ? <div><span style={eyebrow}>RECOVERY CODES</span><h2 style={title}>Store Recovery Codes</h2><p style={muted}>แต่ละรหัสใช้ได้ครั้งเดียวสำหรับกรณี Authenticator ใช้งานไม่ได้ ระบบจะแสดงชุดจริงเพียงครั้งเดียว</p><div style={recoveryGrid}>{recoveryCodes.map((item) => <code key={item} style={recoveryCode}>{item}</code>)}</div><button onClick={() => navigator.clipboard.writeText(recoveryCodes.join("\n"))} style={secondary}>Copy All</button><button onClick={enterPortal} style={primary}>Saved → Enter SCENOVA</button></div> : null}
         </div>
       </section>
     </main>
