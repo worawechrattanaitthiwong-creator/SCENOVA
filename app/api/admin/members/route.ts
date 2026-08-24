@@ -12,7 +12,7 @@ async function adminUser() {
 
 export async function GET() {
   if (!(await adminUser())) return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
-  return NextResponse.json({ members: listMembers() });
+  return NextResponse.json({ members: await listMembers() });
 }
 
 export async function POST(request: Request) {
@@ -25,9 +25,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "กรอกชื่อ อีเมล และรหัสผ่านอย่างน้อย 8 ตัวอักษร" }, { status: 400 });
   }
   try {
-    const member = createMember({ email, name, password });
-    const { passwordHash: _passwordHash, ...safeMember } = member;
-    return NextResponse.json({ ok: true, member: safeMember });
+    const member = await createMember({ email, name, password });
+    return NextResponse.json({ ok: true, member });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error && error.message === "EMAIL_EXISTS" ? "อีเมลนี้มีอยู่แล้ว" : "สร้างสมาชิกไม่สำเร็จ" }, { status: 400 });
   }
