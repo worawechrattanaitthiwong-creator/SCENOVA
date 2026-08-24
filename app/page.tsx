@@ -19,6 +19,9 @@ export default function HomePage() {
   return (
     <>
       <ScenovaStudio />
+      <a href="/reference" title="Reference Lab — วิเคราะห์ Style/Camera จากวิดีโอตัวอย่าง" style={{ ...quickLinkStyle, bottom: 150, background: "linear-gradient(135deg,#271945,#58328e)" }}>
+        Reference Lab →
+      </a>
       <a href="/director" title="Director Console — กำกับตามช่วงเวลาและใช้ Action/Sci-Fi Camera Presets" style={{ ...quickLinkStyle, bottom: 106, background: "linear-gradient(135deg,#352060,#6f3ec8)" }}>
         Director Console →
       </a>
