@@ -1,41 +1,32 @@
-"use client";
+import Link from "next/link";
 
-import { useEffect, useMemo, useState } from "react";
-
-type LibraryItem = { id: string; kind: string; title: string; description: string; assetUrl?: string };
-const SECTIONS = [
-  ["images","▧","คลังภาพ","Style Preview, Character Reference และภาพอ้างอิง"],
-  ["voices","♫","คลังเสียง","เสียงตัวละครพร้อมตัวอย่าง"],
-  ["characters","◎","คลังตัวละคร","ตัวละครและ Reference Pack ที่ใช้ซ้ำได้"],
-  ["pets","◇","คลังสัตว์เลี้ยง / Creature","สัตว์ สิ่งมีชีวิต และ Robot companion"],
-  ["ambience","≈","คลังบรรยากาศ","เสียงรอบข้าง SFX และ ambience"],
-  ["plots","✦","คลังพล็อตเรื่อง","พล็อตตั้งต้นสำหรับเริ่มสร้างเร็ว"],
+const libraries = [
+  { href: "/libraries/images", icon: "▧", title: "คลังภาพ", desc: "Style Preview, Reference และภาพอ้างอิงพร้อมตัวอย่าง", visual: "linear-gradient(135deg,#4f3471,#a66f9d 50%,#d39772)" },
+  { href: "/libraries/voices", icon: "♫", title: "คลังเสียง", desc: "เสียงตัวละครหลายบุคลิก พร้อมปุ่มฟังตัวอย่าง", visual: "linear-gradient(135deg,#251a3b,#63418a 55%,#9d5e96)" },
+  { href: "/libraries/characters", icon: "◎", title: "คลังตัวละคร", desc: "ตัวละครและ Reference Pack ที่เลือกกลับไปใช้ซ้ำได้", visual: "linear-gradient(135deg,#26334a,#6f5a7d 55%,#b77b92)" },
+  { href: "/libraries/pets", icon: "◇", title: "คลังสัตว์ / Creature", desc: "สัตว์เลี้ยง สิ่งมีชีวิตแฟนตาซี และ Robot companion", visual: "linear-gradient(135deg,#24333c,#586b66 55%,#9d7b6b)" },
+  { href: "/libraries/ambience", icon: "≈", title: "คลังบรรยากาศ / SFX", desc: "เสียงรอบข้างและ ambience สำหรับใส่ในแต่ละฉาก", visual: "linear-gradient(135deg,#172333,#3c5367 55%,#7c718c)" },
+  { href: "/libraries/plots", icon: "✦", title: "คลังพล็อตเรื่อง", desc: "พล็อตตั้งต้นพร้อมโทนเรื่องสำหรับเริ่มสร้างเร็ว", visual: "linear-gradient(135deg,#321f35,#6d3a55 55%,#b36b55)" },
+  { href: "/libraries/videos", icon: "▸", title: "คลังวิดีโอ", desc: "คลิปที่สร้างเสร็จ พร้อมชื่อ EP ชื่อตอน และดาวน์โหลด", visual: "linear-gradient(135deg,#171429,#3c3266 55%,#7550a8)" },
 ] as const;
 
 export default function LibrariesPage() {
-  const [items, setItems] = useState<LibraryItem[]>([]);
-  useEffect(() => { fetch("/api/library", { cache: "no-store" }).then((r) => r.json()).then((data) => setItems(data.items || [])).catch(() => setItems([])); }, []);
-  const grouped = useMemo(() => Object.fromEntries(SECTIONS.map(([id]) => [id, items.filter((item) => item.kind === id)])), [items]);
+  return (
+    <main style={{ maxWidth: 1320, margin: "0 auto", padding: 28, color: "#f7f3ff" }}>
+      <header style={{ marginBottom: 18 }}>
+        <span style={{ color: "#b994ed", fontSize: 10, fontWeight: 850, letterSpacing: ".12em" }}>SCENOVA LIBRARIES</span>
+        <h1 style={{ fontSize: 28, margin: "6px 0" }}>เลือกคลังที่ต้องการ</h1>
+        <p style={{ margin: 0, color: "#9c91ad", fontSize: 12, lineHeight: 1.6, maxWidth: 760 }}>แยกแต่ละคลังออกจากกันชัดเจน เพื่อหา Asset ได้เร็วขึ้น ภายในแต่ละคลังจะมีตัวอย่าง ชื่อ และคำอธิบายสั้นก่อนกดใช้งาน</p>
+      </header>
 
-  function playVoice(label: string) {
-    if (!("speechSynthesis" in window)) return; speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(`สวัสดีค่ะ นี่คือตัวอย่างเสียง ${label} จาก SCENOVA`); u.lang = "th-TH"; speechSynthesis.speak(u);
-  }
-
-  return <main style={{ maxWidth: 1320, margin: "0 auto", padding: 28, color: "#f7f3ff", fontSize: 13 }}>
-    <header style={{ marginBottom: 15 }}><span style={eyebrow}>ASSET LIBRARIES</span><h1 style={{ fontSize: 26, margin: "6px 0" }}>คลังของ SCENOVA</h1><p style={muted}>ของที่ใช้ซ้ำทั้งหมดอยู่ที่เดียว ผู้ใช้เลือกจากคลัง ส่วน Admin เป็นผู้เพิ่มและดูแลรายการกลาง</p></header>
-    <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 8 }}>{SECTIONS.map(([id,,title]) => <a key={id} href={`#${id}`} style={chip}>{title}</a>)}</div>
-    {SECTIONS.map(([id,icon,title,desc]) => <section id={id} key={id} style={{ ...card, marginTop: 10, scrollMarginTop: 72 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "start" }}><div><span style={{ color: "#bd96ff", fontWeight: 900 }}>{icon}</span><h2 style={{ margin: "4px 0", fontSize: 16 }}>{title}</h2><p style={muted}>{desc}</p></div><span style={{ color: "#8f849f", fontSize: 9 }}>{grouped[id]?.length || 0} รายการ</span></div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 8 }}>
-        {(grouped[id] || []).map((item: LibraryItem) => <article key={item.id} style={{ border: "1px solid rgba(171,120,255,.12)", borderRadius: 11, background: "#09060e", padding: 9 }}>{item.assetUrl ? <img src={item.assetUrl} alt={item.title} style={{ width: "100%", height: 110, objectFit: "cover", borderRadius: 8, marginBottom: 8 }} /> : <div style={{ height: 70, display: "grid", placeItems: "center", borderRadius: 8, background: "linear-gradient(135deg,#1e1530,#4b2b70)", color: "#c7a8ef", marginBottom: 8 }}>{icon}</div>}<b style={{ display: "block", fontSize: 11 }}>{item.title}</b><p style={{ color: "#8f849f", fontSize: 9, lineHeight: 1.5, minHeight: 27 }}>{item.description}</p>{id === "voices" ? <button onClick={() => playVoice(item.title)} style={smallButton}>▶ ฟังตัวอย่าง</button> : <button style={smallButton}>ใช้รายการนี้</button>}</article>)}
-        {(grouped[id] || []).length === 0 ? <div style={{ color: "#81768e", fontSize: 10 }}>ยังไม่มีรายการในคลังนี้ Admin สามารถเพิ่มจากหลังบ้านได้</div> : null}
-      </div>
-    </section>)}
-  </main>;
+      <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 12 }}>
+        {libraries.map((item) => (
+          <Link key={item.href} href={item.href} prefetch style={{ overflow: "hidden", color: "white", textDecoration: "none", border: "1px solid rgba(171,120,255,.15)", borderRadius: 16, background: "#0d0914" }}>
+            <div style={{ height: 120, display: "grid", placeItems: "center", fontSize: 26, fontWeight: 900, background: item.visual }}>{item.icon}</div>
+            <div style={{ padding: 13 }}><h2 style={{ fontSize: 14, margin: "0 0 5px" }}>{item.title}</h2><p style={{ margin: 0, color: "#958aa6", fontSize: 11, lineHeight: 1.55 }}>{item.desc}</p><span style={{ display: "inline-block", marginTop: 10, color: "#c8a8ff", fontSize: 10, fontWeight: 800 }}>เปิดคลัง →</span></div>
+          </Link>
+        ))}
+      </section>
+    </main>
+  );
 }
-
-const card: React.CSSProperties = { border: "1px solid rgba(171,120,255,.15)", borderRadius: 15, padding: 14, background: "linear-gradient(180deg,#151021,#0d0914)" };
-const muted: React.CSSProperties = { margin: "0 0 11px", color: "#9c91ad", fontSize: 10, lineHeight: 1.6 };
-const eyebrow: React.CSSProperties = { color: "#b994ed", fontSize: 10, fontWeight: 850, letterSpacing: ".12em" };
-const chip: React.CSSProperties = { flex: "0 0 auto", color: "#eee5ff", textDecoration: "none", border: "1px solid rgba(181,129,255,.17)", borderRadius: 9, padding: "7px 9px", background: "#100b18", fontSize: 10, fontWeight: 700 };
-const smallButton: React.CSSProperties = { border: "1px solid rgba(181,129,255,.18)", borderRadius: 8, background: "#171023", color: "#fff", fontSize: 9, padding: "5px 7px", fontWeight: 750, cursor: "pointer" };
