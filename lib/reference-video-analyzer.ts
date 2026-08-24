@@ -13,9 +13,11 @@ export type ReferenceVideoAnalysis = {
   suggestedCameraLock: string;
 };
 
+export type ReferenceVideoInput = { assetUrl: string; fileName?: string };
+
 export interface ReferenceVideoAnalyzer {
   id: string;
-  analyze(input: { assetUrl: string; fileName?: string }): Promise<ReferenceVideoAnalysis>;
+  analyze(input: ReferenceVideoInput): Promise<ReferenceVideoAnalysis>;
 }
 
 /**
@@ -25,7 +27,8 @@ export interface ReferenceVideoAnalyzer {
 export class MockReferenceVideoAnalyzer implements ReferenceVideoAnalyzer {
   id = "mock-reference-video-analyzer";
 
-  async analyze(): Promise<ReferenceVideoAnalysis> {
+  async analyze(input: ReferenceVideoInput): Promise<ReferenceVideoAnalysis> {
+    void input;
     return {
       aspectRatio: "9:16",
       visualStyle: ["cinematic anime", "storybook", "painterly environment"],
