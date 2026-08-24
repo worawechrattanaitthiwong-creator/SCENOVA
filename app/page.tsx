@@ -19,6 +19,9 @@ export default function HomePage() {
   return (
     <>
       <ScenovaStudio />
+      <a href="/camera" title="Camera Lab — ออกแบบ Shot, Angle, Lens, Height, Movement, Composition แบบละเอียด" style={{ ...quickLinkStyle, bottom: 238, background: "linear-gradient(135deg,#171124,#38245d)" }}>
+        Camera Lab →
+      </a>
       <a href="/wallet" title="Credit Wallet — ระบบเติมเครดิตแบบ Prepaid ไม่มี Membership" style={{ ...quickLinkStyle, bottom: 194, background: "linear-gradient(135deg,#1e1533,#49306f)" }}>
         Credit Wallet →
       </a>
