@@ -39,7 +39,7 @@ async function processAgentStage(run: AgentRunRecord) {
   const input = inputOf(run);
   const project = input.project;
   const state = stateOf(run);
-  const episodeIndex = Number.isFinite(state.currentEpisodeIndex) ? Number(state.currentEpisodeIndex) : Number(input.startEpisodeIndex || 0);
+  const episodeIndex = typeof state.currentEpisodeIndex === "number" ? state.currentEpisodeIndex : Number(input.startEpisodeIndex || 0);
   const episode = project?.episodes?.[episodeIndex];
   if (!project || !episode) throw new Error("AGENT_EPISODE_NOT_FOUND");
 
@@ -56,9 +56,9 @@ async function processAgentStage(run: AgentRunRecord) {
 
   if (run.stage === "SELECT_STYLE") {
     assertAgentToolAllowed({ run, tool: "select_style" });
-    state.selectedStyle = project.stylePresetId || "AUTO_FROM_PROJECT";
+    state.selectedStyle = project.styleId || "AUTO_FROM_PROJECT";
     run.stateJson = state as Record<string, unknown>;
-    await recordAgentDecision({ runId: run.id, stage: run.stage, action: "STYLE_SELECTED", reason: project.stylePresetId ? "ใช้ Style Lock ที่ผู้ใช้กำหนดไว้" : "ไม่มี Style Lock จึงคงโหมด Auto จาก Project Bible", metadata: { style: state.selectedStyle } });
+    await recordAgentDecision({ runId: run.id, stage: run.stage, action: "STYLE_SELECTED", reason: project.styleId ? "ใช้ Style Lock ที่ผู้ใช้กำหนดไว้" : "ไม่มี Style Lock จึงคงโหมด Auto จาก Project Bible", metadata: { style: state.selectedStyle } });
     run.stage = "BUILD_PROMPTS";
     await persistAndQueue(run);
     return;
