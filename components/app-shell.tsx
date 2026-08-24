@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import styles from "./app-shell.module.css";
 
@@ -30,17 +30,25 @@ const SUB_NAV = [
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [me, setMe] = useState<Me>({ authenticated: false });
+  const [checking, setChecking] = useState(pathname !== "/login");
 
   useEffect(() => {
-    if (pathname === "/login") return;
+    if (pathname === "/login") { setChecking(false); return; }
+    setChecking(true);
     fetch("/api/auth/me", { cache: "no-store" })
       .then((response) => response.json())
-      .then((data) => setMe(data))
-      .catch(() => setMe({ authenticated: false }));
-  }, [pathname]);
+      .then((data: Me) => {
+        setMe(data);
+        setChecking(false);
+        if (!data.authenticated) router.replace("/login");
+      })
+      .catch(() => { setChecking(false); router.replace("/login"); });
+  }, [pathname, router]);
 
   if (pathname === "/login") return <>{children}</>;
+  if (checking || !me.authenticated) return <div className={styles.loading}>กำลังตรวจสอบบัญชี SCENOVA...</div>;
 
   return (
     <div className={styles.shell}>
@@ -68,9 +76,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <span className={styles.navIcon}>⚙</span><span><b>หลังบ้าน Admin</b><small>สมาชิก & Library</small></span>
             </Link>
           ) : null}
-          <Link href={me.authenticated ? "/profile" : "/login"} prefetch className={pathname === "/profile" ? styles.active : ""}>
+          <Link href="/profile" prefetch className={pathname === "/profile" ? styles.active : ""}>
             <span className={styles.profileAvatar}>{me.name?.slice(0, 1).toUpperCase() || "U"}</span>
-            <span><b>{me.name || "เข้าสู่ระบบ"}</b><small>{me.role === "ADMIN" ? "Administrator" : me.email || "Profile"}</small></span>
+            <span><b>{me.name}</b><small>{me.role === "ADMIN" ? "Administrator" : me.email}</small></span>
           </Link>
         </div>
       </aside>
@@ -80,8 +88,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <div className={styles.subSlider}>
             {SUB_NAV.map(([href, label]) => <Link key={href} href={href} prefetch>{label}</Link>)}
           </div>
-          <Link className={styles.profileButton} href={me.authenticated ? "/profile" : "/login"} prefetch>
-            <span>{me.name || "Login"}</span><i>{me.role === "ADMIN" ? "ADMIN" : "PROFILE"}</i>
+          <Link className={styles.profileButton} href="/profile" prefetch>
+            <span>{me.name}</span><i>{me.role === "ADMIN" ? "ADMIN" : "PROFILE"}</i>
           </Link>
         </header>
         <div className={styles.page}>{children}</div>
