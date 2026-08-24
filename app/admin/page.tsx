@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-type Member = { id: string; name: string; email: string; role: string; active: boolean; createdAt: string };
+type Member = { id: string; name: string; email: string; role: string; active: boolean; createdAt: string; twoFactorEnabled?: boolean };
 type LibraryItem = { id: string; kind: string; title: string; description: string; assetUrl?: string };
 
 export default function AdminPage() {
@@ -42,21 +42,21 @@ export default function AdminPage() {
     <main style={{ maxWidth: 1320, margin: "0 auto", padding: 30, color: "#f5f5ef" }}>
       <header style={{ display: "flex", justifyContent: "space-between", gap: 18, alignItems: "end", marginBottom: 18 }}>
         <div><span style={eyebrow}>ADMIN CONTROL</span><h1 style={{ fontSize: 28, margin: "7px 0 5px" }}>หลังบ้าน SCENOVA</h1><p style={muted}>จัดการสมาชิกและ Asset กลางจากจุดเดียว สมาชิกไม่สามารถสมัครเองได้</p></div>
-        <Link href="/libraries" style={{ color: "#0a0a0a", background: "#f2c94c", borderRadius: 9, padding: "9px 12px", textDecoration: "none", fontWeight: 850, fontSize: 10 }}>เปิดคลัง</Link>
+        <div style={{ display: "flex", gap: 8 }}><Link href="/profile" style={secondaryLink}>ความปลอดภัย / 2FA</Link><Link href="/libraries" style={primaryLink}>เปิดคลัง</Link></div>
       </header>
       {message ? <div style={{ ...notice, marginBottom: 14 }}>{message}</div> : null}
 
       <div style={{ display: "grid", gridTemplateColumns: "minmax(320px,.8fr) minmax(480px,1.2fr)", gap: 14 }}>
         <section style={card}>
           <div style={sectionHead}><div><span style={eyebrow}>MEMBERS</span><h2 style={heading}>สร้างสมาชิกใหม่</h2></div><small style={count}>{members.length} คน</small></div>
-          <p style={muted}>Admin สร้างบัญชีแล้วส่งอีเมลและรหัสผ่านให้ผู้ใช้ ไม่มี Public Sign-up</p>
+          <p style={muted}>Admin สร้างบัญชีแล้วส่งอีเมลและรหัสผ่านให้ผู้ใช้ ไม่มี Public Sign-up สมาชิกเปิด Authenticator เพิ่มได้จาก Profile</p>
           <form onSubmit={createMember}>
             <Field label="ชื่อสมาชิก"><input style={input} value={memberForm.name} onChange={(e) => setMemberForm({ ...memberForm, name: e.target.value })} required /></Field>
             <Field label="อีเมล"><input style={input} type="email" value={memberForm.email} onChange={(e) => setMemberForm({ ...memberForm, email: e.target.value })} required /></Field>
             <Field label="รหัสผ่านเริ่มต้น"><input style={input} type="password" minLength={8} value={memberForm.password} onChange={(e) => setMemberForm({ ...memberForm, password: e.target.value })} required /></Field>
             <button style={primary}>＋ สร้างสมาชิก</button>
           </form>
-          <div style={{ marginTop: 18 }}>{members.length === 0 ? <p style={muted}>ยังไม่มีสมาชิกที่ Admin สร้าง</p> : members.map((member) => <div key={member.id} style={listRow}><span><b style={{ display: "block", fontSize: 11 }}>{member.name}</b><small style={{ color: "#777771" }}>{member.email}</small></span><span style={{ color: "#d9c45f", fontSize: 9, fontWeight: 850 }}>ACTIVE</span></div>)}</div>
+          <div style={{ marginTop: 18 }}>{members.length === 0 ? <p style={muted}>ยังไม่มีสมาชิกที่ Admin สร้าง</p> : members.map((member) => <div key={member.id} style={listRow}><span><b style={{ display: "block", fontSize: 11 }}>{member.name}</b><small style={{ color: "#777771" }}>{member.email}</small></span><span style={{ display: "flex", gap: 6, alignItems: "center" }}><i style={{ ...statusPill, ...(member.twoFactorEnabled ? statusSecure : {}) }}>{member.twoFactorEnabled ? "2FA" : "PASSWORD"}</i><i style={statusPill}>ACTIVE</i></span></div>)}</div>
         </section>
 
         <section style={card}>
@@ -90,3 +90,7 @@ const assetCard: React.CSSProperties = { padding: 9, borderRadius: 11, border: "
 const notice: React.CSSProperties = { border: "1px solid #3b351e", borderRadius: 11, background: "#17160f", color: "#d9c45f", padding: "10px 12px", fontSize: 10 };
 const sectionHead: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "start", gap: 10, marginBottom: 6 };
 const count: React.CSSProperties = { color: "#777771", fontSize: 9 };
+const primaryLink: React.CSSProperties = { color: "#0a0a0a", background: "#f2c94c", borderRadius: 9, padding: "9px 12px", textDecoration: "none", fontWeight: 850, fontSize: 10 };
+const secondaryLink: React.CSSProperties = { color: "#d8d8d2", background: "#141414", border: "1px solid #2f2f2f", borderRadius: 9, padding: "9px 12px", textDecoration: "none", fontWeight: 850, fontSize: 10 };
+const statusPill: React.CSSProperties = { fontStyle: "normal", color: "#d9c45f", border: "1px solid #39331b", background: "#17160f", borderRadius: 999, padding: "4px 6px", fontSize: 8, fontWeight: 850 };
+const statusSecure: React.CSSProperties = { color: "#8bcf98", borderColor: "#28432e", background: "#101b12" };
