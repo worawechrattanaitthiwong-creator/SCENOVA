@@ -1,10 +1,11 @@
 import type { Project } from "@/lib/domain";
-import { assertEmergencyCapability } from "@/lib/emergency-security";
+import { assertEmergencyCapability, enforceEmergencyRateLimit } from "@/lib/emergency-security";
 import { getAgentPolicy, normalizeRunBudget } from "@/lib/agent/policy";
 import { countActiveAgentRunsForUser, createAgentRun, enqueueAgentStep, recordAgentDecision, saveAgentRun } from "@/lib/agent/store";
 
 export async function startAgentRun(input: { userId: string; project: Project; episodeIndex?: number; maxEpisodes?: number; budgetThb?: number; mode?: string }) {
   await assertEmergencyCapability("agent");
+  await enforceEmergencyRateLimit(`agent:user:${input.userId}`, Number(process.env.EMERGENCY_AGENT_RUNS_PER_MINUTE || 1));
   const policy = getAgentPolicy();
   const activeRuns = await countActiveAgentRunsForUser(input.userId);
   if (activeRuns >= policy.maxConcurrentRunsPerUser) throw new Error("AGENT_USER_CONCURRENCY_LIMIT");
