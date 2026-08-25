@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { mkdir, writeFile } from "fs/promises";
+import { mkdir, unlink, writeFile } from "fs/promises";
 import path from "path";
-import { addLibraryItem, libraryStore, type LibraryKind } from "@/lib/library-store";
+import { createLibraryAsset, listLibraryAssets, removeLibraryAsset, type LibraryKind, type LibraryMetadata } from "@/lib/library-repository";
 import { resolveSession } from "@/lib/auth-core";
 
 export const runtime = "nodejs";
@@ -16,7 +16,13 @@ async function isAdmin() {
 
 export async function GET() {
   if (!(await isAdmin())) return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
-  return NextResponse.json({ items: libraryStore });
+  try {
+    const items = await listLibraryAssets();
+    return NextResponse.json({ items });
+  } catch (error) {
+    console.error("ADMIN_LIBRARY_GET_FAILED", error);
+    return NextResponse.json({ error: "LIBRARY_UNAVAILABLE" }, { status: 500 });
+  }
 }
 
 export async function POST(request: Request) {
@@ -39,6 +45,43 @@ export async function POST(request: Request) {
     assetUrl = `/uploads/${filename}`;
   }
 
-  const item = addLibraryItem({ kind, title, description, assetUrl });
-  return NextResponse.json({ ok: true, item });
+  const metadata: LibraryMetadata = {
+    visualLanguage: String(form.get("visualLanguage") || "").trim() || undefined,
+    lighting: String(form.get("lighting") || "").trim() || undefined,
+    colorMood: String(form.get("colorMood") || "").trim() || undefined,
+    bestFor: String(form.get("bestFor") || "").trim() || undefined,
+    promptHint: String(form.get("promptHint") || "").trim() || undefined,
+    referenceUsage: String(form.get("referenceUsage") || "").trim() || undefined,
+    compatibility: String(form.get("compatibility") || "").trim() || undefined,
+    lockNote: String(form.get("lockNote") || "").trim() || undefined,
+  };
+
+  try {
+    const item = await createLibraryAsset({ kind, title, description, assetUrl, metadata });
+    return NextResponse.json({ ok: true, item });
+  } catch (error) {
+    console.error("ADMIN_LIBRARY_CREATE_FAILED", error);
+    return NextResponse.json({ error: "เพิ่ม Library ไม่สำเร็จ" }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  if (!(await isAdmin())) return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+  const body = await request.json().catch(() => ({}));
+  const id = String(body.id || "").trim();
+  const assetUrl = String(body.assetUrl || "").trim();
+  if (!id) return NextResponse.json({ error: "ไม่พบ Asset ID" }, { status: 400 });
+
+  try {
+    const removed = await removeLibraryAsset(id);
+    if (!removed) return NextResponse.json({ error: "ไม่พบรายการหรือถูกลบแล้ว" }, { status: 404 });
+    if (assetUrl.startsWith("/uploads/")) {
+      const safeName = path.basename(assetUrl);
+      await unlink(path.join(process.cwd(), "public", "uploads", safeName)).catch(() => undefined);
+    }
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error("ADMIN_LIBRARY_DELETE_FAILED", error);
+    return NextResponse.json({ error: "ลบ Asset ไม่สำเร็จ" }, { status: 500 });
+  }
 }
