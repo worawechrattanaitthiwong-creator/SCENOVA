@@ -22,6 +22,8 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
   run.stopReason = null;
   await saveAgentRun(run);
   await recordAgentDecision({ runId: run.id, stage: "AWAIT_APPROVAL", action: "USER_APPROVED", reason: "ผู้ใช้อนุมัติแผนและงบประมาณแล้ว จึงอนุญาตให้ Agent ไปขั้น Generate" });
-  await enqueueAgentStep(run.id, { reason: "human-approved" }, 0, getAgentPolicy().maxRetriesPerStep + 1);
+  const state = run.stateJson as { currentEpisodeIndex?: number; startEpisodeIndex?: number };
+  const episodeIndex = typeof state.currentEpisodeIndex === "number" ? state.currentEpisodeIndex : Number(state.startEpisodeIndex || 0);
+  await enqueueAgentStep(run.id, { reason: "human-approved", stage: run.stage, episodeIndex }, 0, getAgentPolicy().maxRetriesPerStep + 1, `${run.id}:${episodeIndex}:GENERATE:human-approved`);
   return NextResponse.json({ ok: true, runId: run.id, status: run.status, stage: run.stage });
 }
