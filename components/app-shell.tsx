@@ -59,7 +59,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     const warm = () => {
       for (const [href] of MAIN_NAV) router.prefetch(href);
       router.prefetch("/profile");
-      if (me.role === "ADMIN") { router.prefetch("/admin"); router.prefetch("/admin/ai-costs"); }
+      if (me.role === "ADMIN") { router.prefetch("/admin"); router.prefetch("/admin/ai-costs"); router.prefetch("/admin/security"); }
     };
     const timer = window.setTimeout(warm, 80);
     return () => window.clearTimeout(timer);
@@ -72,7 +72,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     if (pathname.startsWith("/render")) return [["/render", "Render Queue"], ["/libraries?tab=videos", "Completed Renders"]] as const;
     if (pathname.startsWith("/models")) return [["/models", "Model Comparison"], ["/studio", "Studio"]] as const;
     if (pathname.startsWith("/wallet")) return [["/wallet", "Credit Balance & Activity"], ["/agent", "Agent Usage"], ["/render", "Usage Jobs"]] as const;
-    if (pathname.startsWith("/admin")) return [["/admin", "Members & Assets"], ["/admin/ai-costs", "LLM Cost Meter"], ["/profile", "Security"], ["/libraries", "Asset Library"]] as const;
+    if (pathname.startsWith("/admin")) return [["/admin", "Members & Assets"], ["/admin/security", "Emergency Security"], ["/admin/ai-costs", "LLM Cost Meter"], ["/profile", "Account Security"]] as const;
     if (pathname.startsWith("/profile")) return [["/profile", "Account & Security"], ["/studio", "Studio"]] as const;
     return studioSubNav;
   }, [pathname]);
@@ -90,7 +90,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         return <Link key={href} href={href} prefetch className={active ? styles.active : ""}><span className={styles.navIcon}>{icon}</span><span className={styles.navText}><b>{label}</b><small>{short}</small></span></Link>;
       })}</nav>
       <div className={styles.sidebarBottom}>
-        {me.role === "ADMIN" ? <Link href="/admin" prefetch className={pathname.startsWith("/admin") ? styles.active : ""}><span className={styles.navIcon}>⚙</span><span className={styles.navText}><b>Admin Console</b><small>Members, Assets & AI Cost</small></span></Link> : null}
+        {me.role === "ADMIN" ? <Link href="/admin" prefetch className={pathname.startsWith("/admin") ? styles.active : ""}><span className={styles.navIcon}>⚙</span><span className={styles.navText}><b>Admin Console</b><small>Security, Members & Cost</small></span></Link> : null}
         <Link href="/profile" prefetch className={styles.profileCard}><span className={styles.profileAvatar}>{me.name?.slice(0, 1).toUpperCase() || "U"}</span><span><b>{me.name || "Profile"}</b><small>{me.twoFactorEnabled ? "2FA Secured" : me.role === "ADMIN" ? "Security Setup" : me.email}</small></span></Link>
       </div>
     </aside>
