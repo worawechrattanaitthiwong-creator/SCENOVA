@@ -1,5 +1,5 @@
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "crypto";
-import type { User } from "@prisma/client";
+import type { User } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { getEmergencySecurityState } from "@/lib/emergency-security";
 import { decryptTwoFactorSecret, hashRecoveryCode, verifyTotp } from "@/lib/two-factor";

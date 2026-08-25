@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { Prisma } from "@prisma/client";
+import { Prisma } from "@/generated/prisma/client";
 import type { Project } from "@/lib/domain";
 import { prisma } from "@/lib/db";
 import { planGeneration } from "@/lib/orchestrator";

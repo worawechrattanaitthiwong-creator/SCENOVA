@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import type { Prisma } from "@prisma/client";
+import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import type { AgentQueueJobRecord, AgentRunRecord, AgentRunStatus, AgentStage } from "@/lib/agent/types";
 
