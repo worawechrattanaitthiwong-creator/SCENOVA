@@ -1,4 +1,4 @@
-import type { Project } from "@/lib/domain";
+import type { Project, PromptBundle } from "@/lib/domain";
 import { buildPromptBundle } from "@/lib/prompt-engine";
 import { planEpisodeRender } from "@/lib/render-planner";
 import { createContinuitySnapshot, continuityPrompt } from "@/lib/continuity";
@@ -22,6 +22,7 @@ export type PlannedGeneration = {
   projectId: string;
   episodeId: string;
   promptPreview: string;
+  promptBundle: PromptBundle;
   jobs: Array<{
     order: number;
     start: number;
@@ -97,6 +98,7 @@ export async function planGeneration(project: Project, episodeIndex = 0, deps: O
     projectId: project.id,
     episodeId: episode.id,
     promptPreview: `${prompt.master}\n\n${prompt.episode}\n\n${prompt.negative}`,
+    promptBundle: prompt,
     jobs,
     estimatedTotalThb: Number(estimatedTotalThb.toFixed(2)),
   };
