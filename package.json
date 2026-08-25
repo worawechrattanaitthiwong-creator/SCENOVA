@@ -1,0 +1,38 @@
+{
+  "name": "scenova",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "dev:fast": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "agent:worker": "tsx scripts/agent-worker.ts",
+    "emergency:status": "tsx scripts/emergency-security.ts status",
+    "emergency:lockdown": "tsx scripts/emergency-security.ts lockdown",
+    "emergency:revoke-sessions": "tsx scripts/emergency-security.ts revoke-sessions",
+    "emergency:restore": "tsx scripts/emergency-security.ts restore",
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@prisma/client": "6.14.0",
+    "next": "15.5.2",
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "22.17.2",
+    "@types/react": "19.1.10",
+    "@types/react-dom": "19.1.7",
+    "prisma": "6.14.0",
+    "tsx": "4.20.5",
+    "typescript": "5.9.2",
+    "vitest": "3.2.4"
+  }
+}
