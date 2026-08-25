@@ -39,16 +39,31 @@ const EMPTY: EmergencyState = {
   environmentHardLock: false,
 };
 
-const CONTROL_ITEMS: Array<{ key: keyof Pick<EmergencyState, "maintenanceMode" | "generationDisabled" | "agentDisabled" | "llmDisabled" | "paymentDisabled" | "newLoginRestricted" | "queuePaused" | "emergencyRateLimitEnabled">; title: string; help: string }> = [
-  { key: "maintenanceMode", title: "Maintenance Mode", help: "หยุดงาน Production ฝั่งผู้ใช้ชั่วคราว แต่ Admin ยังเข้าตรวจสอบระบบได้" },
-  { key: "generationDisabled", title: "Video Generation", help: "ปิดการส่งงานใหม่และการเรียก Video Provider จริง" },
-  { key: "agentDisabled", title: "AI Agent", help: "ห้ามสร้าง Agent Run ใหม่และหยุด Worker รับงาน" },
-  { key: "llmDisabled", title: "LLM Calls", help: "ตัด OpenAI/LLM outbound call ทันทีที่ Backend guard" },
-  { key: "paymentDisabled", title: "Wallet / Payment", help: "Freeze Reserve, Charge และ Refund ชั่วคราว" },
-  { key: "newLoginRestricted", title: "Member Login", help: "ปิด Login สมาชิกใหม่ชั่วคราว โดย Admin ยัง Login เพื่อกู้ระบบได้" },
-  { key: "queuePaused", title: "Agent Queue", help: "Worker จะไม่ Claim งานใหม่จนกว่าจะเปิดกลับ" },
-  { key: "emergencyRateLimitEnabled", title: "Emergency Rate Profile", help: "สถานะเตือนให้ใช้ Rate Limit ฉุกเฉินร่วมกับการปิด capability สำคัญ" },
+const CONTROL_ITEMS: Array<{
+  key: keyof Pick<EmergencyState, "maintenanceMode" | "generationDisabled" | "agentDisabled" | "llmDisabled" | "paymentDisabled" | "newLoginRestricted" | "queuePaused" | "emergencyRateLimitEnabled">;
+  title: string;
+  help: string;
+}> = [
+  { key: "maintenanceMode", title: "Maintenance Mode — โหมดปิดปรับปรุง", help: "หยุดฟังก์ชันงาน Production ของสมาชิกชั่วคราว แต่ Admin ยังเข้าตรวจสอบและกู้ระบบได้" },
+  { key: "generationDisabled", title: "Video Generation — การสร้างวิดีโอ", help: "ปิดการส่งงานสร้างวิดีโอใหม่ และหยุดการเรียกบริการสร้างวิดีโอภายนอก (Video Provider)" },
+  { key: "agentDisabled", title: "AI Agent — ผู้ช่วยอัตโนมัติ", help: "ห้ามเริ่ม Agent Run ใหม่ และสั่ง Worker ไม่ให้รับขั้นตอนงาน Agent เพิ่ม" },
+  { key: "llmDisabled", title: "LLM Calls — การเรียกโมเดลภาษา AI", help: "หยุดการเรียก OpenAI/LLM ออกจาก Server ทันที เพื่อตัดค่าใช้จ่ายหรือป้องกัน Key ที่สงสัยว่ารั่ว" },
+  { key: "paymentDisabled", title: "Wallet / Payment — เครดิตและการชำระเงิน", help: "หยุด Reserve (กันเครดิต), Charge (ตัดเครดิต) และ Refund (คืนเครดิต) ชั่วคราว" },
+  { key: "newLoginRestricted", title: "Member Login — การเข้าสู่ระบบสมาชิก", help: "ปิดการ Login ของสมาชิกชั่วคราว แต่ Admin ยัง Login เพื่อกู้ระบบได้" },
+  { key: "queuePaused", title: "Agent Queue — คิวงาน AI Agent", help: "พักคิวงาน Agent; Worker จะไม่ Claim หรือหยิบงานใหม่ไปประมวลผลจนกว่าจะเปิดกลับ" },
+  { key: "emergencyRateLimitEnabled", title: "Emergency Rate Limit — จำกัดคำขอฉุกเฉิน", help: "เปิดโปรไฟล์จำกัดจำนวน Request ให้เข้มขึ้น เพื่อลดการยิง API รัวจาก Bot หรือการโจมตี" },
 ];
+
+const SECURITY_TERMS = [
+  ["API Key", "รหัสลับที่อนุญาตให้ SCENOVA เรียกบริการภายนอก เช่น AI หรือ Video Provider"],
+  ["Provider", "ผู้ให้บริการภายนอกที่ SCENOVA เชื่อมต่อ เช่น ผู้ให้บริการโมเดลวิดีโอหรือ AI"],
+  ["Session", "สถานะการ Login ของผู้ใช้ ถ้ายกเลิก Session ผู้ใช้ต้อง Login ใหม่"],
+  ["Rate Limit", "การจำกัดจำนวนคำขอที่ส่งเข้า Server ภายในช่วงเวลา เพื่อกัน Bot/การยิงรัว"],
+  ["Kill Switch / Lockdown", "สวิตช์ฉุกเฉินสำหรับหยุดระบบสำคัญทันทีเมื่อพบความเสี่ยง"],
+  ["Audit Log", "ประวัติว่าใครทำอะไร เมื่อไร และกับระบบส่วนใด เพื่อใช้ตรวจสอบเหตุการณ์ย้อนหลัง"],
+  ["Idempotency Key", "รหัสกันคำสั่งซ้ำ ช่วยป้องกันการตัดเงินหรือสร้างงานซ้ำจากการกดซ้ำ/รีเฟรช"],
+  ["Signed URL", "ลิงก์ไฟล์ชั่วคราวที่มีวันหมดอายุ ใช้เปิดไฟล์ Private โดยไม่ทำให้ไฟล์เป็นสาธารณะ"],
+] as const;
 
 export default function AdminSecurityConsole() {
   const [state, setState] = useState<EmergencyState>(EMPTY);
@@ -59,7 +74,10 @@ export default function AdminSecurityConsole() {
   const [message, setMessage] = useState("กำลังโหลดสถานะความปลอดภัย...");
   const [busy, setBusy] = useState(false);
 
-  const hasChanges = useMemo(() => CONTROL_ITEMS.some(({ key }) => draft[key] !== state[key]) || JSON.stringify(draft.disabledProviderIds) !== JSON.stringify(state.disabledProviderIds), [draft, state]);
+  const hasChanges = useMemo(
+    () => CONTROL_ITEMS.some(({ key }) => draft[key] !== state[key]) || JSON.stringify(draft.disabledProviderIds) !== JSON.stringify(state.disabledProviderIds),
+    [draft, state],
+  );
 
   async function load() {
     const response = await fetch("/api/admin/security/emergency", { cache: "no-store" });
@@ -71,23 +89,27 @@ export default function AdminSecurityConsole() {
     setState(data.state || EMPTY);
     setDraft(data.state || EMPTY);
     setEvents(data.events || []);
-    setMessage("Emergency Security Center พร้อมใช้งาน");
+    setMessage("ศูนย์ความปลอดภัยฉุกเฉินพร้อมใช้งาน");
   }
 
   useEffect(() => { void load(); }, []);
 
   async function action(payload: Record<string, unknown>) {
     setBusy(true);
-    setMessage("กำลังอัปเดต Security Control...");
+    setMessage("กำลังอัปเดตการควบคุมความปลอดภัย...");
     try {
-      const response = await fetch("/api/admin/security/emergency", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      const response = await fetch("/api/admin/security/emergency", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) return setMessage(data.error || "อัปเดตไม่สำเร็จ");
       if (data.state) { setState(data.state); setDraft(data.state); }
       if (data.sessionRevoked) {
-        setMessage("Emergency action สำเร็จ — Session เดิมถูกยกเลิก กรุณา Login + 2FA ใหม่เมื่อต้องการเข้าระบบต่อ");
+        setMessage("คำสั่งฉุกเฉินสำเร็จ — Session เดิมถูกยกเลิก กรุณา Login + 2FA ใหม่เมื่อต้องการเข้าระบบต่อ");
       } else {
-        setMessage("บันทึก Security Control แล้ว");
+        setMessage("บันทึกการควบคุมความปลอดภัยแล้ว");
         await load();
       }
     } finally {
@@ -96,19 +118,19 @@ export default function AdminSecurityConsole() {
   }
 
   async function lockdown() {
-    if (!window.confirm("ยืนยัน EMERGENCY LOCKDOWN? ระบบจะปิด Generation, Agent, LLM, Wallet/Payment, Queue และยกเลิก Session เดิมทั้งหมดทันที")) return;
+    if (!window.confirm("ยืนยัน EMERGENCY LOCKDOWN (ปิดระบบฉุกเฉิน)? ระบบจะปิดการสร้างวิดีโอ, AI Agent, LLM, Wallet/Payment, Queue และยกเลิก Session เดิมทั้งหมดทันที")) return;
     await action({ action: "LOCKDOWN", reason: reason || "Emergency lockdown from Admin Security Center" });
   }
 
   async function restore() {
-    const confirmation = window.prompt("พิมพ์ RESTORE SCENOVA เพื่อเปิดระบบกลับ หลังตรวจสอบและ Rotate Key ที่สงสัยว่ารั่วแล้ว");
-    if (confirmation !== "RESTORE SCENOVA") return setMessage("ยกเลิก Restore: ข้อความยืนยันไม่ตรง");
+    const confirmation = window.prompt("พิมพ์ RESTORE SCENOVA เพื่อเปิดระบบกลับ หลังตรวจสอบและ Rotate Key (ออก Key ใหม่แทน Key ที่สงสัยว่ารั่ว) แล้ว");
+    if (confirmation !== "RESTORE SCENOVA") return setMessage("ยกเลิกการเปิดระบบกลับ: ข้อความยืนยันไม่ตรง");
     await action({ action: "RESTORE", confirmation, reason: reason || "Admin verified incident and restored system" });
   }
 
   async function revokeSessions() {
     const confirmation = window.prompt("พิมพ์ REVOKE SESSIONS เพื่อบังคับ Logout ทุก Session เดิม");
-    if (confirmation !== "REVOKE SESSIONS") return setMessage("ยกเลิกการ Revoke Session");
+    if (confirmation !== "REVOKE SESSIONS") return setMessage("ยกเลิกการบังคับ Logout ทุก Session");
     await action({ action: "REVOKE_SESSIONS", confirmation, reason: reason || "Emergency session revocation" });
   }
 
@@ -133,57 +155,75 @@ export default function AdminSecurityConsole() {
     if (!id) return;
     setDraft((current) => ({
       ...current,
-      disabledProviderIds: current.disabledProviderIds.includes(id) ? current.disabledProviderIds.filter((item) => item !== id) : [...current.disabledProviderIds, id],
+      disabledProviderIds: current.disabledProviderIds.includes(id)
+        ? current.disabledProviderIds.filter((item) => item !== id)
+        : [...current.disabledProviderIds, id],
     }));
   }
 
   return (
     <main style={{ maxWidth: 1220, margin: "0 auto", padding: 28, color: "#f4f2e8" }}>
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "end", gap: 18, marginBottom: 18 }}>
-        <div><span style={eyebrow}>SCENOVA SECURITY</span><h1 style={{ margin: "6px 0", fontSize: 28 }}>Emergency Security Center</h1><p style={muted}>ศูนย์ตัดระบบฉุกเฉินฝั่ง Server — ใช้เมื่อสงสัยว่า API Key, Session, หน้าเว็บ หรือ Provider ถูกโจมตี</p></div>
-        <div style={{ ...pill, ...(state.lockdownEnabled ? dangerPill : goodPill) }}>{state.lockdownEnabled ? "🚨 LOCKDOWN ACTIVE" : "● SYSTEM NORMAL"}</div>
+        <div>
+          <span style={eyebrow}>SCENOVA SECURITY — ความปลอดภัยระบบ</span>
+          <h1 style={{ margin: "6px 0", fontSize: 28 }}>Emergency Security Center — ศูนย์ควบคุมฉุกเฉิน</h1>
+          <p style={muted}>ใช้เมื่อสงสัยว่า API Key (รหัสเชื่อมบริการ), Session (สถานะ Login), หน้าเว็บ หรือ Provider (ผู้ให้บริการภายนอก) ถูกโจมตี</p>
+        </div>
+        <div style={{ ...pill, ...(state.lockdownEnabled ? dangerPill : goodPill) }}>{state.lockdownEnabled ? "🚨 LOCKDOWN ACTIVE — ปิดระบบฉุกเฉินอยู่" : "● SYSTEM NORMAL — ระบบปกติ"}</div>
       </header>
 
-      <div style={{ ...notice, borderColor: state.environmentHardLock ? "#813434" : "#403a24" }}><b>{message}</b>{state.reason ? <span style={{ display: "block", marginTop: 4 }}>เหตุผลล่าสุด: {state.reason}</span> : null}{state.environmentHardLock ? <span style={{ display: "block", marginTop: 5, color: "#ff9b9b" }}>Environment Hard Lock เปิดอยู่ — ต้องแก้ Environment Variable ที่ Server ก่อน UI จึงจะเปิด capability กลับได้</span> : null}</div>
+      <div style={{ ...notice, borderColor: state.environmentHardLock ? "#813434" : "#403a24" }}>
+        <b>{message}</b>
+        {state.reason ? <span style={{ display: "block", marginTop: 4 }}>เหตุผลล่าสุด: {state.reason}</span> : null}
+        {state.environmentHardLock ? <span style={{ display: "block", marginTop: 5, color: "#ff9b9b" }}>Environment Hard Lock — ล็อกฉุกเฉินระดับ Server เปิดอยู่ ต้องแก้ Environment Variable (ค่าตั้งค่าฝั่ง Server) ก่อนจึงจะเปิดระบบกลับจากหน้าเว็บได้</span> : null}
+      </div>
 
       <section style={{ ...card, borderColor: state.lockdownEnabled ? "#7c2b2b" : "#292929", marginTop: 14 }}>
-        <div style={sectionHead}><div><span style={eyebrow}>ONE-TAP RESPONSE</span><h2 style={heading}>Emergency Lockdown</h2><p style={muted}>กดครั้งเดียวเพื่อปิด Generation + Agent + LLM + Wallet/Payment + Queue + Member Login และ Revoke Session เดิม</p></div></div>
-        <textarea style={{ ...input, minHeight: 74 }} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="ระบุเหตุผล เช่น พบ API traffic ผิดปกติ / สงสัยว่า Key รั่ว / หน้าเว็บถูกโจมตี" />
+        <div style={sectionHead}><div><span style={eyebrow}>ONE-TAP RESPONSE — ตัดระบบในคลิกเดียว</span><h2 style={heading}>Emergency Lockdown — ปิดระบบฉุกเฉิน</h2><p style={muted}>กดครั้งเดียวเพื่อหยุดระบบเสี่ยงทั้งหมด และบังคับยกเลิก Session เดิม</p></div></div>
+        <textarea style={{ ...input, minHeight: 74 }} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="ระบุเหตุผล เช่น พบการเรียก API ผิดปกติ / สงสัยว่า Key รั่ว / หน้าเว็บถูกโจมตี" />
         <div style={{ display: "flex", flexWrap: "wrap", gap: 9, marginTop: 10 }}>
-          <button disabled={busy || state.lockdownEnabled} onClick={lockdown} style={{ ...button, ...dangerButton }}>🚨 EMERGENCY LOCKDOWN</button>
-          <button disabled={busy} onClick={revokeSessions} style={button}>Revoke All Sessions</button>
-          <button disabled={busy || !state.lockdownEnabled || state.environmentHardLock} onClick={restore} style={{ ...button, ...restoreButton }}>Restore After Verification</button>
+          <button disabled={busy || state.lockdownEnabled} onClick={lockdown} style={{ ...button, ...dangerButton }}>🚨 EMERGENCY LOCKDOWN — ปิดระบบทันที</button>
+          <button disabled={busy} onClick={revokeSessions} style={button}>Revoke All Sessions — บังคับ Logout ทุกคน</button>
+          <button disabled={busy || !state.lockdownEnabled || state.environmentHardLock} onClick={restore} style={{ ...button, ...restoreButton }}>Restore After Verification — เปิดกลับหลังตรวจสอบ</button>
         </div>
-        <p style={{ ...muted, marginTop: 10 }}>หลัง Lockdown ให้ Revoke/Rotate API Key ที่ Provider โดยตรงก่อน Restore เพราะ SCENOVA สามารถหยุดการใช้ Key ของเราได้ทันที แต่ไม่สามารถยกเลิก Key ที่ Provider แทนบัญชีเจ้าของโดยอัตโนมัติได้</p>
+        <p style={{ ...muted, marginTop: 10 }}>หลัง Lockdown ให้ Revoke Key (ยกเลิก Key เดิม) และ Rotate Key (ออก Key ใหม่) ที่ Provider โดยตรงก่อนเปิดระบบกลับ</p>
       </section>
 
       <section style={{ ...card, marginTop: 14 }}>
-        <div style={sectionHead}><div><span style={eyebrow}>CAPABILITY ISOLATION</span><h2 style={heading}>แยกปิดระบบเป็นส่วน ๆ</h2><p style={muted}>ใช้เมื่อปัญหาเกิดเฉพาะบางระบบ เช่น ปิด LLM แต่ยังให้ผู้ใช้แก้ Project ต่อได้</p></div><button disabled={busy || !hasChanges || state.lockdownEnabled} onClick={saveControls} style={{ ...button, ...primaryButton }}>Save Controls</button></div>
+        <div style={sectionHead}>
+          <div><span style={eyebrow}>CAPABILITY ISOLATION — แยกปิดความสามารถ</span><h2 style={heading}>แยกปิดระบบเป็นส่วน ๆ</h2><p style={muted}>ใช้เมื่อปัญหาเกิดเฉพาะบางส่วน ไม่จำเป็นต้องปิด SCENOVA ทั้งระบบ</p></div>
+          <button disabled={busy || !hasChanges || state.lockdownEnabled} onClick={saveControls} style={{ ...button, ...primaryButton }}>Save Controls — บันทึกการตั้งค่า</button>
+        </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(250px,1fr))", gap: 9 }}>
           {CONTROL_ITEMS.map((item) => <label key={item.key} style={controlCard}><span><b style={{ display: "block", fontSize: 11 }}>{item.title}</b><small style={{ color: "#8b8b84", lineHeight: 1.45 }}>{item.help}</small></span><input type="checkbox" checked={draft[item.key]} disabled={state.lockdownEnabled} onChange={(e) => setDraft((current) => ({ ...current, [item.key]: e.target.checked }))} /></label>)}
         </div>
       </section>
 
       <section style={{ ...card, marginTop: 14 }}>
-        <div style={sectionHead}><div><span style={eyebrow}>PROVIDER ISOLATION</span><h2 style={heading}>ปิด Provider เฉพาะตัว</h2><p style={muted}>ตัวอย่าง Production Provider ปัจจุบัน: byteplus-seedance-2.5</p></div></div>
-        <div style={{ display: "flex", gap: 8 }}><input style={input} value={providerInput} onChange={(e) => setProviderInput(e.target.value)} /><button disabled={state.lockdownEnabled} onClick={toggleProvider} style={button}>{draft.disabledProviderIds.includes(providerInput.trim()) ? "Enable Provider" : "Disable Provider"}</button></div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 9 }}>{draft.disabledProviderIds.length ? draft.disabledProviderIds.map((id) => <span key={id} style={dangerPill}>⛔ {id}</span>) : <span style={goodPill}>✓ ไม่มี Provider ที่ถูก isolate</span>}</div>
+        <div style={sectionHead}><div><span style={eyebrow}>PROVIDER ISOLATION — แยกปิดผู้ให้บริการ</span><h2 style={heading}>ปิด Provider เฉพาะตัว</h2><p style={muted}>Provider คือบริการภายนอกที่ SCENOVA เรียกใช้งาน เช่น โมเดลสร้างวิดีโอ ตัวอย่าง: byteplus-seedance-2.5</p></div></div>
+        <div style={{ display: "flex", gap: 8 }}><input style={input} value={providerInput} onChange={(e) => setProviderInput(e.target.value)} /><button disabled={state.lockdownEnabled} onClick={toggleProvider} style={button}>{draft.disabledProviderIds.includes(providerInput.trim()) ? "Enable Provider — เปิดใช้งาน" : "Disable Provider — ปิดใช้งาน"}</button></div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 9 }}>{draft.disabledProviderIds.length ? draft.disabledProviderIds.map((id) => <span key={id} style={dangerPill}>⛔ {id}</span>) : <span style={goodPill}>✓ ไม่มี Provider ที่ถูกแยกปิด</span>}</div>
       </section>
 
       <section style={{ ...card, marginTop: 14 }}>
-        <div style={sectionHead}><div><span style={eyebrow}>INCIDENT TRAIL</span><h2 style={heading}>Emergency Audit Log</h2><p style={muted}>ทุก Lockdown, Restore, Revoke Session และการปรับ Control ถูกบันทึกแยกใน Audit Log</p></div></div>
-        <div>{events.length === 0 ? <p style={muted}>ยังไม่มี Emergency Event</p> : events.map((event) => <div key={event.id} style={logRow}><b>{event.action}</b><span>{new Date(event.createdAt).toLocaleString("th-TH")}</span></div>)}</div>
+        <div style={sectionHead}><div><span style={eyebrow}>INCIDENT TRAIL — ประวัติเหตุการณ์</span><h2 style={heading}>Emergency Audit Log — บันทึกการกระทำฉุกเฉิน</h2><p style={muted}>Audit Log คือประวัติว่าใครสั่ง Lockdown, Restore, Revoke Session หรือแก้ Control เมื่อไร</p></div></div>
+        <div>{events.length === 0 ? <p style={muted}>ยังไม่มีเหตุการณ์ฉุกเฉิน</p> : events.map((event) => <div key={event.id} style={logRow}><b>{event.action}</b><span>{new Date(event.createdAt).toLocaleString("th-TH")}</span></div>)}</div>
       </section>
 
       <section style={{ ...card, marginTop: 14 }}>
-        <div style={sectionHead}><div><span style={eyebrow}>BASELINE</span><h2 style={heading}>Security Defaults</h2></div></div>
+        <div style={sectionHead}><div><span style={eyebrow}>BASELINE — ค่าความปลอดภัยพื้นฐาน</span><h2 style={heading}>Security Defaults — ค่าป้องกันมาตรฐาน</h2><p style={muted}>ค่าที่ Server ใช้เป็นเพดานป้องกันการยิงงานหรือค่าใช้จ่ายสูงผิดปกติ</p></div></div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 8, marginBottom: 10 }}>
-          <div style={metric}><span>Concurrent jobs/user</span><b>{DEFAULT_SECURITY_POLICY.maxConcurrentGenerationJobsPerUser}</b></div>
-          <div style={metric}><span>Generate req/min/user</span><b>{DEFAULT_SECURITY_POLICY.maxGenerationRequestsPerMinutePerUser}</b></div>
-          <div style={metric}><span>Hourly spend cap</span><b>{DEFAULT_SECURITY_POLICY.hourlyProviderSpendCapThb.toLocaleString()} THB</b></div>
-          <div style={metric}><span>Daily spend cap</span><b>{DEFAULT_SECURITY_POLICY.dailyProviderSpendCapThb.toLocaleString()} THB</b></div>
+          <div style={metric}><span>Concurrent jobs/user — งานพร้อมกันต่อผู้ใช้</span><b>{DEFAULT_SECURITY_POLICY.maxConcurrentGenerationJobsPerUser}</b></div>
+          <div style={metric}><span>Generate req/min/user — คำขอสร้างต่อนาที/ผู้ใช้</span><b>{DEFAULT_SECURITY_POLICY.maxGenerationRequestsPerMinutePerUser}</b></div>
+          <div style={metric}><span>Hourly spend cap — เพดานค่าใช้จ่ายต่อชั่วโมง</span><b>{DEFAULT_SECURITY_POLICY.hourlyProviderSpendCapThb.toLocaleString()} THB</b></div>
+          <div style={metric}><span>Daily spend cap — เพดานค่าใช้จ่ายต่อวัน</span><b>{DEFAULT_SECURITY_POLICY.dailyProviderSpendCapThb.toLocaleString()} THB</b></div>
         </div>
         <div style={{ display: "grid", gap: 6 }}>{SECURITY_CHECKLIST_TH.map((item) => <div key={item} style={check}>✓ {item}</div>)}</div>
+      </section>
+
+      <section style={{ ...card, marginTop: 14 }}>
+        <div style={sectionHead}><div><span style={eyebrow}>SECURITY GLOSSARY — คำศัพท์ความปลอดภัย</span><h2 style={heading}>ศัพท์เฉพาะในหน้านี้หมายถึงอะไร</h2><p style={muted}>เก็บคำอังกฤษไว้เพื่อให้ตรงกับมาตรฐานงานระบบ และอธิบายภาษาไทยกำกับทุกคำสำคัญ</p></div></div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(250px,1fr))", gap: 8 }}>{SECURITY_TERMS.map(([term, meaning]) => <div key={term} style={termCard}><b>{term}</b><span>{meaning}</span></div>)}</div>
       </section>
     </main>
   );
@@ -207,3 +247,4 @@ const controlCard: React.CSSProperties = { display: "flex", justifyContent: "spa
 const logRow: React.CSSProperties = { display: "flex", justifyContent: "space-between", gap: 12, borderBottom: "1px solid #222", padding: "8px 0", fontSize: 10, color: "#aaa" };
 const metric: React.CSSProperties = { border: "1px solid #282828", borderRadius: 10, padding: 10, background: "#090909", display: "flex", justifyContent: "space-between", gap: 8, fontSize: 10 };
 const check: React.CSSProperties = { border: "1px solid #233b28", background: "#101912", color: "#a6d8ad", borderRadius: 9, padding: "8px 10px", fontSize: 10 };
+const termCard: React.CSSProperties = { border: "1px solid #2b2b2b", borderRadius: 10, background: "#090909", padding: 10, display: "grid", gap: 5 };
