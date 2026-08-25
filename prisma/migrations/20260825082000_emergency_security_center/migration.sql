@@ -23,3 +23,12 @@ INSERT INTO "SystemSecurityState" (
   "newLoginRestricted","queuePaused","emergencyRateLimitEnabled","disabledProviderIds","createdAt","updatedAt"
 ) VALUES ('global',false,false,false,false,false,false,false,false,false,'[]'::jsonb,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
 ON CONFLICT ("id") DO NOTHING;
+
+CREATE TABLE "EmergencyRateLimitBucket" (
+  "bucketKey" TEXT NOT NULL,
+  "windowStart" TIMESTAMP(3) NOT NULL,
+  "count" INTEGER NOT NULL DEFAULT 0,
+  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "EmergencyRateLimitBucket_pkey" PRIMARY KEY ("bucketKey","windowStart")
+);
+CREATE INDEX "EmergencyRateLimitBucket_windowStart_idx" ON "EmergencyRateLimitBucket"("windowStart");
