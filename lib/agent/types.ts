@@ -44,6 +44,9 @@ export type AgentQueueJobRecord = {
   availableAt: Date;
   lockedAt: Date | null;
   lockedBy: string | null;
+  heartbeatAt: Date | null;
+  leaseExpiresAt: Date | null;
+  idempotencyKey: string;
   lastError: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -56,4 +59,8 @@ export type AgentPolicy = {
   maxEpisodesPerRun: number;
   maxRetriesPerStep: number;
   maxProviderSwitches: number;
+  maxLlmCallsPerRun: number;
+  maxLlmCallsPerClip: number;
+  maxConcurrentRunsPerUser: number;
+  queueLeaseSeconds: number;
 };
