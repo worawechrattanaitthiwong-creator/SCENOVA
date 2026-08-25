@@ -4,7 +4,27 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 type Member = { id: string; name: string; email: string; role: string; active: boolean; createdAt: string; twoFactorEnabled?: boolean };
-type LibraryMetadata = { visualLanguage?: string; lighting?: string; colorMood?: string; bestFor?: string; promptHint?: string; referenceUsage?: string; compatibility?: string; lockNote?: string };
+type LibraryMetadata = {
+  visualLanguage?: string;
+  lighting?: string;
+  colorMood?: string;
+  bestFor?: string;
+  promptHint?: string;
+  referenceUsage?: string;
+  compatibility?: string;
+  lockNote?: string;
+  role?: string;
+  genderPresentation?: string;
+  ageRange?: string;
+  appearance?: string;
+  personality?: string;
+  costume?: string;
+  voiceProfile?: string;
+  emotionRange?: string;
+  performanceStyle?: string;
+  negativeIdentityRules?: string;
+  referenceImages?: string[];
+};
 type LibraryItem = { id: string; kind: string; title: string; description: string; assetUrl?: string; source?: "SYSTEM" | "ADMIN"; metadata?: LibraryMetadata; createdAt?: string };
 
 const KIND_LABEL: Record<string, string> = {
@@ -28,6 +48,16 @@ const emptyLibraryForm = {
   referenceUsage: "",
   compatibility: "",
   lockNote: "",
+  role: "",
+  genderPresentation: "",
+  ageRange: "",
+  appearance: "",
+  personality: "",
+  costume: "",
+  voiceProfile: "",
+  emotionRange: "",
+  performanceStyle: "",
+  negativeIdentityRules: "",
 };
 
 export default function AdminPage() {
@@ -38,6 +68,7 @@ export default function AdminPage() {
   const [memberForm, setMemberForm] = useState({ name: "", email: "", password: "" });
   const [libraryForm, setLibraryForm] = useState(emptyLibraryForm);
   const [file, setFile] = useState<File | null>(null);
+  const [referenceFiles, setReferenceFiles] = useState<File[]>([]);
 
   async function load() {
     const [memberRes, libraryRes] = await Promise.all([fetch("/api/admin/members", { cache: "no-store" }), fetch("/api/admin/library", { cache: "no-store" })]);
@@ -67,6 +98,7 @@ export default function AdminPage() {
     const form = new FormData();
     Object.entries(libraryForm).forEach(([key, value]) => form.set(key, value));
     if (file) form.set("file", file);
+    referenceFiles.forEach((referenceFile) => form.append("referenceFiles", referenceFile));
     try {
       const response = await fetch("/api/admin/library", { method: "POST", body: form });
       const data = await response.json();
@@ -74,6 +106,7 @@ export default function AdminPage() {
       setMessage(`เพิ่ม ${libraryForm.title} เข้า Library แล้ว`);
       setLibraryForm({ ...emptyLibraryForm, kind: libraryForm.kind });
       setFile(null);
+      setReferenceFiles([]);
       await load();
     } finally { setBusy(false); }
   }
@@ -83,7 +116,11 @@ export default function AdminPage() {
     if (!confirmed) return;
     setMessage(""); setBusy(true);
     try {
-      const response = await fetch("/api/admin/library", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: item.id, assetUrl: item.assetUrl }) });
+      const response = await fetch("/api/admin/library", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: item.id, assetUrl: item.assetUrl, referenceImages: item.metadata?.referenceImages || [] }),
+      });
       const data = await response.json();
       if (!response.ok) return setMessage(data.error || "ลบ Asset ไม่สำเร็จ");
       setMessage(`ลบ ${item.title} ออกจาก Library แล้ว`);
@@ -124,10 +161,10 @@ export default function AdminPage() {
 
           <form onSubmit={uploadLibrary} style={{ marginTop: 16 }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <Field label="ประเภท Asset — เลือกหมวดที่จะเพิ่ม"><select style={input} value={libraryForm.kind} onChange={(e) => setLibraryForm({ ...libraryForm, kind: e.target.value })}><option value="images">ภาพ & สไตล์</option><option value="voices">เสียง</option><option value="characters">ตัวละคร</option><option value="pets">สัตว์ / Creature</option><option value="ambience">บรรยากาศ / SFX</option><option value="plots">พล็อตเรื่อง</option></select></Field>
-              <Field label="ชื่อ Asset"><input style={input} value={libraryForm.title} onChange={(e) => setLibraryForm({ ...libraryForm, title: e.target.value })} placeholder="เช่น Cinematic Noir" required /></Field>
+              <Field label="ประเภท Asset — เลือกหมวดที่จะเพิ่ม"><select style={input} value={libraryForm.kind} onChange={(e) => { setLibraryForm({ ...emptyLibraryForm, kind: e.target.value }); setFile(null); setReferenceFiles([]); }}><option value="images">ภาพ & สไตล์</option><option value="voices">เสียง</option><option value="characters">ตัวละคร</option><option value="pets">สัตว์ / Creature</option><option value="ambience">บรรยากาศ / SFX</option><option value="plots">พล็อตเรื่อง</option></select></Field>
+              <Field label="ชื่อ Asset"><input style={input} value={libraryForm.title} onChange={(e) => setLibraryForm({ ...libraryForm, title: e.target.value })} placeholder={libraryForm.kind === "characters" ? "เช่น Mina / Detective Arin" : "เช่น Cinematic Noir"} required /></Field>
             </div>
-            <Field label="คำอธิบายสั้น — ข้อความที่โชว์บนการ์ด Library"><textarea style={{ ...input, minHeight: 72 }} value={libraryForm.description} onChange={(e) => setLibraryForm({ ...libraryForm, description: e.target.value })} placeholder="บอกให้ผู้ใช้เข้าใจใน 1–2 ประโยคว่าสไตล์นี้ให้ภาพแบบไหน และเหมาะกับงานอะไร" /></Field>
+            <Field label="คำอธิบายสั้น — ข้อความที่โชว์บนการ์ด Library"><textarea style={{ ...input, minHeight: 72 }} value={libraryForm.description} onChange={(e) => setLibraryForm({ ...libraryForm, description: e.target.value })} placeholder={libraryForm.kind === "characters" ? "สรุปตัวละคร บทบาท ช่วงอายุ และงานที่เหมาะใน 1–2 ประโยค" : "บอกให้ผู้ใช้เข้าใจใน 1–2 ประโยคว่าสไตล์นี้ให้ภาพแบบไหน และเหมาะกับงานอะไร"} /></Field>
 
             {libraryForm.kind === "images" ? <div style={detailPanel}>
               <div style={{ marginBottom: 10 }}><span style={eyebrow}>STYLE DETAIL</span><h3 style={{ margin: "4px 0", fontSize: 14 }}>รายละเอียดสำหรับปุ่ม “ดูรายละเอียด”</h3><p style={muted}>กรอกให้ครบเพื่อให้ผู้ใช้รู้ว่าสไตล์นี้ควบคุมภาพ แสง สี Prompt และการใช้ Reference อย่างไร</p></div>
@@ -145,7 +182,32 @@ export default function AdminPage() {
               </div>
             </div> : null}
 
-            <Field label="ไฟล์ Asset (ไม่เกิน 10MB) — ภาพรองรับ PNG/JPG/WebP"><input style={input} type="file" accept="image/*,audio/*" onChange={(e) => setFile(e.target.files?.[0] || null)} /></Field>
+            {libraryForm.kind === "characters" ? <div style={detailPanel}>
+              <div style={{ marginBottom: 10 }}><span style={eyebrow}>CHARACTER PROFILE</span><h3 style={{ margin: "4px 0", fontSize: 14 }}>Character Bible — ข้อมูลตัวละครสำหรับ Production</h3><p style={muted}>ข้อมูลชุดนี้จะตามตัวละครไปที่ Studio / Series เพื่อช่วยรักษาหน้า อายุ บุคลิก ชุด เสียง และ Continuity</p></div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <Field label="Role — บทบาท"><input style={input} value={libraryForm.role} onChange={(e) => setLibraryForm({ ...libraryForm, role: e.target.value })} placeholder="Protagonist — ตัวละครหลัก" /></Field>
+                <Field label="Gender / Presentation — ลักษณะเพศของเสียงและภาพ"><input style={input} value={libraryForm.genderPresentation} onChange={(e) => setLibraryForm({ ...libraryForm, genderPresentation: e.target.value })} placeholder="Female / Male / Flexible" /></Field>
+                <Field label="Age Range — ช่วงอายุ"><input style={input} value={libraryForm.ageRange} onChange={(e) => setLibraryForm({ ...libraryForm, ageRange: e.target.value })} placeholder="Adult 22–35" /></Field>
+                <Field label="Voice Profile — โปรไฟล์เสียง"><input style={input} value={libraryForm.voiceProfile} onChange={(e) => setLibraryForm({ ...libraryForm, voiceProfile: e.target.value })} placeholder="Mira / Arin / Nami" /></Field>
+              </div>
+              <Field label="Appearance — รูปลักษณ์ที่ต้องรักษา"><textarea style={{ ...input, minHeight: 78 }} value={libraryForm.appearance} onChange={(e) => setLibraryForm({ ...libraryForm, appearance: e.target.value })} placeholder="ใบหน้า ทรงผม สีผิว รูปร่าง ส่วนสูงโดยประมาณ จุดเด่นที่ห้ามเปลี่ยน" /></Field>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <Field label="Personality — บุคลิก"><textarea style={smallArea} value={libraryForm.personality} onChange={(e) => setLibraryForm({ ...libraryForm, personality: e.target.value })} placeholder="สุขุม ขี้เล่น กล้าหาญ เย็นชา..." /></Field>
+                <Field label="Costume Profile — เครื่องแต่งกายหลัก"><textarea style={smallArea} value={libraryForm.costume} onChange={(e) => setLibraryForm({ ...libraryForm, costume: e.target.value })} placeholder="ชุด สี วัสดุ รองเท้า เครื่องประดับ" /></Field>
+                <Field label="Emotion Range — ช่วงอารมณ์"><textarea style={smallArea} value={libraryForm.emotionRange} onChange={(e) => setLibraryForm({ ...libraryForm, emotionRange: e.target.value })} placeholder="Neutral, Happy, Sad, Angry, Fear" /></Field>
+                <Field label="Performance Style — ลักษณะการแสดง"><textarea style={smallArea} value={libraryForm.performanceStyle} onChange={(e) => setLibraryForm({ ...libraryForm, performanceStyle: e.target.value })} placeholder="Natural / Restrained / Expressive / Heroic" /></Field>
+              </div>
+              <Field label="Character Prompt — ข้อความหลักที่ใช้รักษาตัวละคร"><textarea style={{ ...input, minHeight: 80 }} value={libraryForm.promptHint} onChange={(e) => setLibraryForm({ ...libraryForm, promptHint: e.target.value })} placeholder="คำอธิบาย Identity ที่ระบบควรส่งเข้า Prompt ทุกครั้ง" /></Field>
+              <Field label="Negative Identity Rules — สิ่งที่ห้ามเปลี่ยน"><textarea style={{ ...input, minHeight: 72 }} value={libraryForm.negativeIdentityRules} onChange={(e) => setLibraryForm({ ...libraryForm, negativeIdentityRules: e.target.value })} placeholder="เช่น ห้ามเปลี่ยนรูปหน้า สีตา ทรงผม อายุ และสัดส่วน" /></Field>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <Field label="Best For — เหมาะกับงาน"><textarea style={smallArea} value={libraryForm.bestFor} onChange={(e) => setLibraryForm({ ...libraryForm, bestFor: e.target.value })} placeholder="Drama, Action, Anime..." /></Field>
+                <Field label="Lock & Continuity — ตัวล็อกที่แนะนำ"><textarea style={smallArea} value={libraryForm.lockNote} onChange={(e) => setLibraryForm({ ...libraryForm, lockNote: e.target.value })} placeholder="Character Lock + Costume Lock + Voice Lock" /></Field>
+              </div>
+              <Field label="Reference Usage — วิธีใช้ Reference Pack"><textarea style={{ ...input, minHeight: 64 }} value={libraryForm.referenceUsage} onChange={(e) => setLibraryForm({ ...libraryForm, referenceUsage: e.target.value })} placeholder="อธิบายว่า Main / Front / 3/4 / Side / Full Body / Expression ควรใช้เมื่อใด" /></Field>
+            </div> : null}
+
+            <Field label={libraryForm.kind === "characters" ? "Main Reference — ภาพอ้างอิงหลักของตัวละคร (PNG/JPG/WebP ไม่เกิน 10MB)" : "ไฟล์ Asset (ไม่เกิน 10MB) — ภาพรองรับ PNG/JPG/WebP"}><input style={input} type="file" accept={libraryForm.kind === "voices" || libraryForm.kind === "ambience" ? "image/*,audio/*" : "image/*"} onChange={(e) => setFile(e.target.files?.[0] || null)} /></Field>
+            {libraryForm.kind === "characters" ? <Field label="Reference Pack — เพิ่ม Front / 3/4 / Side / Full Body / Expression ได้สูงสุด 8 ภาพ"><input style={input} type="file" accept="image/*" multiple onChange={(e) => setReferenceFiles(Array.from(e.target.files || []).slice(0, 8))} /><small style={{ display: "block", color: "#777771", marginTop: 5 }}>{referenceFiles.length ? `เลือกแล้ว ${referenceFiles.length} ภาพ` : "ยังไม่ได้เพิ่ม Reference Pack — สามารถเริ่มจาก Main Reference ภาพเดียวก่อนได้"}</small></Field> : null}
             <button style={{ ...primary, opacity: busy ? .65 : 1 }} disabled={busy}>{busy ? "กำลังบันทึก..." : "↑ เพิ่มเข้า Library"}</button>
           </form>
 
@@ -153,10 +215,11 @@ export default function AdminPage() {
             <div style={sectionHead}><div><span style={eyebrow}>CURRENT ASSETS</span><h3 style={{ ...heading, fontSize: 15 }}>รายการจริงในหมวด {KIND_LABEL[libraryForm.kind]}</h3></div><small style={count}>ล่าสุดตามระบบ</small></div>
             {currentItems.length === 0 ? <div style={emptyState}>หมวดนี้ยังไม่มี Asset</div> : <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 9 }}>
               {currentItems.map((item) => <div key={item.id} style={assetCard}>
-                {item.assetUrl ? <img src={item.assetUrl} alt={item.title} style={{ width: "100%", aspectRatio: "16 / 9", objectFit: "cover", borderRadius: 9, marginBottom: 9, background: "#151515" }} /> : <div style={{ height: 96, borderRadius: 9, background: "#17160f", display: "grid", placeItems: "center", color: "#f2c94c", marginBottom: 9 }}>▦</div>}
+                {item.assetUrl ? <img src={item.assetUrl} alt={item.title} style={{ width: "100%", aspectRatio: item.kind === "characters" ? "4 / 5" : "16 / 9", objectFit: "cover", objectPosition: "center", borderRadius: 9, marginBottom: 9, background: "#151515" }} /> : <div style={{ height: item.kind === "characters" ? 150 : 96, borderRadius: 9, background: "linear-gradient(145deg,#17160f,#101010)", display: "grid", placeItems: "center", color: "#f2c94c", marginBottom: 9, fontSize: item.kind === "characters" ? 28 : 16 }}>{item.kind === "characters" ? "◎" : "▦"}</div>}
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "start" }}><div><b style={{ display: "block", fontSize: 11 }}>{item.title}</b><small style={{ color: item.source === "SYSTEM" ? "#e1c95e" : "#8bcf98", fontWeight: 850 }}>SCENOVA SYSTEM</small></div><button type="button" style={deleteButton} onClick={() => deleteAsset(item)} disabled={busy}>ลบ</button></div>
                 <p style={{ color: "#85857f", fontSize: 9, lineHeight: 1.55, minHeight: 30, margin: "8px 0" }}>{item.description || "ยังไม่มีคำอธิบาย"}</p>
                 {item.kind === "images" && item.metadata ? <div style={metaMini}>{item.metadata.bestFor ? <span><b>เหมาะกับ:</b> {item.metadata.bestFor}</span> : null}{item.metadata.colorMood ? <span><b>โทน:</b> {item.metadata.colorMood}</span> : null}</div> : null}
+                {item.kind === "characters" && item.metadata ? <div style={metaMini}>{item.metadata.role ? <span><b>Role:</b> {item.metadata.role}</span> : null}{item.metadata.ageRange ? <span><b>Age:</b> {item.metadata.ageRange}</span> : null}{item.metadata.voiceProfile ? <span><b>Voice:</b> {item.metadata.voiceProfile}</span> : null}<span><b>Reference Pack:</b> {item.metadata.referenceImages?.length || 0} ภาพเสริม</span></div> : null}
               </div>)}
             </div>}
           </div>
