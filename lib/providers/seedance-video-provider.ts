@@ -1,4 +1,5 @@
 import type { ModelDefinition } from "@/lib/domain";
+import { assertEmergencyCapability } from "@/lib/emergency-security";
 import type { GenerateVideoRequest, GenerateVideoResult, VideoProvider } from "@/lib/providers/video-provider";
 
 const DEFAULT_BASE_URL = "https://operator.las.ap-southeast-1.bytepluses.com/api/v1";
@@ -66,8 +67,6 @@ export class Seedance25VideoProvider implements VideoProvider {
   async estimateCost(request: GenerateVideoRequest) {
     const duration = Math.max(4, Math.min(30, request.renderSegment.duration));
     const resolution = normalizedResolution(request.resolution);
-    // BytePlus LAS enhanced Seedance billing: base USD/sec multiplied by a resolution conversion factor.
-    // Defaults reflect Seedance 2.5 no-input-video public billing; env values allow pricing changes without a deploy.
     const baseUsdPerSecond = numberEnv("SEEDANCE_BASE_USD_PER_SECOND", 0.303);
     const conversion = resolution === "480p"
       ? numberEnv("SEEDANCE_480P_CONVERSION", 0.6785)
@@ -79,6 +78,7 @@ export class Seedance25VideoProvider implements VideoProvider {
   }
 
   async generate(request: GenerateVideoRequest): Promise<GenerateVideoResult> {
+    await assertEmergencyCapability("generation", this.id);
     if (!this.apiKey) throw new Error("SEEDANCE_PROVIDER_UNAVAILABLE:SEEDANCE_API_KEY_NOT_CONFIGURED");
     const duration = Math.round(request.renderSegment.duration);
     if (duration < 4 || duration > 30) throw new Error(`SEEDANCE_DURATION_NOT_SUPPORTED:${duration}`);
@@ -111,6 +111,7 @@ export class Seedance25VideoProvider implements VideoProvider {
   }
 
   async getStatus(providerTaskId: string): Promise<GenerateVideoResult> {
+    await assertEmergencyCapability("generation", this.id);
     if (!this.apiKey) throw new Error("SEEDANCE_PROVIDER_UNAVAILABLE:SEEDANCE_API_KEY_NOT_CONFIGURED");
     const response = await fetch(`${this.baseUrl}/contents/generations/tasks/${encodeURIComponent(providerTaskId)}`, {
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${this.apiKey}` },
@@ -131,6 +132,7 @@ export class Seedance25VideoProvider implements VideoProvider {
   }
 
   async cancel(providerTaskId: string) {
+    await assertEmergencyCapability("generation", this.id);
     if (!this.apiKey) return false;
     const response = await fetch(`${this.baseUrl}/contents/generations/tasks/${encodeURIComponent(providerTaskId)}`, {
       method: "DELETE",
