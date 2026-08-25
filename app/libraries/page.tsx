@@ -32,16 +32,16 @@ const TABS: { id: Tab; label: string; desc: string; icon: string }[] = [
 
 const BUILTIN: Record<Exclude<Tab, "videos">, Item[]> = {
   images: [
-    { id: "anime", title: "Cinematic Anime", description: "อนิเมะภาพยนตร์ แสงมีมิติ เหมาะกับเรื่องเล่า Coming-of-age และ Fantasy", tag: "Anime • Cinematic", visual: "anime", icon: "✦", url: "/library/styles/cinematic-anime.jpg" },
-    { id: "golden", title: "Warm Golden Hour", description: "แสงเย็นสีทอง อบอุ่น นุ่ม เหมาะกับ Romance, Slice of Life และฉากความทรงจำ", tag: "Warm • Emotional", visual: "golden", icon: "☀", url: "/library/styles/warm-golden-hour.jpg" },
-    { id: "real", title: "Photorealistic Film", description: "ภาพสมจริงแบบภาพยนตร์ ผิว วัสดุ และแสงเป็นธรรมชาติ", tag: "Realistic • Film", visual: "real", icon: "◫", url: "/library/styles/photorealistic-film.jpg" },
-    { id: "action", title: "Action Blockbuster", description: "ภาพพลังงานสูง คอนทราสต์แรง เหมาะกับ Chase, Combat และฉากแอ็กชันขนาดใหญ่", tag: "Action • Dynamic", visual: "action", icon: "⚡", url: "/library/styles/action-blockbuster.jpg" },
-    { id: "scifi", title: "Sci-Fi Neon", description: "เมืองอนาคต เทคโนโลยี แสงนีออน และโครงสร้างล้ำยุค", tag: "Sci-Fi • Neon", visual: "scifi", icon: "⬡", url: "/library/styles/sci-fi-neon.jpg" },
-    { id: "fantasy", title: "Fantasy Storybook", description: "โลกแฟนตาซีขนาดใหญ่ แสงเหนือจริง และภูมิทัศน์มหัศจรรย์", tag: "Fantasy • Epic", visual: "plot", icon: "✦", url: "/library/styles/fantasy-storybook.jpg" },
-    { id: "thriller", title: "Dark Thriller", description: "ตรอกกลางคืนเปียกฝน แสงน้อย คอนทราสต์จัด เหมาะกับ Crime, Noir และ Suspense", tag: "Thriller • Noir", visual: "action", icon: "◐", url: "/library/styles/dark-thriller.jpg" },
-    { id: "gothic", title: "Gothic Horror", description: "คฤหาสน์โกธิก หมอกกลางคืน และโทนเย็นลึกลับ เหมาะกับ Horror และ Dark Fantasy", tag: "Gothic • Horror", visual: "real", icon: "◇", url: "/library/styles/gothic-horror.jpg" },
-    { id: "romance", title: "Cinematic Romance", description: "โทนอุ่นยามอาทิตย์ตก ชัดตื้น และอารมณ์ใกล้ชิด เหมาะกับ Romance และ Emotional Drama", tag: "Romance • Warm", visual: "golden", icon: "♡", url: "/library/styles/cinematic-romance.jpg" },
-    { id: "period", title: "Period Drama", description: "งานย้อนยุคหรูหรา เครื่องแต่งกายและสถาปัตยกรรมละเอียด เหมาะกับ Historical และ Costume Film", tag: "Period • Elegant", visual: "plot", icon: "♜", url: "/library/styles/period-drama.jpg" },
+    { id: "anime", title: "Cinematic Anime", description: "อนิเมะภาพยนตร์ แสงมีมิติ เหมาะกับเรื่องเล่า Coming-of-age และ Fantasy", tag: "Anime • Cinematic", visual: "anime", icon: "✦", url: "/library/styles/cinematic-anime.png" },
+    { id: "golden", title: "Warm Golden Hour", description: "แสงเย็นสีทอง อบอุ่น นุ่ม เหมาะกับ Romance, Slice of Life และฉากความทรงจำ", tag: "Warm • Emotional", visual: "golden", icon: "☀", url: "/library/styles/warm-golden-hour.png" },
+    { id: "real", title: "Photorealistic Film", description: "ภาพสมจริงแบบภาพยนตร์ ผิว วัสดุ และแสงเป็นธรรมชาติ", tag: "Realistic • Film", visual: "real", icon: "◫", url: "/library/styles/photorealistic-film.png" },
+    { id: "action", title: "Action Blockbuster", description: "ภาพพลังงานสูง คอนทราสต์แรง เหมาะกับ Chase, Combat และฉากแอ็กชันขนาดใหญ่", tag: "Action • Dynamic", visual: "action", icon: "⚡", url: "/library/styles/action-blockbuster.png" },
+    { id: "scifi", title: "Sci-Fi Neon", description: "เมืองอนาคต เทคโนโลยี แสงนีออน และโครงสร้างล้ำยุค", tag: "Sci-Fi • Neon", visual: "scifi", icon: "⬡", url: "/library/styles/sci-fi-neon.png" },
+    { id: "fantasy", title: "Fantasy Storybook", description: "โลกแฟนตาซีขนาดใหญ่ แสงเหนือจริง และภูมิทัศน์มหัศจรรย์", tag: "Fantasy • Epic", visual: "plot", icon: "✦", url: "/library/styles/fantasy-storybook.png" },
+    { id: "thriller", title: "Dark Thriller", description: "ตรอกกลางคืนเปียกฝน แสงน้อย คอนทราสต์จัด เหมาะกับ Crime, Noir และ Suspense", tag: "Thriller • Noir", visual: "action", icon: "◐", url: "/library/styles/dark-thriller.png" },
+    { id: "gothic", title: "Gothic Horror", description: "คฤหาสน์โกธิก หมอกกลางคืน และโทนเย็นลึกลับ เหมาะกับ Horror และ Dark Fantasy", tag: "Gothic • Horror", visual: "real", icon: "◇", url: "/library/styles/gothic-horror.png" },
+    { id: "romance", title: "Cinematic Romance", description: "โทนอุ่นยามอาทิตย์ตก ชัดตื้น และอารมณ์ใกล้ชิด เหมาะกับ Romance และ Emotional Drama", tag: "Romance • Warm", visual: "golden", icon: "♡", url: "/library/styles/cinematic-romance.png" },
+    { id: "period", title: "Period Drama", description: "งานย้อนยุคหรูหรา เครื่องแต่งกายและสถาปัตยกรรมละเอียด เหมาะกับ Historical และ Costume Film", tag: "Period • Elegant", visual: "plot", icon: "♜", url: "/library/styles/period-drama.png" },
   ],
   voices: [
     { id: "mira", title: "Mira", description: "หญิง • อบอุ่น • เป็นธรรมชาติ เหมาะกับ Drama และ Slice of Life", tag: "หญิง • Warm", visual: "voice", icon: "♫" },
@@ -116,6 +116,7 @@ export default function LibrariesPage() {
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [search, setSearch] = useState("");
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
+  const [imagePreview, setImagePreview] = useState<Item | null>(null);
 
   useEffect(() => {
     const syncFromLocation = () => {
@@ -137,13 +138,17 @@ export default function LibrariesPage() {
     load(); window.addEventListener("scenova-video-library-updated", load); return () => window.removeEventListener("scenova-video-library-updated", load);
   }, []);
   useEffect(() => {
-    if (!selectedItem) return;
+    if (!selectedItem && !imagePreview) return;
     const previous = document.body.style.overflow;
-    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") setSelectedItem(null); };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      if (imagePreview) setImagePreview(null);
+      else setSelectedItem(null);
+    };
     document.body.style.overflow = "hidden";
     window.addEventListener("keydown", onKey);
     return () => { document.body.style.overflow = previous; window.removeEventListener("keydown", onKey); };
-  }, [selectedItem]);
+  }, [selectedItem, imagePreview]);
 
   const current = TABS.find((item) => item.id === tab)!;
   const items = useMemo<Item[]>(() => {
@@ -164,6 +169,7 @@ export default function LibrariesPage() {
     setTab(next);
     setSearch("");
     setSelectedItem(null);
+    setImagePreview(null);
     const url = new URL(window.location.href);
     url.searchParams.set("tab", next);
     url.hash = "";
@@ -187,7 +193,13 @@ export default function LibrariesPage() {
         <div className={styles.grid}>
           {filtered.map((item) => (
             <article className={styles.card} key={item.id}>
-              <div className={`${styles.preview} ${styles[item.visual as keyof typeof styles] || ""}`} style={item.url && tab !== "videos" ? { backgroundImage: `url(${item.url})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}><span className={styles.previewIcon}>{item.icon}</span></div>
+              {tab === "images" && item.url ? (
+                <button className={styles.previewImageButton} onClick={() => setImagePreview(item)} aria-label={`ดูรูป ${item.title} แบบเต็ม`}>
+                  <img className={styles.previewImage} src={item.url} alt={item.title} />
+                </button>
+              ) : (
+                <div className={`${styles.preview} ${styles[item.visual as keyof typeof styles] || ""}`} style={item.url && tab !== "videos" ? { backgroundImage: `url(${item.url})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}><span className={styles.previewIcon}>{item.icon}</span></div>
+              )}
               <div className={styles.content}><b>{item.title}</b><p>{item.description}</p><span className={styles.tag}>{item.tag}</span>
                 {tab === "videos" ? <div className={styles.videoMeta}><span>EP {item.ep}</span><span>{item.duration}s</span></div> : null}
                 <div className={styles.actions}>
@@ -205,7 +217,7 @@ export default function LibrariesPage() {
         <div className={styles.modalBackdrop} role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target) setSelectedItem(null); }}>
           <section className={styles.detailModal} role="dialog" aria-modal="true" aria-label={`รายละเอียด ${selectedItem.title}`}>
             <button className={styles.closeButton} onClick={() => setSelectedItem(null)} aria-label="ปิดรายละเอียด">×</button>
-            <div className={styles.detailHero} style={selectedItem.url ? { backgroundImage: `linear-gradient(180deg,rgba(0,0,0,.05),rgba(0,0,0,.72)),url(${selectedItem.url})` } : undefined}>
+            <div className={styles.detailHero} style={selectedItem.url ? { backgroundImage: `linear-gradient(180deg,rgba(0,0,0,.05),rgba(0,0,0,.72)),url(${selectedItem.url})` } : undefined} onClick={() => { if (selectedItem.url) setImagePreview(selectedItem); }} role={selectedItem.url ? "button" : undefined} tabIndex={selectedItem.url ? 0 : undefined}>
               {!selectedItem.url ? <span className={styles.detailHeroIcon}>{selectedItem.icon}</span> : null}
               <div className={styles.detailHeroText}><span>{selectedDetail.typeLabel}</span><h2>{selectedItem.title}</h2><p>{selectedItem.description}</p><div className={styles.detailTags}><b>{selectedItem.tag}</b><b>Asset ID: {selectedItem.id}</b></div></div>
             </div>
@@ -229,6 +241,13 @@ export default function LibrariesPage() {
               </div>
             </div>
           </section>
+        </div>
+      ) : null}
+
+      {imagePreview?.url ? (
+        <div className={styles.imageLightboxBackdrop} role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target) setImagePreview(null); }}>
+          <button className={styles.imageOnlyClose} onClick={() => setImagePreview(null)} aria-label="ปิดรูป">×</button>
+          <img className={styles.imageLightboxImage} src={imagePreview.url} alt={imagePreview.title} />
         </div>
       ) : null}
     </main>
