@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import AppShell from "@/components/app-shell";
 import "./globals.css";
 import "./scenova-yellow-theme.css";
+import "./mobile-overrides.css";
 
 export const metadata: Metadata = {
   title: "SCENOVA — AI Movie & Series Studio",
