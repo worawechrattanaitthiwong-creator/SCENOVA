@@ -159,7 +159,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className={styles.shell}>
+    <main className={`scenova-auth-shell ${styles.shell}`}>
       <section className={styles.hero}>
         <div className={styles.brand}>
           <span className={styles.brandMark}>S</span>
