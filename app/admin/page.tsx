@@ -114,12 +114,12 @@ export default function AdminPage() {
 
         <section style={card}>
           <div style={sectionHead}><div><span style={eyebrow}>LIVE LIBRARY</span><h2 style={heading}>จัดการ Asset ในคลังจริง</h2></div><small style={count}>{items.length} รายการทั้งหมด</small></div>
-          <p style={muted}>เพิ่มหรือลบจากหน้านี้แล้ว Asset Library ฝั่งผู้ใช้จะเปลี่ยนตามจริง รายการ SCENOVA System และรายการที่ Admin เพิ่มจะแสดงรวมกัน</p>
+          <p style={muted}>Asset ทุกชิ้นใช้ชื่อ SCENOVA System เหมือนกัน โดยใช้สีแยกแหล่งที่มาเท่านั้น: สีทองคือรายการ Built-in ของระบบ และสีเขียวคือรายการที่ Admin Upload เอง</p>
 
           <div style={summaryBar}>
             <span><b>{KIND_LABEL[libraryForm.kind]}</b><small>{currentItems.length} รายการในหมวดนี้</small></span>
-            <span><b>{systemCount}</b><small>SCENOVA System</small></span>
-            <span><b>{adminCount}</b><small>Admin เพิ่มเอง</small></span>
+            <span><b style={{ color: "#e1c95e" }}>{systemCount}</b><small>สีทอง • Built-in</small></span>
+            <span><b style={{ color: "#8bcf98" }}>{adminCount}</b><small>สีเขียว • Admin Upload</small></span>
           </div>
 
           <form onSubmit={uploadLibrary} style={{ marginTop: 16 }}>
@@ -154,7 +154,7 @@ export default function AdminPage() {
             {currentItems.length === 0 ? <div style={emptyState}>หมวดนี้ยังไม่มี Asset</div> : <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 9 }}>
               {currentItems.map((item) => <div key={item.id} style={assetCard}>
                 {item.assetUrl ? <img src={item.assetUrl} alt={item.title} style={{ width: "100%", aspectRatio: "16 / 9", objectFit: "cover", borderRadius: 9, marginBottom: 9, background: "#151515" }} /> : <div style={{ height: 96, borderRadius: 9, background: "#17160f", display: "grid", placeItems: "center", color: "#f2c94c", marginBottom: 9 }}>▦</div>}
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "start" }}><div><b style={{ display: "block", fontSize: 11 }}>{item.title}</b><small style={{ color: item.source === "SYSTEM" ? "#e1c95e" : "#8bcf98" }}>{item.source === "SYSTEM" ? "SCENOVA SYSTEM" : "ADMIN ASSET"}</small></div><button type="button" style={deleteButton} onClick={() => deleteAsset(item)} disabled={busy}>ลบ</button></div>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "start" }}><div><b style={{ display: "block", fontSize: 11 }}>{item.title}</b><small style={{ color: item.source === "SYSTEM" ? "#e1c95e" : "#8bcf98", fontWeight: 850 }}>SCENOVA SYSTEM</small></div><button type="button" style={deleteButton} onClick={() => deleteAsset(item)} disabled={busy}>ลบ</button></div>
                 <p style={{ color: "#85857f", fontSize: 9, lineHeight: 1.55, minHeight: 30, margin: "8px 0" }}>{item.description || "ยังไม่มีคำอธิบาย"}</p>
                 {item.kind === "images" && item.metadata ? <div style={metaMini}>{item.metadata.bestFor ? <span><b>เหมาะกับ:</b> {item.metadata.bestFor}</span> : null}{item.metadata.colorMood ? <span><b>โทน:</b> {item.metadata.colorMood}</span> : null}</div> : null}
               </div>)}
