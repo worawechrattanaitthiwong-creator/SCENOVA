@@ -12,6 +12,10 @@ const TOOLS_BY_STAGE: Record<string, AgentToolName[]> = {
   NEXT_EPISODE: ["plan_episode", "pause_run"],
 };
 
+export function getAllowedAgentTools(stage: string): AgentToolName[] {
+  return [...(TOOLS_BY_STAGE[stage] || [])];
+}
+
 export function assertAgentToolAllowed(input: {
   run: AgentRunRecord;
   tool: AgentToolName;
@@ -24,7 +28,7 @@ export function assertAgentToolAllowed(input: {
   creditReservationId?: string;
   creditReservationMode?: "wallet" | "mock";
 }) {
-  const allowed = TOOLS_BY_STAGE[input.run.stage] || [];
+  const allowed = getAllowedAgentTools(input.run.stage);
   if (!allowed.includes(input.tool)) throw new Error(`AGENT_TOOL_NOT_ALLOWED:${input.tool}:${input.run.stage}`);
   if (["COMPLETED", "FAILED", "CANCELLED"].includes(input.run.status)) throw new Error("AGENT_RUN_NOT_ACTIVE");
 
