@@ -1,5 +1,6 @@
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/db";
+import { getEmergencySecurityState } from "@/lib/emergency-security";
 import { decryptTwoFactorSecret, hashRecoveryCode, verifyTotp } from "@/lib/two-factor";
 
 export type Role = "ADMIN" | "MEMBER";
@@ -7,7 +8,7 @@ export type SessionUser = { id: string; email: string; name: string; role: Role 
 export type SafeMember = SessionUser & { active: boolean; createdAt: string; lastLoginAt?: string | null; twoFactorEnabled: boolean };
 export type PasswordUser = SessionUser & { twoFactorEnabled: boolean };
 
-type SignedPayload = { sub: string; exp: number; purpose: "session" | "2fa" };
+type SignedPayload = { sub: string; exp: number; iat: number; purpose: "session" | "2fa" };
 
 function sessionSecret() {
   if (process.env.SESSION_SECRET) return process.env.SESSION_SECRET;
@@ -106,6 +107,8 @@ export async function authenticatePassword(emailInput: string, password: string)
   }
 
   if (!user.active || !verifyPassword(password, user.passwordHash)) return null;
+  const emergency = await getEmergencySecurityState();
+  if (emergency.newLoginRestricted && user.role !== "ADMIN") return null;
   return { ...toSessionUser(user), twoFactorEnabled: user.twoFactorEnabled };
 }
 
@@ -114,8 +117,9 @@ export async function completeLogin(userId: string) {
   return toSessionUser(user);
 }
 
-function signPayload(payload: SignedPayload) {
-  const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url");
+function signPayload(payload: Omit<SignedPayload, "iat"> & { iat?: number }) {
+  const fullPayload: SignedPayload = { ...payload, iat: payload.iat ?? Date.now() };
+  const encoded = Buffer.from(JSON.stringify(fullPayload)).toString("base64url");
   const signature = createHmac("sha256", sessionSecret()).update(encoded).digest("base64url");
   return `${encoded}.${signature}`;
 }
@@ -129,9 +133,14 @@ function verifyPayload(token: string | null | undefined, purpose: SignedPayload[
   const b = Buffer.from(expected);
   if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
   try {
-    const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as SignedPayload;
-    if (parsed.exp < Date.now() || parsed.purpose !== purpose || !parsed.sub) return null;
-    return parsed;
+    const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as Partial<SignedPayload>;
+    if (!parsed.exp || parsed.exp < Date.now() || parsed.purpose !== purpose || !parsed.sub) return null;
+    return {
+      sub: parsed.sub,
+      exp: parsed.exp,
+      iat: typeof parsed.iat === "number" ? parsed.iat : 0,
+      purpose: parsed.purpose,
+    } as SignedPayload;
   } catch {
     return null;
   }
@@ -141,14 +150,16 @@ export function signSession(user: SessionUser) {
   return signPayload({ sub: user.id, exp: Date.now() + 1000 * 60 * 60 * 24 * 7, purpose: "session" });
 }
 
-export function verifySession(token?: string | null): { userId: string } | null {
+export function verifySession(token?: string | null): { userId: string; issuedAt: number } | null {
   const payload = verifyPayload(token, "session");
-  return payload ? { userId: payload.sub } : null;
+  return payload ? { userId: payload.sub, issuedAt: payload.iat } : null;
 }
 
 export async function resolveSession(token?: string | null): Promise<SessionUser | null> {
   const session = verifySession(token);
   if (!session) return null;
+  const emergency = await getEmergencySecurityState();
+  if (emergency.sessionInvalidBefore && session.issuedAt <= emergency.sessionInvalidBefore.getTime()) return null;
   const user = await prisma.user.findUnique({ where: { id: session.userId } });
   if (!user?.active) return null;
   return toSessionUser(user);
