@@ -1,5 +1,5 @@
 import type { ModelDefinition } from "@/lib/domain";
-import { assertEmergencyCapability } from "@/lib/emergency-security";
+import { assertEmergencyCapability, enforceEmergencyRateLimit } from "@/lib/emergency-security";
 import type { GenerateVideoRequest, GenerateVideoResult, VideoProvider } from "@/lib/providers/video-provider";
 
 const DEFAULT_BASE_URL = "https://operator.las.ap-southeast-1.bytepluses.com/api/v1";
@@ -79,6 +79,7 @@ export class Seedance25VideoProvider implements VideoProvider {
 
   async generate(request: GenerateVideoRequest): Promise<GenerateVideoResult> {
     await assertEmergencyCapability("generation", this.id);
+    await enforceEmergencyRateLimit(`video:project:${request.projectId}`, Number(process.env.EMERGENCY_VIDEO_CALLS_PER_MINUTE || 2));
     if (!this.apiKey) throw new Error("SEEDANCE_PROVIDER_UNAVAILABLE:SEEDANCE_API_KEY_NOT_CONFIGURED");
     const duration = Math.round(request.renderSegment.duration);
     if (duration < 4 || duration > 30) throw new Error(`SEEDANCE_DURATION_NOT_SUPPORTED:${duration}`);
