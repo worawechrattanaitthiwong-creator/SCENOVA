@@ -19,7 +19,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - name: Migrate Prisma generator and imports
+      - name: Migrate Prisma generator, runtime and imports
         shell: bash
         run: |
           python - <<'PY'
@@ -62,12 +62,17 @@ jobs:
 
           package = Path('package.json')
           data = json.loads(package.read_text())
+          data['dependencies']['@prisma/adapter-neon'] = '6.19.3'
+          data['dependencies']['@prisma/client'] = '6.19.3'
+          data['devDependencies']['prisma'] = '6.19.3'
           scripts = data.setdefault('scripts', {})
           scripts['prebuild:cloudflare'] = 'prisma generate'
           scripts['prepreview'] = 'prisma generate'
           scripts['preupload'] = 'prisma generate'
           package.write_text(json.dumps(data, indent=2) + '\n')
           PY
+      - name: Update lockfile for Prisma 6.19.3
+        run: npm install --package-lock-only --ignore-scripts
       - run: npm ci
       - run: npm run db:generate
       - name: Verify generated Cloudflare client
