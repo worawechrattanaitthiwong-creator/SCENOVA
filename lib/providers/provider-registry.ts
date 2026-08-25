@@ -14,6 +14,13 @@ export function getVideoProviders() {
   return { mock, seedance };
 }
 
+export function getVideoProviderById(providerId: string): VideoProvider | null {
+  const { mock, seedance } = getVideoProviders();
+  if (providerId === mock.id) return mock;
+  if (providerId === seedance.id) return seedance;
+  return null;
+}
+
 export function getVideoProviderMap(): Record<string, VideoProvider> {
   const { mock, seedance } = getVideoProviders();
   const useReal = process.env.SCENOVA_REAL_VIDEO_PROVIDERS === "true" && seedance.isConfigured();
