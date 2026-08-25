@@ -72,6 +72,7 @@ export default function LibrariesPage() {
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [imagePreview, setImagePreview] = useState<Item | null>(null);
   const [loadError, setLoadError] = useState("");
+  const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
 
   useEffect(() => {
     const syncFromLocation = () => {
@@ -100,6 +101,10 @@ export default function LibrariesPage() {
   }, []);
 
   useEffect(() => {
+    return () => { if ("speechSynthesis" in window) window.speechSynthesis.cancel(); };
+  }, []);
+
+  useEffect(() => {
     if (!selectedItem && !imagePreview) return;
     const previous = document.body.style.overflow;
     const onKey = (event: KeyboardEvent) => {
@@ -121,11 +126,28 @@ export default function LibrariesPage() {
   const selectedDetail = selectedItem ? detailFor(tab, selectedItem) : null;
 
   function selectTab(next: Tab) {
-    setTab(next); setSearch(""); setSelectedItem(null); setImagePreview(null);
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    setPlayingVoiceId(null); setTab(next); setSearch(""); setSelectedItem(null); setImagePreview(null);
     const url = new URL(window.location.href); url.searchParams.set("tab", next); url.hash = ""; window.history.replaceState({}, "", `${url.pathname}${url.search}`);
   }
 
-  function playVoice(title: string) { if (!("speechSynthesis" in window)) return; speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(`สวัสดีค่ะ นี่คือตัวอย่างเสียง ${title} จาก SCENOVA`); u.lang = "th-TH"; speechSynthesis.speak(u); }
+  function playVoice(item: Item) {
+    if (!("speechSynthesis" in window)) return;
+    if (playingVoiceId === item.id) {
+      window.speechSynthesis.cancel();
+      setPlayingVoiceId(null);
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(`สวัสดีค่ะ นี่คือตัวอย่างเสียง ${item.title} จาก SCENOVA`);
+    utterance.lang = "th-TH";
+    utterance.rate = 0.96;
+    utterance.onstart = () => setPlayingVoiceId(item.id);
+    utterance.onend = () => setPlayingVoiceId((currentId) => currentId === item.id ? null : currentId);
+    utterance.onerror = () => setPlayingVoiceId((currentId) => currentId === item.id ? null : currentId);
+    setPlayingVoiceId(item.id);
+    window.speechSynthesis.speak(utterance);
+  }
 
   return (
     <main className={styles.main}>
@@ -141,18 +163,21 @@ export default function LibrariesPage() {
         {loadError && tab !== "videos" ? <div className={styles.empty}>{loadError}</div> : null}
         <div className={styles.toolbar}><input className={styles.search} placeholder={`ค้นหาใน${current.label}...`} value={search} onChange={(e) => setSearch(e.target.value)} /><span className={styles.count}>SCENOVA System • สีเขียว = Admin Upload</span></div>
         <div className={styles.grid}>
-          {filtered.map((item) => (
-            <article className={styles.card} key={item.id}>
-              {tab === "images" && item.url ? <button className={styles.previewImageButton} onClick={() => setImagePreview(item)} aria-label={`ดูรูป ${item.title} แบบเต็ม`}><img className={styles.previewImage} src={item.url} alt={item.title} /></button> : <div className={`${styles.preview} ${styles[item.visual as keyof typeof styles] || ""}`} style={item.url && tab !== "videos" ? { backgroundImage: `url(${item.url})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}><span className={styles.previewIcon}>{item.icon}</span></div>}
-              <div className={styles.content}><b>{item.title}</b><p>{item.description}</p><span className={styles.tag} style={item.source === "ADMIN" ? { color: "#8bcf98", background: "#101b12", boxShadow: "inset 0 0 0 1px #28432e" } : undefined}>{item.tag}</span>
-                {tab === "videos" ? <div className={styles.videoMeta}><span>EP {item.ep}</span><span>{item.duration}s</span></div> : null}
-                <div className={styles.actions}>
-                  {tab === "voices" ? <button onClick={() => playVoice(item.title)}>▶ ฟังตัวอย่าง</button> : tab === "videos" && item.url ? <a className={styles.primary} href={item.url} download={`SCENOVA-${item.title}.mp4`}>↓ ดาวน์โหลด</a> : <button className={styles.primary}>ใช้รายการนี้</button>}
-                  {tab !== "videos" ? <button onClick={() => setSelectedItem(item)}>ดูรายละเอียด</button> : null}
+          {filtered.map((item) => {
+            const isPlaying = tab === "voices" && playingVoiceId === item.id;
+            return (
+              <article className={`${styles.card} ${isPlaying ? styles.playingCard : ""}`} key={item.id}>
+                {tab === "images" && item.url ? <button className={styles.previewImageButton} onClick={() => setImagePreview(item)} aria-label={`ดูรูป ${item.title} แบบเต็ม`}><img className={styles.previewImage} src={item.url} alt={item.title} /></button> : <div className={`${styles.preview} ${styles[item.visual as keyof typeof styles] || ""} ${isPlaying ? styles.voicePlaying : ""}`} style={item.url && tab !== "videos" ? { backgroundImage: `url(${item.url})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}>{tab === "voices" ? <div className={styles.voiceVisualizer} aria-live="polite"><span className={styles.voiceDisc}>{isPlaying ? "■" : "♫"}</span><div className={styles.waveBars} aria-hidden="true">{[0,1,2,3,4,5,6].map((bar) => <i key={bar} style={{ animationDelay:`${bar * 70}ms` }} />)}</div><small>{isPlaying ? "กำลังเล่นตัวอย่างเสียง..." : "แตะเพื่อฟังตัวอย่าง"}</small></div> : <span className={styles.previewIcon}>{item.icon}</span>}</div>}
+                <div className={styles.content}><b>{item.title}</b><p>{item.description}</p><span className={styles.tag} style={item.source === "ADMIN" ? { color: "#8bcf98", background: "#101b12", boxShadow: "inset 0 0 0 1px #28432e" } : undefined}>{item.tag}</span>
+                  {tab === "videos" ? <div className={styles.videoMeta}><span>EP {item.ep}</span><span>{item.duration}s</span></div> : null}
+                  <div className={styles.actions}>
+                    {tab === "voices" ? <button className={isPlaying ? styles.playingButton : ""} onClick={() => playVoice(item)} aria-pressed={isPlaying}>{isPlaying ? "■ หยุดเสียง" : "▶ ฟังตัวอย่าง"}</button> : tab === "videos" && item.url ? <a className={styles.primary} href={item.url} download={`SCENOVA-${item.title}.mp4`}>↓ ดาวน์โหลด</a> : <button className={styles.primary}>ใช้รายการนี้</button>}
+                    {tab !== "videos" ? <button onClick={() => setSelectedItem(item)}>ดูรายละเอียด</button> : null}
+                  </div>
                 </div>
-              </div>
-            </article>
-          ))}
+              </article>
+            );
+          })}
           {!loadError && filtered.length === 0 ? <div className={styles.empty}>ยังไม่มีรายการในหมวดนี้ หรือไม่มีรายการที่ตรงกับคำค้นหา</div> : null}
         </div>
       </section>
