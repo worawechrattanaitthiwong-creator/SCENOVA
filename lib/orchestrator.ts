@@ -2,14 +2,15 @@ import type { Project } from "@/lib/domain";
 import { buildPromptBundle } from "@/lib/prompt-engine";
 import { planEpisodeRender } from "@/lib/render-planner";
 import { createContinuitySnapshot, continuityPrompt } from "@/lib/continuity";
-import { MockPromptAssistant, type PromptAssistant } from "@/lib/providers/prompt-assistant";
-import { MockVideoProvider } from "@/lib/providers/mock-video-provider";
+import { createPromptAssistant, type PromptAssistant } from "@/lib/providers/prompt-assistant";
+import { getVideoProviderMap } from "@/lib/providers/provider-registry";
 import type { VideoProvider } from "@/lib/providers/video-provider";
 import type { WalletService } from "@/lib/wallet";
 import { assertGenerationAllowed, type KillSwitchState } from "@/lib/security";
 
 export type OrchestratorDependencies = {
   promptAssistant?: PromptAssistant;
+  promptContext?: { userId?: string; runId?: string };
   providers?: Record<string, VideoProvider>;
   wallet?: WalletService;
   killSwitch?: KillSwitchState;
@@ -36,7 +37,7 @@ export async function planGeneration(project: Project, episodeIndex = 0, deps: O
   const episode = project.episodes[episodeIndex];
   if (!episode) throw new Error("Episode not found");
 
-  const assistant = deps.promptAssistant ?? new MockPromptAssistant();
+  const assistant = deps.promptAssistant ?? createPromptAssistant(deps.promptContext);
   const basePrompt = buildPromptBundle(project, episode);
   const prompt = await assistant.improve({
     project,
@@ -44,16 +45,20 @@ export async function planGeneration(project: Project, episodeIndex = 0, deps: O
     base: basePrompt,
     mode: project.promptMode,
     targetModelId: project.mainModelId,
+    userId: deps.promptContext?.userId,
+    runId: deps.promptContext?.runId,
   });
 
   const renderPlan = planEpisodeRender(project, episode);
+  const providers = deps.providers ?? getVideoProviderMap();
   const jobs: PlannedGeneration["jobs"] = [];
   let estimatedTotalThb = 0;
 
   for (const renderSegment of renderPlan) {
-    const provider = deps.providers?.[renderSegment.modelId] ?? new MockVideoProvider();
+    const provider = providers[renderSegment.modelId] ?? providers[project.mainModelId] ?? providers["mock-seedance"];
+    if (!provider) throw new Error(`VIDEO_PROVIDER_NOT_FOUND:${renderSegment.modelId}`);
     assertGenerationAllowed({
-      killSwitch: deps.killSwitch ?? { globalGenerationDisabled: false, disabledProviderIds: [] },
+      killSwitch: deps.killSwitch ?? { globalGenerationDisabled: process.env.SCENOVA_GENERATION_KILL_SWITCH === "true", disabledProviderIds: [] },
       providerId: provider.id,
       hourlySpendThb: deps.hourlySpendThb ?? 0,
       dailySpendThb: deps.dailySpendThb ?? 0,
@@ -70,6 +75,7 @@ export async function planGeneration(project: Project, episodeIndex = 0, deps: O
       renderSegment,
       prompt,
       resolution: project.resolution,
+      aspectRatio: project.aspectRatio,
       imageReferences: [],
       videoReferences: [],
       audioReferences: [],
@@ -97,15 +103,9 @@ export async function planGeneration(project: Project, episodeIndex = 0, deps: O
 }
 
 /**
- * executeGeneration intentionally stays disabled until real Provider + Wallet + Queue are connected.
- * The production implementation must:
- * 1) calculate price on server
- * 2) reserve credits
- * 3) enqueue jobs
- * 4) call provider worker
- * 5) settle/refund from provider result
- * 6) persist output + last frame + continuity state
+ * Synchronous generation stays disabled by design. Paid provider calls must go through AgentQueueJob + worker
+ * so credit reservation, retry/recovery, approval, observability and crash-resume guarantees cannot be bypassed.
  */
 export async function executeGeneration() {
-  throw new Error("Real generation is intentionally disabled until Video API, queue and Wallet adapters are connected.");
+  throw new Error("SYNCHRONOUS_GENERATION_DISABLED_USE_AGENT_QUEUE");
 }
