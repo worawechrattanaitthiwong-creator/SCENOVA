@@ -88,7 +88,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <nav className={styles.mainNav} aria-label="Primary navigation">{MAIN_NAV.map(([href, icon, label, short]) => {
         const active = pathname.startsWith(href);
         return <Link key={href} href={href} prefetch className={active ? styles.active : ""}><span className={styles.navIcon}>{icon}</span><span className={styles.navText}><b>{label}</b><small>{short}</small></span></Link>;
-      })}</nav>
+      })}
+        {me.role === "ADMIN" ? <Link href="/admin" prefetch className={`${styles.mobileOnly} ${pathname.startsWith("/admin") ? styles.active : ""}`}><span className={styles.navIcon}>⚙</span><span className={styles.navText}><b>Admin</b><small>Console</small></span></Link> : null}
+        <Link href="/profile" prefetch className={`${styles.mobileOnly} ${pathname.startsWith("/profile") ? styles.active : ""}`}><span className={styles.navIcon}>◉</span><span className={styles.navText}><b>Profile</b><small>Account</small></span></Link>
+      </nav>
       <div className={styles.sidebarBottom}>
         {me.role === "ADMIN" ? <Link href="/admin" prefetch className={pathname.startsWith("/admin") ? styles.active : ""}><span className={styles.navIcon}>⚙</span><span className={styles.navText}><b>Admin Console</b><small>Security, Members & Cost</small></span></Link> : null}
         <Link href="/profile" prefetch className={styles.profileCard}><span className={styles.profileAvatar}>{me.name?.slice(0, 1).toUpperCase() || "U"}</span><span><b>{me.name || "Profile"}</b><small>{me.twoFactorEnabled ? "2FA Secured" : me.role === "ADMIN" ? "Security Setup" : me.email}</small></span></Link>
