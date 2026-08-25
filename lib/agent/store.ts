@@ -52,7 +52,7 @@ export async function getAgentRunForUser(runId: string, userId: string) {
 
 export async function listAgentRunsForUser(userId: string, limit = 20) {
   const safeLimit = Math.max(1, Math.min(100, Math.floor(limit)));
-  const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(`SELECT * FROM "AgentRun" WHERE "userId"=$1 ORDER BY "createdAt" DESC LIMIT ${safeLimit}`, userId);
+  const rows = await prisma.$queryRaw<Array<Record<string, unknown>>>`SELECT * FROM "AgentRun" WHERE "userId"=${userId} ORDER BY "createdAt" DESC LIMIT ${safeLimit}`;
   return rows.map(normalizeRun);
 }
 
