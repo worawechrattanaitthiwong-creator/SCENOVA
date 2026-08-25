@@ -36,7 +36,7 @@ export async function getPromptExportStatus(input: { userId: string; prompt: unk
 
 export async function unlockPromptExport(input: { userId: string; prompt: unknown; version?: number; scope?: PromptExportScope }) {
   const status = await getPromptExportStatus(input);
-  if (status.unlock) return { unlocked: true, alreadyUnlocked: true, chargedCredits: 0, ...status };
+  if (status.unlock) return { ...status, unlocked: true, alreadyUnlocked: true, chargedCredits: 0 };
   const price = promptExportPrice(status.scope);
   if (price > 0) {
     const wallet = new PrismaWalletService();
@@ -56,5 +56,5 @@ export async function unlockPromptExport(input: { userId: string; prompt: unknow
     update: {},
     create: { id: randomUUID(), userId: input.userId, promptFingerprint: status.fingerprint, version: status.version, scope: status.scope, creditsCharged: price },
   });
-  return { unlocked: true, alreadyUnlocked: false, chargedCredits: price, ...status, unlock };
+  return { ...status, unlocked: true, alreadyUnlocked: false, chargedCredits: price, unlock };
 }
