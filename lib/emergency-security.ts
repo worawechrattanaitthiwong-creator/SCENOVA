@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 
 export type EmergencySecurityState = {
@@ -78,7 +79,7 @@ function normalizeRow(row: SecurityRow): Omit<EmergencySecurityState, "environme
   };
 }
 
-async function dbState() {
+async function dbState(): Promise<Omit<EmergencySecurityState, "environmentHardLock">> {
   try {
     await prisma.$executeRaw`
       INSERT INTO "SystemSecurityState" (
@@ -153,7 +154,7 @@ async function writeState(
         action: auditAction,
         resource: "system-security",
         resourceId: GLOBAL_ID,
-        metadata: auditMetadata,
+        metadata: auditMetadata as Prisma.InputJsonObject,
       },
     });
   });
@@ -222,7 +223,7 @@ export async function updateEmergencyControls(input: {
   disabledProviderIds?: string[];
 }) {
   const current = await dbState();
-  const next = {
+  const next: Omit<EmergencySecurityState, "environmentHardLock"> = {
     ...current,
     maintenanceMode: input.maintenanceMode ?? current.maintenanceMode,
     generationDisabled: input.generationDisabled ?? current.generationDisabled,
@@ -263,4 +264,20 @@ export async function assertEmergencyCapability(capability: EmergencyCapability,
   if (capability === "llm" && state.llmDisabled) throw new Error(`LLM_DISABLED:${state.reason || "SECURITY_CONTROL"}`);
   if (capability === "payment" && state.paymentDisabled) throw new Error(`PAYMENT_DISABLED:${state.reason || "SECURITY_CONTROL"}`);
   return state;
+}
+
+export async function enforceEmergencyRateLimit(bucketKey: string, limitPerMinute: number) {
+  const state = await getEmergencySecurityState();
+  if (!state.emergencyRateLimitEnabled || state.lockdownEnabled) return;
+  const limit = Math.max(1, Math.floor(limitPerMinute));
+  const now = new Date();
+  const windowStart = new Date(now);
+  windowStart.setSeconds(0, 0);
+  const rows = await prisma.$queryRaw<Array<{ count: number }>>`
+    INSERT INTO "EmergencyRateLimitBucket" ("bucketKey","windowStart","count","updatedAt")
+    VALUES (${bucketKey},${windowStart},1,NOW())
+    ON CONFLICT ("bucketKey","windowStart") DO UPDATE SET "count"="EmergencyRateLimitBucket"."count"+1,"updatedAt"=NOW()
+    RETURNING "count"`;
+  const count = Number(rows[0]?.count || 0);
+  if (count > limit) throw new Error(`EMERGENCY_RATE_LIMIT_EXCEEDED:${bucketKey}:${limit}/min`);
 }
