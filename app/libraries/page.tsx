@@ -21,15 +21,20 @@ const TABS: { id: Tab; label: string; desc: string; icon: string }[] = [
 
 const BUILTIN: Record<Exclude<Tab, "videos">, Item[]> = {
   images: [
-    { id: "anime", title: "Cinematic Anime", description: "อนิเมะภาพยนตร์ แสงมีมิติ เหมาะกับเรื่องเล่าและฉากอารมณ์", tag: "Anime • Cinematic", visual: "anime", icon: "✦" },
-    { id: "golden", title: "Warm Golden Hour", description: "แสงเย็นสีทอง อบอุ่น นุ่ม เหมาะกับ Romance และ Slice of Life", tag: "Warm • Emotional", visual: "golden", icon: "☀" },
-    { id: "real", title: "Photorealistic Film", description: "ภาพสมจริงโทนฟิล์ม ผิวและวัสดุเป็นธรรมชาติ", tag: "Realistic • Film", visual: "real", icon: "◫" },
-    { id: "action", title: "Action Blockbuster", description: "ภาพคอนทราสต์สูง จังหวะเร็ว เหมาะกับ Chase และ Combat", tag: "Action • Dynamic", visual: "action", icon: "⚡" },
-    { id: "scifi", title: "Sci‑Fi Future", description: "เมืองอนาคต เทคโนโลยี แสงคม และบรรยากาศไซไฟ", tag: "Sci‑Fi • Future", visual: "scifi", icon: "⬡" },
+    { id: "anime", title: "Cinematic Anime", description: "อนิเมะภาพยนตร์ แสงมีมิติ เหมาะกับเรื่องเล่า Coming-of-age และ Fantasy", tag: "Anime • Cinematic", visual: "anime", icon: "✦", url: "/library/styles/cinematic-anime.jpg" },
+    { id: "golden", title: "Warm Golden Hour", description: "แสงเย็นสีทอง อบอุ่น นุ่ม เหมาะกับ Romance, Slice of Life และฉากความทรงจำ", tag: "Warm • Emotional", visual: "golden", icon: "☀", url: "/library/styles/warm-golden-hour.jpg" },
+    { id: "real", title: "Photorealistic Film", description: "ภาพสมจริงแบบภาพยนตร์ ผิว วัสดุ และแสงเป็นธรรมชาติ", tag: "Realistic • Film", visual: "real", icon: "◫", url: "/library/styles/photorealistic-film.jpg" },
+    { id: "action", title: "Action Blockbuster", description: "ภาพพลังงานสูง คอนทราสต์แรง เหมาะกับ Chase, Combat และฉากแอ็กชันขนาดใหญ่", tag: "Action • Dynamic", visual: "action", icon: "⚡", url: "/library/styles/action-blockbuster.jpg" },
+    { id: "scifi", title: "Sci-Fi Neon", description: "เมืองอนาคต เทคโนโลยี แสงนีออน และโครงสร้างล้ำยุค", tag: "Sci-Fi • Neon", visual: "scifi", icon: "⬡", url: "/library/styles/sci-fi-neon.jpg" },
+    { id: "fantasy", title: "Fantasy Storybook", description: "โลกแฟนตาซีขนาดใหญ่ แสงเหนือจริง และภูมิทัศน์มหัศจรรย์", tag: "Fantasy • Epic", visual: "plot", icon: "✦", url: "/library/styles/fantasy-storybook.jpg" },
+    { id: "thriller", title: "Dark Thriller", description: "ตรอกกลางคืนเปียกฝน แสงน้อย คอนทราสต์จัด เหมาะกับ Crime, Noir และ Suspense", tag: "Thriller • Noir", visual: "action", icon: "◐", url: "/library/styles/dark-thriller.jpg" },
+    { id: "gothic", title: "Gothic Horror", description: "คฤหาสน์โกธิก หมอกกลางคืน และโทนเย็นลึกลับ เหมาะกับ Horror และ Dark Fantasy", tag: "Gothic • Horror", visual: "real", icon: "◇", url: "/library/styles/gothic-horror.jpg" },
+    { id: "romance", title: "Cinematic Romance", description: "โทนอุ่นยามอาทิตย์ตก ชัดตื้น และอารมณ์ใกล้ชิด เหมาะกับ Romance และ Emotional Drama", tag: "Romance • Warm", visual: "golden", icon: "♡", url: "/library/styles/cinematic-romance.jpg" },
+    { id: "period", title: "Period Drama", description: "งานย้อนยุคหรูหรา เครื่องแต่งกายและสถาปัตยกรรมละเอียด เหมาะกับ Historical และ Costume Film", tag: "Period • Elegant", visual: "plot", icon: "♜", url: "/library/styles/period-drama.jpg" },
   ],
   voices: [
     { id: "mira", title: "Mira", description: "หญิง • อบอุ่น • เป็นธรรมชาติ เหมาะกับ Drama และ Slice of Life", tag: "หญิง • Warm", visual: "voice", icon: "♫" },
-    { id: "nami", title: "Nami", description: "หญิง • สดใส • วัยรุ่น เหมาะกับ Anime และ Coming‑of‑age", tag: "หญิง • Bright", visual: "voice", icon: "♫" },
+    { id: "nami", title: "Nami", description: "หญิง • สดใส • วัยรุ่น เหมาะกับ Anime และ Coming-of-age", tag: "หญิง • Bright", visual: "voice", icon: "♫" },
     { id: "arin", title: "Arin", description: "ชาย • สุขุม • ภาพยนตร์ เหมาะกับ Narration และตัวละครนิ่ง", tag: "ชาย • Calm", visual: "voice", icon: "♫" },
     { id: "keen", title: "Keen", description: "ชาย • หนักแน่น • แอ็กชัน เหมาะกับ Hero และ Tactical", tag: "ชาย • Strong", visual: "voice", icon: "♫" },
   ],
@@ -41,7 +46,7 @@ const BUILTIN: Record<Exclude<Tab, "videos">, Item[]> = {
   pets: [
     { id: "pet1", title: "แมว", description: "สัตว์เลี้ยงทั่วไป เหมาะกับ Slice of Life และ Family", tag: "Pet • Cat", visual: "pet", icon: "◇" },
     { id: "pet2", title: "Fantasy Creature", description: "สิ่งมีชีวิตแฟนตาซีตัวเล็กสำหรับเรื่องผจญภัยและมิตรภาพ", tag: "Fantasy • Creature", visual: "pet", icon: "◇" },
-    { id: "pet3", title: "Robot Companion", description: "หุ่นยนต์คู่หูขนาดเล็กสำหรับ Sci‑Fi และ Future City", tag: "Sci‑Fi • Robot", visual: "pet", icon: "◇" },
+    { id: "pet3", title: "Robot Companion", description: "หุ่นยนต์คู่หูขนาดเล็กสำหรับ Sci-Fi และ Future City", tag: "Sci-Fi • Robot", visual: "pet", icon: "◇" },
   ],
   ambience: [
     { id: "amb1", title: "ฝนในเมือง", description: "ฝนตกเบา ๆ ถนนเปียก รถไกล ๆ เหมาะกับ Drama และ Mystery", tag: "Rain • City", visual: "ambience", icon: "≈" },
@@ -50,12 +55,13 @@ const BUILTIN: Record<Exclude<Tab, "videos">, Item[]> = {
   ],
   plots: [
     { id: "plot1", title: "พบสิ่งมีชีวิตลึกลับ", description: "มิตรภาพเริ่มจากการพบกันโดยบังเอิญ เหมาะกับ Fantasy Short Film", tag: "Fantasy • Friendship", visual: "plot", icon: "✦" },
-    { id: "plot2", title: "ความลับในเมืองอนาคต", description: "ตัวละครค้นพบข้อมูลที่เปลี่ยนความจริงของเมืองทั้งเมือง", tag: "Sci‑Fi • Mystery", visual: "plot", icon: "✦" },
+    { id: "plot2", title: "ความลับในเมืองอนาคต", description: "ตัวละครค้นพบข้อมูลที่เปลี่ยนความจริงของเมืองทั้งเมือง", tag: "Sci-Fi • Mystery", visual: "plot", icon: "✦" },
     { id: "plot3", title: "ภารกิจไล่ล่า", description: "เป้าหมายชัด จังหวะเร็ว มี Chase และจุดพลิกกลางเรื่อง", tag: "Action • Chase", visual: "plot", icon: "✦" },
   ],
 };
 
 const isTab = (value: string | null): value is Tab => TABS.some((item) => item.id === value);
+const normalizeTitle = (value: string) => value.trim().toLowerCase().replace(/[^a-z0-9ก-๙]+/g, " ").trim();
 
 export default function LibrariesPage() {
   const [tab, setTab] = useState<Tab>("images");
@@ -87,7 +93,11 @@ export default function LibrariesPage() {
   const items = useMemo<Item[]>(() => {
     if (tab === "videos") return videos.map((video) => ({ id: video.id, title: `EP.${String(video.ep).padStart(2, "0")} — ${video.epTitle}`, description: `${video.projectTitle} • ${video.duration} วินาที`, tag: video.status === "completed" ? "สร้างเสร็จแล้ว" : "กำลังประมวลผล", visual: "video", icon: "▶", url: video.url, ep: video.ep, duration: video.duration }));
     const builtins = BUILTIN[tab];
-    const admin = apiItems.filter((item) => item.kind === tab).map((item) => ({ id: item.id, title: item.title, description: item.description, tag: "SCENOVA Library", visual: tab === "voices" ? "voice" : tab === "characters" ? "character" : tab === "pets" ? "pet" : tab === "ambience" ? "ambience" : tab === "plots" ? "plot" : "anime", icon: current.icon, url: item.assetUrl }));
+    const builtinTitles = new Set(builtins.map((item) => normalizeTitle(item.title)));
+    const admin = apiItems
+      .filter((item) => item.kind === tab)
+      .filter((item) => !builtinTitles.has(normalizeTitle(item.title)))
+      .map((item) => ({ id: item.id, title: item.title, description: item.description, tag: "SCENOVA Library", visual: tab === "voices" ? "voice" : tab === "characters" ? "character" : tab === "pets" ? "pet" : tab === "ambience" ? "ambience" : tab === "plots" ? "plot" : "anime", icon: current.icon, url: item.assetUrl }));
     return [...builtins, ...admin];
   }, [tab, videos, apiItems, current.icon]);
 
@@ -114,7 +124,7 @@ export default function LibrariesPage() {
       <div className={styles.tabs}>{TABS.map((item) => <button key={item.id} className={tab === item.id ? styles.active : ""} onClick={() => selectTab(item.id)}>{item.icon} {item.label}</button>)}</div>
 
       <section className={styles.section}>
-        <div className={styles.sectionHead}><div><h2>{current.label}</h2><p>{current.desc} — ดูตัวอย่างก่อนนำไปใช้ใน Creator หรือ EP</p></div><small>{filtered.length} รายการ</small></div>
+        <div className={styles.sectionHead}><div><h2>{current.label}</h2><p>{current.desc} — ดูตัวอย่างก่อนนำไปใช้ใน Studio หรือ Series</p></div><small>{filtered.length} รายการ</small></div>
         <div className={styles.toolbar}><input className={styles.search} placeholder={`ค้นหาใน${current.label}...`} value={search} onChange={(e) => setSearch(e.target.value)} /><span className={styles.count}>เลือกประเภทด้านบน ไม่ต้องเปลี่ยนหน้า</span></div>
         <div className={styles.grid}>
           {filtered.map((item) => (
@@ -124,7 +134,7 @@ export default function LibrariesPage() {
                 {tab === "videos" ? <div className={styles.videoMeta}><span>EP {item.ep}</span><span>{item.duration}s</span></div> : null}
                 <div className={styles.actions}>
                   {tab === "voices" ? <button onClick={() => playVoice(item.title)}>▶ ฟังตัวอย่าง</button> : tab === "videos" && item.url ? <a className={styles.primary} href={item.url} download={`SCENOVA-${item.title}.mp4`}>↓ ดาวน์โหลด</a> : <button className={styles.primary}>ใช้รายการนี้</button>}
-                  {tab !== "videos" ? <button>ดูรายละเอียด</button> : null}
+                  {tab !== "videos" ? <Link href={`/libraries/${tab}`}>ดูรายละเอียด</Link> : null}
                 </div>
               </div>
             </article>
