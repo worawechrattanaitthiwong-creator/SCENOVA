@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "build": "next build",
     "dev": "next dev",
     "dev:fast": "next dev --turbopack",
-    "build": "next build",
     "start": "next start",
     "agent:worker": "tsx scripts/agent-worker.ts",
     "emergency:status": "tsx scripts/emergency-security.ts status",
@@ -17,11 +17,16 @@
     "test": "vitest run",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
   },
   "dependencies": {
+    "@opennextjs/cloudflare": "^1.20.2",
     "@prisma/client": "6.14.0",
-    "next": "15.5.2",
+    "next": "^15.5.21",
     "react": "19.1.1",
     "react-dom": "19.1.1",
     "zod": "3.25.76"
@@ -33,6 +38,7 @@
     "prisma": "6.14.0",
     "tsx": "4.20.5",
     "typescript": "5.9.2",
-    "vitest": "3.2.4"
+    "vitest": "3.2.4",
+    "wrangler": "^4.125.0"
   }
 }
