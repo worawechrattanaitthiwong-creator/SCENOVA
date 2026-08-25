@@ -32,6 +32,7 @@ export interface WalletService {
     referenceId: string;
     idempotencyKey: string;
     category?: string;
+    quoteId?: string | null;
     metadata?: Record<string, unknown>;
     expiresAt?: Date | null;
   }): Promise<CreditReservation>;
@@ -73,6 +74,10 @@ function jsonObject(value?: Record<string, unknown>): Prisma.InputJsonObject {
   return (value || {}) as Prisma.InputJsonObject;
 }
 
+function metadataRecord(value: Prisma.JsonValue | null) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
 /**
  * Production wallet adapter.
  * - Server is the only source of truth for price.
@@ -83,11 +88,7 @@ function jsonObject(value?: Record<string, unknown>): Prisma.InputJsonObject {
  */
 export class PrismaWalletService implements WalletService {
   async getBalance(userId: string): Promise<CreditBalance> {
-    const wallet = await prisma.wallet.upsert({
-      where: { userId },
-      update: {},
-      create: { userId },
-    });
+    const wallet = await prisma.wallet.upsert({ where: { userId }, update: {}, create: { userId } });
     const total = wallet.paidBalance + wallet.bonusBalance;
     return { paid: wallet.paidBalance, bonus: wallet.bonusBalance, reserved: wallet.reserved, available: Math.max(0, total - wallet.reserved) };
   }
@@ -99,11 +100,13 @@ export class PrismaWalletService implements WalletService {
     referenceId: string;
     idempotencyKey: string;
     category?: string;
+    quoteId?: string | null;
     metadata?: Record<string, unknown>;
     expiresAt?: Date | null;
   }): Promise<CreditReservation> {
     const credits = assertCredits(input.credits);
     const category = input.category || input.purpose.toUpperCase().replaceAll("-", "_");
+    const metadata = { quoteId: input.quoteId || null, ...input.metadata };
 
     return prisma.$transaction(async (tx) => {
       const existing = await tx.creditReservation.findUnique({ where: { idempotencyKey: input.idempotencyKey } });
@@ -116,36 +119,22 @@ export class PrismaWalletService implements WalletService {
       const id = randomUUID();
       const reservation = await tx.creditReservation.create({
         data: {
-          id,
-          walletId: wallet.id,
-          userId: input.userId,
-          credits,
-          purpose: input.purpose,
-          category,
-          referenceId: input.referenceId,
-          idempotencyKey: input.idempotencyKey,
-          metadata: jsonObject(input.metadata),
-          expiresAt: input.expiresAt ?? null,
+          id, walletId: wallet.id, userId: input.userId, credits, purpose: input.purpose, category, referenceId: input.referenceId,
+          idempotencyKey: input.idempotencyKey, metadata: jsonObject(metadata), expiresAt: input.expiresAt ?? null,
         },
       });
-
       await tx.wallet.update({ where: { id: wallet.id }, data: { reserved: { increment: credits } } });
       await tx.walletLedger.create({
         data: {
-          walletId: wallet.id,
-          type: "RESERVE",
-          credits: 0,
-          balanceAfter: wallet.paidBalance + wallet.bonusBalance,
-          referenceType: "credit-reservation",
-          referenceId: id,
-          idempotencyKey: `${input.idempotencyKey}:reserve`,
-          metadata: jsonObject({ reservedCredits: credits, purpose: input.purpose, category, ...input.metadata }),
+          walletId: wallet.id, type: "RESERVE", credits: 0, balanceAfter: wallet.paidBalance + wallet.bonusBalance,
+          referenceType: "credit-reservation", referenceId: id, idempotencyKey: `${input.idempotencyKey}:reserve`,
+          metadata: jsonObject({ reservedCredits: credits, purpose: input.purpose, category, ...metadata }),
         },
       });
       await tx.costUsageEvent.create({
         data: {
-          id: randomUUID(), userId: input.userId, category, label: `Reserve ${input.purpose}`, phase: "RESERVE", credits,
-          referenceType: "credit-reservation", referenceId: id, metadata: jsonObject(input.metadata),
+          id: randomUUID(), userId: input.userId, quoteId: input.quoteId || null, category, label: `Reserve ${input.purpose}`, phase: "RESERVE", credits,
+          referenceType: "credit-reservation", referenceId: id, metadata: jsonObject(metadata),
         },
       });
       return mapReservation(reservation);
@@ -169,42 +158,34 @@ export class PrismaWalletService implements WalletService {
       if (bonusCharge > wallet.bonusBalance) throw new Error("INSUFFICIENT_CREDITS_AT_SETTLEMENT");
       const paidAfter = wallet.paidBalance - paidCharge;
       const bonusAfter = wallet.bonusBalance - bonusCharge;
+      const oldMetadata = metadataRecord(reservation.metadata);
+      const quoteId = typeof oldMetadata.quoteId === "string" ? oldMetadata.quoteId : null;
 
-      await tx.wallet.update({
-        where: { id: wallet.id },
-        data: { paidBalance: paidAfter, bonusBalance: bonusAfter, reserved: { decrement: reservation.credits } },
-      });
+      await tx.wallet.update({ where: { id: wallet.id }, data: { paidBalance: paidAfter, bonusBalance: bonusAfter, reserved: { decrement: reservation.credits } } });
       const updated = await tx.creditReservation.update({
         where: { id: reservation.id },
         data: {
-          status: "charged",
-          chargedCredits: actual,
-          metadata: jsonObject({
-            ...(reservation.metadata && typeof reservation.metadata === "object" && !Array.isArray(reservation.metadata) ? reservation.metadata as Record<string, unknown> : {}),
-            chargedPaid: paidCharge,
-            chargedBonus: bonusCharge,
-            releasedUnusedReservation: reservation.credits - actual,
-          }),
+          status: "charged", chargedCredits: actual,
+          metadata: jsonObject({ ...oldMetadata, chargedPaid: paidCharge, chargedBonus: bonusCharge, releasedUnusedReservation: reservation.credits - actual }),
         },
       });
       await tx.walletLedger.create({
         data: {
           walletId: wallet.id, type: "CHARGE", credits: -actual, balanceAfter: paidAfter + bonusAfter,
-          referenceType: "credit-reservation", referenceId: reservation.id,
-          idempotencyKey: `${reservation.idempotencyKey}:charge`,
-          metadata: jsonObject({ category: reservation.category, purpose: reservation.purpose, reservedCredits: reservation.credits, actualCredits: actual }),
+          referenceType: "credit-reservation", referenceId: reservation.id, idempotencyKey: `${reservation.idempotencyKey}:charge`,
+          metadata: jsonObject({ category: reservation.category, purpose: reservation.purpose, reservedCredits: reservation.credits, actualCredits: actual, quoteId }),
         },
       });
       await tx.costUsageEvent.create({
         data: {
-          id: randomUUID(), userId: reservation.userId, category: reservation.category, label: `Charge ${reservation.purpose}`,
+          id: randomUUID(), userId: reservation.userId, quoteId, category: reservation.category, label: `Charge ${reservation.purpose}`,
           phase: "CHARGE", credits: actual, referenceType: "credit-reservation", referenceId: reservation.id,
         },
       });
       if (actual < reservation.credits) {
         await tx.costUsageEvent.create({
           data: {
-            id: randomUUID(), userId: reservation.userId, category: reservation.category, label: "Unused reservation released",
+            id: randomUUID(), userId: reservation.userId, quoteId, category: reservation.category, label: "Unused reservation released",
             phase: "RELEASE", credits: reservation.credits - actual, referenceType: "credit-reservation", referenceId: reservation.id,
           },
         });
@@ -220,19 +201,18 @@ export class PrismaWalletService implements WalletService {
       if (reservation.status === "refunded") return mapReservation(reservation);
       const wallet = await tx.wallet.findUnique({ where: { id: reservation.walletId } });
       if (!wallet) throw new Error("WALLET_NOT_FOUND");
+      const oldMetadata = metadataRecord(reservation.metadata);
+      const quoteId = typeof oldMetadata.quoteId === "string" ? oldMetadata.quoteId : null;
 
       let paidAfter = wallet.paidBalance;
       let bonusAfter = wallet.bonusBalance;
       let reservedAfter = wallet.reserved;
       let restored = 0;
-
       if (reservation.status === "reserved") {
         reservedAfter = Math.max(0, wallet.reserved - reservation.credits);
       } else if (reservation.status === "charged") {
-        const metadata = reservation.metadata && typeof reservation.metadata === "object" && !Array.isArray(reservation.metadata)
-          ? reservation.metadata as Record<string, unknown> : {};
-        const paidRestore = Math.max(0, Number(metadata.chargedPaid || reservation.chargedCredits));
-        const bonusRestore = Math.max(0, Number(metadata.chargedBonus || 0));
+        const paidRestore = Math.max(0, Number(oldMetadata.chargedPaid || reservation.chargedCredits));
+        const bonusRestore = Math.max(0, Number(oldMetadata.chargedBonus || 0));
         paidAfter += paidRestore;
         bonusAfter += bonusRestore;
         restored = paidRestore + bonusRestore;
@@ -243,13 +223,13 @@ export class PrismaWalletService implements WalletService {
       await tx.walletLedger.create({
         data: {
           walletId: wallet.id, type: "REFUND", credits: restored, balanceAfter: paidAfter + bonusAfter,
-          referenceType: "credit-reservation", referenceId: reservation.id,
-          idempotencyKey: `${reservation.idempotencyKey}:refund`, metadata: jsonObject({ reason, restoredCredits: restored }),
+          referenceType: "credit-reservation", referenceId: reservation.id, idempotencyKey: `${reservation.idempotencyKey}:refund`,
+          metadata: jsonObject({ reason, restoredCredits: restored, quoteId }),
         },
       });
       await tx.costUsageEvent.create({
         data: {
-          id: randomUUID(), userId: reservation.userId, category: reservation.category, label: "Refund / release reservation",
+          id: randomUUID(), userId: reservation.userId, quoteId, category: reservation.category, label: "Refund / release reservation",
           phase: "REFUND", credits: reservation.status === "reserved" ? reservation.credits : restored,
           referenceType: "credit-reservation", referenceId: reservation.id, metadata: jsonObject({ reason }),
         },
