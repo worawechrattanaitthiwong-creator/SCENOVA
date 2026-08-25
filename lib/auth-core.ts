@@ -1,4 +1,5 @@
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "crypto";
+import type { User } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getEmergencySecurityState } from "@/lib/emergency-security";
 import { decryptTwoFactorSecret, hashRecoveryCode, verifyTotp } from "@/lib/two-factor";
@@ -78,7 +79,7 @@ export async function listMembers() {
     orderBy: { createdAt: "desc" },
   });
 
-  return users.map((user) => ({
+  return users.map((user: User) => ({
     ...toSessionUser(user),
     active: user.active,
     createdAt: user.createdAt.toISOString(),
