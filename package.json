@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "prebuild": "prisma generate",
     "build": "next build",
     "dev": "next dev",
     "dev:fast": "next dev --turbopack",
@@ -12,7 +13,9 @@
     "emergency:lockdown": "tsx scripts/emergency-security.ts lockdown",
     "emergency:revoke-sessions": "tsx scripts/emergency-security.ts revoke-sessions",
     "emergency:restore": "tsx scripts/emergency-security.ts restore",
+    "prelint": "prisma generate",
     "lint": "tsc --noEmit",
+    "pretypecheck": "prisma generate",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "db:generate": "prisma generate",
@@ -20,6 +23,7 @@
     "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "predeploy": "prisma generate",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
