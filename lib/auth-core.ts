@@ -16,6 +16,13 @@ function sessionSecret() {
   throw new Error("SESSION_SECRET_REQUIRED");
 }
 
+function adminBootstrapCredentials() {
+  return {
+    email: (process.env.SCENOVA_ADMIN_EMAIL || (process.env.NODE_ENV !== "production" ? "admin@scenova.local" : "")).trim().toLowerCase(),
+    password: process.env.SCENOVA_ADMIN_PASSWORD || (process.env.NODE_ENV !== "production" ? "admin1234" : ""),
+  };
+}
+
 export function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
   const hash = scryptSync(password, salt, 64).toString("hex");
@@ -84,18 +91,17 @@ export async function authenticatePassword(emailInput: string, password: string)
   const email = emailInput.trim().toLowerCase();
   if (!email || !password) return null;
 
+  const admin = adminBootstrapCredentials();
   let user = await prisma.user.findUnique({ where: { email } });
 
-  // Bootstrap the very first Admin from environment variables.
+  // Bootstrap the first Admin from environment variables.
   if (!user) {
-    const adminEmail = (process.env.SCENOVA_ADMIN_EMAIL || (process.env.NODE_ENV !== "production" ? "admin@scenova.local" : "")).trim().toLowerCase();
-    const adminPassword = process.env.SCENOVA_ADMIN_PASSWORD || (process.env.NODE_ENV !== "production" ? "admin1234" : "");
-    if (adminEmail && adminPassword && email === adminEmail && password === adminPassword) {
+    if (admin.email && admin.password && email === admin.email && password === admin.password) {
       user = await prisma.user.create({
         data: {
-          email: adminEmail,
+          email: admin.email,
           displayName: "SCENOVA Admin",
-          passwordHash: hashPassword(adminPassword),
+          passwordHash: hashPassword(admin.password),
           role: "ADMIN",
           active: true,
           wallet: { create: {} },
@@ -106,7 +112,24 @@ export async function authenticatePassword(emailInput: string, password: string)
     }
   }
 
-  if (!user.active || !verifyPassword(password, user.passwordHash)) return null;
+  if (!user.active) return null;
+
+  let passwordValid = verifyPassword(password, user.passwordHash);
+
+  // Production recovery path: SCENOVA_ADMIN_PASSWORD is also a break-glass
+  // credential for the configured Admin account. This fixes the common case
+  // where the environment password was changed after the Admin row had already
+  // been bootstrapped. It never promotes MEMBER accounts to ADMIN.
+  const isConfiguredAdmin = user.role === "ADMIN" && Boolean(admin.email) && user.email.toLowerCase() === admin.email;
+  if (!passwordValid && isConfiguredAdmin && admin.password && password === admin.password) {
+    user = await prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash: hashPassword(admin.password) },
+    });
+    passwordValid = true;
+  }
+
+  if (!passwordValid) return null;
   const emergency = await getEmergencySecurityState();
   if ((emergency.newLoginRestricted || emergency.maintenanceMode) && user.role !== "ADMIN") return null;
   return { ...toSessionUser(user), twoFactorEnabled: user.twoFactorEnabled };
