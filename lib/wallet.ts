@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { assertEmergencyCapability } from "@/lib/emergency-security";
 
 export type CreditBalance = {
   paid: number;
@@ -85,6 +86,7 @@ function metadataRecord(value: Prisma.JsonValue | null) {
  * - Charge atomically releases the reservation and deducts actual usage.
  * - Refund releases a reservation, or restores a previously charged amount.
  * - Every mutation is idempotent and leaves a WalletLedger + CostUsageEvent trail.
+ * - Emergency Security Center can freeze every wallet mutation immediately.
  */
 export class PrismaWalletService implements WalletService {
   async getBalance(userId: string): Promise<CreditBalance> {
@@ -104,6 +106,7 @@ export class PrismaWalletService implements WalletService {
     metadata?: Record<string, unknown>;
     expiresAt?: Date | null;
   }): Promise<CreditReservation> {
+    await assertEmergencyCapability("payment");
     const credits = assertCredits(input.credits);
     const category = input.category || input.purpose.toUpperCase().replaceAll("-", "_");
     const metadata = { quoteId: input.quoteId || null, ...input.metadata };
@@ -142,6 +145,7 @@ export class PrismaWalletService implements WalletService {
   }
 
   async charge(reservationId: string, actualCredits?: number): Promise<CreditReservation> {
+    await assertEmergencyCapability("payment");
     return prisma.$transaction(async (tx) => {
       const reservation = await tx.creditReservation.findUnique({ where: { id: reservationId } });
       if (!reservation) throw new Error("CREDIT_RESERVATION_NOT_FOUND");
@@ -195,6 +199,7 @@ export class PrismaWalletService implements WalletService {
   }
 
   async refund(reservationId: string, reason: string): Promise<CreditReservation> {
+    await assertEmergencyCapability("payment");
     return prisma.$transaction(async (tx) => {
       const reservation = await tx.creditReservation.findUnique({ where: { id: reservationId } });
       if (!reservation) throw new Error("CREDIT_RESERVATION_NOT_FOUND");
