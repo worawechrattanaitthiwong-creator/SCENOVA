@@ -6,6 +6,7 @@ export type GenerateVideoRequest = {
   renderSegment: RenderSegment;
   prompt: PromptBundle;
   resolution: Resolution;
+  aspectRatio?: string;
   imageReferences: string[];
   videoReferences: string[];
   audioReferences: string[];
@@ -18,6 +19,12 @@ export type GenerateVideoResult = {
   outputUrl?: string;
   lastFrameUrl?: string;
   error?: string;
+  usage?: {
+    totalTokens?: number;
+    outputTokens?: number;
+    durationSec?: number;
+    resolution?: string;
+  };
 };
 
 export interface VideoProvider {
