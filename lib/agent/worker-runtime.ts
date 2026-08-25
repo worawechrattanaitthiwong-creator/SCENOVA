@@ -1,15 +1,15 @@
-import type { Project, PromptBundle } from "@/lib/domain";
+import type { Project } from "@/lib/domain";
 import { planGeneration, type PlannedGeneration } from "@/lib/orchestrator";
 import { planEpisodeRender } from "@/lib/render-planner";
 import type { GenerateVideoRequest } from "@/lib/providers/video-provider";
-import { getVideoProviderMap, resolveAlternateProvider, selectVideoProvider } from "@/lib/providers/provider-registry";
+import { getVideoProviderById, getVideoProviderMap, resolveAlternateProvider, selectVideoProvider } from "@/lib/providers/provider-registry";
 import { getAgentPolicy } from "@/lib/agent/policy";
 import { decideAgentRecovery } from "@/lib/agent/recovery";
 import { chooseAgentAction, type AgentBrainDecision } from "@/lib/agent/brain";
 import { assertAgentToolAllowed } from "@/lib/agent/tools";
 import {
   claimNextAgentJob, completeAgentJob, enqueueAgentStep, failExpiredAgentJobs, failOrRequeueAgentJob, getAgentRun, getApprovedAgentBudget,
-  getUserAgentSpendWindows, pauseAgentRun, recordAgentDecision, requestAgentApproval, saveAgentRun,
+  getUserAgentSpendWindows, heartbeatAgentJob, pauseAgentRun, recordAgentDecision, requestAgentApproval, saveAgentRun,
 } from "@/lib/agent/store";
 import type { AgentQueueJobRecord, AgentRunRecord } from "@/lib/agent/types";
 import { PrismaWalletService } from "@/lib/wallet";
@@ -50,7 +50,6 @@ type AgentState = {
 
 function stateOf(run: AgentRunRecord): AgentState { return (run.stateJson || {}) as AgentState; }
 function inputOf(run: AgentRunRecord): AgentInput { return run.inputJson as AgentInput; }
-
 function episodeIndexOf(run: AgentRunRecord, input: AgentInput, state: AgentState) {
   return typeof state.currentEpisodeIndex === "number" ? state.currentEpisodeIndex : Number(input.startEpisodeIndex || 0);
 }
@@ -147,28 +146,23 @@ async function processAgentStage(run: AgentRunRecord, job: AgentQueueJobRecord) 
     const decision = await brainDecision(run, project, episodeIndex, job.attempts);
     if (await honorPauseDecision(run, decision)) return;
     assertAgentToolAllowed({ run, tool: "improve_prompt" });
-    const planned = await planGeneration(project, episodeIndex, {
-      promptContext: { userId: run.userId, runId: run.id },
-      providers: getVideoProviderMap(),
-    });
+    const planned = await planGeneration(project, episodeIndex, { promptContext: { userId: run.userId, runId: run.id }, providers: getVideoProviderMap() });
     const plannedCosts = { ...(state.plannedCosts || {}), [String(episodeIndex)]: planned.estimatedTotalThb };
     state.plannedCosts = plannedCosts;
     run.planJson = planned;
     run.estimatedSpendThb = Object.values(plannedCosts).reduce((sum, amount) => sum + Number(amount || 0), 0);
 
     if (!state.costQuoteIds?.[String(episodeIndex)]) {
-      const quote = await createCostQuote({
-        userId: run.userId,
-        referenceType: "episode-generation",
-        referenceId: `${project.id}:${episode.id}`,
-        items: quoteItems(planned),
-      });
+      const quote = await createCostQuote({ userId: run.userId, referenceType: "episode-generation", referenceId: `${project.id}:${episode.id}`, items: quoteItems(planned) });
       state.costQuoteIds = { ...(state.costQuoteIds || {}), [String(episodeIndex)]: quote.quoteId };
     }
     run.stateJson = state as Record<string, unknown>;
 
     if (run.estimatedSpendThb > run.budgetThb) {
-      run.status = "FAILED"; run.stage = "FAILED"; run.stopReason = `แผนประมาณ ${run.estimatedSpendThb.toFixed(2)} THB เกิน hard budget ${run.budgetThb.toFixed(2)} THB`; run.finishedAt = new Date();
+      run.status = "FAILED";
+      run.stage = "FAILED";
+      run.stopReason = `แผนประมาณ ${run.estimatedSpendThb.toFixed(2)} THB เกิน hard budget ${run.budgetThb.toFixed(2)} THB`;
+      run.finishedAt = new Date();
       await saveAgentRun(run);
       await recordAgentDecision({ runId: run.id, stage: "BUILD_PROMPTS", action: "BUDGET_BLOCK", reason: run.stopReason, metadata: { estimatedSpendThb: run.estimatedSpendThb, budgetThb: run.budgetThb } });
       return;
@@ -178,7 +172,9 @@ async function processAgentStage(run: AgentRunRecord, job: AgentQueueJobRecord) 
     if (run.estimatedSpendThb > run.approvalThresholdThb && approvedBudget < run.estimatedSpendThb) {
       assertAgentToolAllowed({ run, tool: "request_approval" });
       await requestAgentApproval({ runId: run.id, estimatedCostThb: run.estimatedSpendThb, summary: `Agent ขออนุมัติแผนสูงสุด ${run.maxEpisodes} Episode มูลค่าประมาณ ${run.estimatedSpendThb.toFixed(2)} THB` });
-      run.status = "WAITING_APPROVAL"; run.stage = "AWAIT_APPROVAL"; run.stopReason = "รอผู้ใช้อนุมัติงบประมาณก่อน Generate";
+      run.status = "WAITING_APPROVAL";
+      run.stage = "AWAIT_APPROVAL";
+      run.stopReason = "รอผู้ใช้อนุมัติงบประมาณก่อน Generate";
       await saveAgentRun(run);
       await recordAgentDecision({ runId: run.id, stage: "AWAIT_APPROVAL", action: "HUMAN_CHECKPOINT", reason: run.stopReason, metadata: { estimatedSpendThb: run.estimatedSpendThb, quoteId: state.costQuoteIds?.[String(episodeIndex)] } });
       return;
@@ -219,7 +215,7 @@ async function processAgentStage(run: AgentRunRecord, job: AgentQueueJobRecord) 
     state.selectedProviderId = provider.id;
     const renderPlan = planEpisodeRender(project, episode);
     const planned = run.planJson as PlannedGeneration | null;
-    const prompt: PromptBundle = planned?.promptBundle;
+    const prompt = planned?.promptBundle;
     if (!prompt) throw new Error("AGENT_PROMPT_BUNDLE_NOT_FOUND");
     const approvedBudget = await getApprovedAgentBudget(run.id);
     const spendWindows = await getUserAgentSpendWindows(run.userId);
@@ -233,14 +229,28 @@ async function processAgentStage(run: AgentRunRecord, job: AgentQueueJobRecord) 
       const existingIndex = outputs.findIndex((output) => output.order === renderSegment.order && output.status !== "failed");
       let output = existingIndex >= 0 ? outputs[existingIndex] : undefined;
       const requestBase: Omit<GenerateVideoRequest, "idempotencyKey"> = {
-        projectId: project.id, episodeId: episode.id, renderSegment, prompt, resolution: project.resolution, aspectRatio: project.aspectRatio,
-        imageReferences: [], videoReferences: [], audioReferences: [],
+        projectId: project.id,
+        episodeId: episode.id,
+        renderSegment,
+        prompt,
+        resolution: project.resolution,
+        aspectRatio: project.aspectRatio,
+        imageReferences: [],
+        videoReferences: [],
+        audioReferences: [],
       };
 
       if (output?.providerTaskId && ["queued", "generating"].includes(output.status)) {
-        const currentProvider = selectVideoProvider(project.mainModelId, output.providerId).provider;
+        const currentProvider = getVideoProviderById(output.providerId);
+        if (!currentProvider) throw new Error(`PROVIDER_UNAVAILABLE:${output.providerId}`);
         const status = await currentProvider.getStatus(output.providerTaskId);
-        output = { ...output, status: status.status === "completed" ? "completed" : status.status === "failed" ? "failed" : status.status, outputUrl: status.outputUrl, lastFrameUrl: status.lastFrameUrl, error: status.error };
+        output = {
+          ...output,
+          status: status.status,
+          outputUrl: status.outputUrl,
+          lastFrameUrl: status.lastFrameUrl,
+          error: status.error,
+        };
         outputs[existingIndex] = output;
         if (output.status === "failed") {
           if (output.reservationId && output.providerId !== "mock-seedance") await wallet.refund(output.reservationId, output.error || "Provider failed");
@@ -263,29 +273,36 @@ async function processAgentStage(run: AgentRunRecord, job: AgentQueueJobRecord) 
 
       const estimate = await provider.estimateCost({ ...requestBase, idempotencyKey: `estimate:${run.id}:${episode.id}:${renderSegment.order}` });
       const isReal = provider.id !== "mock-seedance";
+      const attempt = outputs.filter((item) => item.order === renderSegment.order).reduce((max, item) => Math.max(max, item.attempt), 0) + 1;
       const reservedCredits = isReal ? Math.max(1, creditsFromThb(estimate.estimatedAmount)) : 0;
-      let reservationId = `mock-reservation:${run.id}:${episode.id}:${renderSegment.order}`;
+      let reservationId = `mock-reservation:${run.id}:${episode.id}:${renderSegment.order}:attempt:${attempt}`;
       if (isReal) {
         const reservation = await wallet.reserve({
           userId: run.userId,
           credits: reservedCredits,
           purpose: "video",
-          category: "VIDEO_GENERATION",
+          category: attempt > 1 ? "VIDEO_RETRY" : "VIDEO_GENERATION",
           quoteId,
-          referenceId: `${run.id}:${episode.id}:${renderSegment.order}`,
-          idempotencyKey: `video:${run.id}:${episode.id}:${renderSegment.order}:${provider.id}`,
-          metadata: { runId: run.id, projectId: project.id, episodeId: episode.id, order: renderSegment.order, providerId: provider.id },
+          referenceId: `${run.id}:${episode.id}:${renderSegment.order}:attempt:${attempt}`,
+          idempotencyKey: `video:${run.id}:${episode.id}:${renderSegment.order}:${provider.id}:attempt:${attempt}`,
+          metadata: { runId: run.id, projectId: project.id, episodeId: episode.id, order: renderSegment.order, attempt, providerId: provider.id },
           expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000),
         });
         reservationId = reservation.reservationId;
       }
+
       assertAgentToolAllowed({
-        run: { ...run, actualSpendThb: run.actualSpendThb + simulatedCost }, tool: "generate_video", requestedSpendThb: estimate.estimatedAmount,
-        providerId: provider.id, hourlySpendThb: spendWindows.hourlySpendThb, dailySpendThb: spendWindows.dailySpendThb,
-        approvedBudgetThb: approvedBudget, creditReservationId: reservationId, creditReservationMode: isReal ? "wallet" : "mock",
+        run: { ...run, actualSpendThb: run.actualSpendThb + simulatedCost },
+        tool: "generate_video",
+        requestedSpendThb: estimate.estimatedAmount,
+        providerId: provider.id,
+        hourlySpendThb: spendWindows.hourlySpendThb,
+        dailySpendThb: spendWindows.dailySpendThb,
+        approvedBudgetThb: approvedBudget,
+        creditReservationId: reservationId,
+        creditReservationMode: isReal ? "wallet" : "mock",
       });
 
-      const attempt = (outputs.filter((item) => item.order === renderSegment.order).reduce((max, item) => Math.max(max, item.attempt), 0) || 0) + 1;
       const idempotencyKey = `agent:${run.id}:${episode.id}:${renderSegment.order}:attempt:${attempt}`;
       const placeholder: GenerationOutput = { order: renderSegment.order, attempt, providerId: provider.id, status: "submitting", estimatedCostThb: estimate.estimatedAmount, reservationId, reservedCredits };
       outputs.push(placeholder);
@@ -296,9 +313,9 @@ async function processAgentStage(run: AgentRunRecord, job: AgentQueueJobRecord) 
       try {
         const task = await provider.generate({ ...requestBase, idempotencyKey });
         const index = outputs.indexOf(placeholder);
-        outputs[index] = { ...placeholder, providerTaskId: task.providerTaskId, status: task.status === "completed" ? "completed" : task.status === "failed" ? "failed" : task.status, outputUrl: task.outputUrl, lastFrameUrl: task.lastFrameUrl, error: task.error };
+        outputs[index] = { ...placeholder, providerTaskId: task.providerTaskId, status: task.status, outputUrl: task.outputUrl, lastFrameUrl: task.lastFrameUrl, error: task.error };
         if (!isReal) simulatedCost += estimate.estimatedAmount;
-        await recordAgentDecision({ runId: run.id, stage: run.stage, action: "GENERATE_SEGMENT", reason: `${selection.reason}; ผ่าน Tool Guardrail และ ${isReal ? "Wallet Reservation จริง" : "Mock Reservation"}`, providerId: provider.id, metadata: { order: renderSegment.order, attempt, estimatedCostThb: estimate.estimatedAmount, reservedCredits, quoteId } });
+        await recordAgentDecision({ runId: run.id, stage: run.stage, action: attempt > 1 ? "RETRY_SEGMENT" : "GENERATE_SEGMENT", reason: `${selection.reason}; ผ่าน Tool Guardrail และ ${isReal ? "Wallet Reservation จริง" : "Mock Reservation"}`, providerId: provider.id, metadata: { order: renderSegment.order, attempt, estimatedCostThb: estimate.estimatedAmount, reservedCredits, quoteId } });
         if (task.status === "completed") {
           if (isReal) {
             await wallet.charge(reservationId, reservedCredits);
@@ -336,8 +353,8 @@ async function processAgentStage(run: AgentRunRecord, job: AgentQueueJobRecord) 
     const decision = await brainDecision(run, project, episodeIndex, job.attempts);
     if (await honorPauseDecision(run, decision)) return;
     assertAgentToolAllowed({ run, tool: "verify_continuity" });
-    const outputs = (state.outputsByEpisode?.[String(episodeIndex)] || []) as Array<Record<string, unknown>>;
-    const report = verifyProductionContinuity({ project, episode, outputs });
+    const outputs = state.outputsByEpisode?.[String(episodeIndex)] || [];
+    const report = verifyProductionContinuity({ project, episode, outputs: outputs.map((output) => ({ ...output })) });
     state.continuityScore = report.score;
     state.continuityReports = { ...(state.continuityReports || {}), [String(episodeIndex)]: report };
     run.stateJson = state as Record<string, unknown>;
@@ -370,10 +387,13 @@ async function processAgentStage(run: AgentRunRecord, job: AgentQueueJobRecord) 
       await persistAndQueue(run, nextIndex);
       return;
     }
-    run.status = "COMPLETED"; run.stage = "COMPLETED"; run.finishedAt = new Date(); run.stopReason = null; run.stateJson = state as Record<string, unknown>;
+    run.status = "COMPLETED";
+    run.stage = "COMPLETED";
+    run.finishedAt = new Date();
+    run.stopReason = null;
+    run.stateJson = state as Record<string, unknown>;
     await saveAgentRun(run);
     await recordAgentDecision({ runId: run.id, stage: "COMPLETED", action: "RUN_COMPLETED", reason: `Agent ทำงานครบ ${completed.length} Episode ตามขอบเขตที่อนุญาต`, metadata: { completedEpisodes: completed, simulatedCostThb: state.simulatedCostThb || 0, actualSpendThb: run.actualSpendThb } });
-    return;
   }
 }
 
@@ -382,6 +402,13 @@ export async function runAgentWorkerOnce(workerId: string) {
   await failExpiredAgentJobs();
   const job = await claimNextAgentJob(workerId, policy.queueLeaseSeconds);
   if (!job) return false;
+
+  const heartbeatEveryMs = Math.max(5_000, Math.floor((policy.queueLeaseSeconds * 1000) / 3));
+  const heartbeat = setInterval(() => {
+    void heartbeatAgentJob(job.id, workerId, policy.queueLeaseSeconds).catch((error) => console.error("[SCENOVA] Agent heartbeat failed", error));
+  }, heartbeatEveryMs);
+  heartbeat.unref?.();
+
   try {
     const run = await getAgentRun(job.runId);
     if (!run || ["COMPLETED", "FAILED", "CANCELLED"].includes(run.status)) { await completeAgentJob(job.id); return true; }
@@ -418,10 +445,21 @@ export async function runAgentWorkerOnce(workerId: string) {
         await completeAgentJob(job.id);
         return true;
       }
-      if (recovery.action === "STOP") { run.status = "FAILED"; run.stage = "FAILED"; run.stopReason = recovery.reason; run.finishedAt = new Date(); await saveAgentRun(run); await completeAgentJob(job.id); return true; }
-      run.status = "QUEUED"; await saveAgentRun(run);
+      if (recovery.action === "STOP") {
+        run.status = "FAILED";
+        run.stage = "FAILED";
+        run.stopReason = recovery.reason;
+        run.finishedAt = new Date();
+        await saveAgentRun(run);
+        await completeAgentJob(job.id);
+        return true;
+      }
+      run.status = "QUEUED";
+      await saveAgentRun(run);
     }
     await failOrRequeueAgentJob(job, message, recovery.delayMs);
     return true;
+  } finally {
+    clearInterval(heartbeat);
   }
 }
