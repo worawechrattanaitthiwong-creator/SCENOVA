@@ -70,6 +70,16 @@ jobs:
           scripts['prepreview'] = 'prisma generate'
           scripts['preupload'] = 'prisma generate'
           package.write_text(json.dumps(data, indent=2) + '\n')
+
+          Path('open-next.config.ts').write_text('''import { defineCloudflareConfig } from "@opennextjs/cloudflare";
+
+          const config = defineCloudflareConfig({});
+
+          export default {
+            ...config,
+            buildCommand: "next build --turbopack",
+          };
+          ''')
           PY
       - name: Update lockfile for Prisma 6.19.3
         run: npm install --package-lock-only --ignore-scripts
