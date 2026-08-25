@@ -38,6 +38,8 @@ export function assertGenerationAllowed(input: {
   policy?: SecurityPolicy;
 }) {
   const policy = input.policy ?? DEFAULT_SECURITY_POLICY;
+  if (process.env.SCENOVA_EMERGENCY_LOCKDOWN === "true") throw new Error("Generation disabled by environment emergency lockdown");
+  if (process.env.SCENOVA_GENERATION_KILL_SWITCH === "true") throw new Error("Generation disabled by environment kill switch");
   if (input.killSwitch.globalGenerationDisabled) throw new Error(input.killSwitch.reason ?? "Generation disabled by kill switch");
   if (input.killSwitch.disabledProviderIds.includes(input.providerId)) throw new Error(`Provider ${input.providerId} is disabled`);
   if (input.hourlySpendThb >= policy.hourlyProviderSpendCapThb) throw new Error("Hourly provider spend cap reached");
@@ -51,6 +53,6 @@ export const SECURITY_CHECKLIST_TH = [
   "Video/Image Storage เป็น Private และแจกเฉพาะ Signed URL อายุสั้น",
   "Upload ต้องจำกัด MIME, ขนาด, จำนวนไฟล์ และสแกน metadata ก่อนใช้งาน",
   "บันทึก Audit Log: user, job, model, duration, estimated cost, actual cost, provider task id, timestamp",
-  "มี Hourly/Daily Spend Cap และ Kill Switch ปิด Provider ได้ทันที",
+  "มี Hourly/Daily Spend Cap, Provider Isolation และ Emergency Lockdown ที่ตัด Outbound Call ได้ทันที",
   "Admin ใช้ 2FA และแยกสิทธิ์ Support/Finance/Developer",
 ];
