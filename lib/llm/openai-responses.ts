@@ -1,3 +1,4 @@
+import { assertEmergencyCapability } from "@/lib/emergency-security";
 import { calculateLlmCostThb } from "@/lib/llm/pricing";
 import { assertLlmBudget, recordLlmUsage } from "@/lib/llm/usage";
 
@@ -60,6 +61,7 @@ export async function callOpenAiFunction(input: {
   maxOutputTokens: number;
   metadata?: Record<string, unknown>;
 }): Promise<FunctionCallResult> {
+  await assertEmergencyCapability("llm");
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) throw new Error("LLM_NOT_CONFIGURED:OPENAI_API_KEY");
   const baseUrl = (process.env.OPENAI_API_BASE_URL || "https://api.openai.com/v1").replace(/\/$/, "");
