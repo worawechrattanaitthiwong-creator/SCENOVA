@@ -19,4 +19,5 @@ jobs:
       - run: npm run db:generate
       - run: npm run typecheck
       - run: npm run test
+      # Keep CI aligned with the exact OpenNext build used for Cloudflare deploys.
       - run: npm run build:cloudflare
