@@ -24,7 +24,19 @@ export class MockVideoProvider implements VideoProvider {
   }
 
   async getStatus(providerTaskId: string) {
-    return tasks.get(providerTaskId) ?? { providerTaskId, status: "failed", error: "Mock task not found" };
+    const task = tasks.get(providerTaskId);
+    if (!task) return { providerTaskId, status: "failed" as const, error: "Mock task not found" };
+    if (task.status === "queued" || task.status === "generating") {
+      const result: GenerateVideoResult = {
+        providerTaskId,
+        status: "completed",
+        outputUrl: `/api/mock-video?task=${encodeURIComponent(providerTaskId)}`,
+        lastFrameUrl: `/api/mock-video?task=${encodeURIComponent(providerTaskId)}&frame=last`,
+      };
+      tasks.set(providerTaskId, result);
+      return result;
+    }
+    return task;
   }
 
   async cancel(providerTaskId: string) {
