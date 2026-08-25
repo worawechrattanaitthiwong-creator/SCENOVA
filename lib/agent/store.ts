@@ -1,4 +1,5 @@
 import { randomUUID } from "crypto";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import type { AgentQueueJobRecord, AgentRunRecord, AgentRunStatus, AgentStage } from "@/lib/agent/types";
 
@@ -131,7 +132,7 @@ export async function enqueueAgentStep(
 
 export async function claimNextAgentJob(workerId: string, leaseSeconds = 120) {
   const leaseExpiresAt = new Date(Date.now() + Math.max(15, leaseSeconds) * 1000);
-  return prisma.$transaction(async (tx) => {
+  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const picked = await tx.$queryRaw<Array<{ id: string }>>`
       SELECT "id" FROM "AgentQueueJob"
       WHERE "attempts" < "maxAttempts" AND (
