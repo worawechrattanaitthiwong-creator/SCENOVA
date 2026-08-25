@@ -5,6 +5,7 @@
   "scripts": {
     "prebuild": "prisma generate",
     "build": "next build",
+    "build:cloudflare": "opennextjs-cloudflare build",
     "dev": "next dev",
     "dev:fast": "next dev --turbopack",
     "start": "next start",
