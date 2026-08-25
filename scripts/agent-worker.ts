@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import { runAgentWorkerOnce } from "@/lib/agent/worker-runtime";
+import { getEmergencySecurityState } from "@/lib/emergency-security";
 
 const baseWorkerId = process.env.AGENT_WORKER_ID || `agent-worker-${randomUUID().slice(0, 8)}`;
 const pollMs = Math.max(250, Number(process.env.AGENT_WORKER_POLL_MS || 1000));
@@ -24,6 +25,11 @@ async function lane(index: number) {
   console.log(`[SCENOVA] Agent worker lane started: ${workerId}`);
   while (!stopping) {
     try {
+      const emergency = await getEmergencySecurityState();
+      if (emergency.lockdownEnabled || emergency.queuePaused || emergency.agentDisabled) {
+        await sleep(Math.max(1000, pollMs));
+        continue;
+      }
       const worked = await runAgentWorkerOnce(workerId);
       if (!worked && !stopping) await sleep(pollMs);
     } catch (error) {
