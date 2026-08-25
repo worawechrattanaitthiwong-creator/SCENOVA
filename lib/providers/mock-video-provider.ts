@@ -3,6 +3,15 @@ import type { GenerateVideoRequest, GenerateVideoResult, VideoProvider } from "@
 
 const tasks = new Map<string, GenerateVideoResult>();
 
+function completedMock(providerTaskId: string): GenerateVideoResult {
+  return {
+    providerTaskId,
+    status: "completed",
+    outputUrl: `/api/mock-video?task=${encodeURIComponent(providerTaskId)}`,
+    lastFrameUrl: `/api/mock-video?task=${encodeURIComponent(providerTaskId)}&frame=last`,
+  };
+}
+
 export class MockVideoProvider implements VideoProvider {
   id = "mock-seedance";
 
@@ -25,14 +34,11 @@ export class MockVideoProvider implements VideoProvider {
 
   async getStatus(providerTaskId: string) {
     const task = tasks.get(providerTaskId);
+    // Agent mock IDs are deterministic. Reconstructing the completed result makes local/dev runs resumable after a worker restart.
+    if (!task && providerTaskId.startsWith("mock_agent:")) return completedMock(providerTaskId);
     if (!task) return { providerTaskId, status: "failed" as const, error: "Mock task not found" };
     if (task.status === "queued" || task.status === "generating") {
-      const result: GenerateVideoResult = {
-        providerTaskId,
-        status: "completed",
-        outputUrl: `/api/mock-video?task=${encodeURIComponent(providerTaskId)}`,
-        lastFrameUrl: `/api/mock-video?task=${encodeURIComponent(providerTaskId)}&frame=last`,
-      };
+      const result = completedMock(providerTaskId);
       tasks.set(providerTaskId, result);
       return result;
     }
@@ -41,6 +47,7 @@ export class MockVideoProvider implements VideoProvider {
 
   async cancel(providerTaskId: string) {
     const task = tasks.get(providerTaskId);
+    if (!task && providerTaskId.startsWith("mock_agent:")) return true;
     if (!task) return false;
     tasks.set(providerTaskId, { ...task, status: "failed", error: "Cancelled in mock provider" });
     return true;
