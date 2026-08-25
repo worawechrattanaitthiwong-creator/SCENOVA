@@ -19,6 +19,7 @@ export function getVideoProviderMap(): Record<string, VideoProvider> {
   const useReal = process.env.SCENOVA_REAL_VIDEO_PROVIDERS === "true" && seedance.isConfigured();
   const selected = useReal ? seedance : mock;
   return {
+    "seedance-2-5": selected,
     "seedance-2.5": selected,
     "Seedance 2.5": selected,
     "mock-seedance": mock,
