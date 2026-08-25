@@ -13,6 +13,10 @@ export function getAgentPolicy(): AgentPolicy {
     maxEpisodesPerRun: Math.floor(envNumber("AGENT_MAX_EPISODES_PER_RUN", 10)),
     maxRetriesPerStep: Math.floor(envNumber("AGENT_MAX_RETRIES_PER_STEP", 2)),
     maxProviderSwitches: Math.floor(envNumber("AGENT_MAX_PROVIDER_SWITCHES", 1)),
+    maxLlmCallsPerRun: Math.floor(envNumber("AGENT_MAX_LLM_CALLS_PER_RUN", 80)),
+    maxLlmCallsPerClip: Math.floor(envNumber("AGENT_MAX_LLM_CALLS_PER_CLIP", 15)),
+    maxConcurrentRunsPerUser: Math.floor(envNumber("AGENT_MAX_CONCURRENT_RUNS_PER_USER", 2)),
+    queueLeaseSeconds: Math.floor(envNumber("AGENT_QUEUE_LEASE_SECONDS", 120)),
   };
 }
 
