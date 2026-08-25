@@ -108,7 +108,7 @@ export async function authenticatePassword(emailInput: string, password: string)
 
   if (!user.active || !verifyPassword(password, user.passwordHash)) return null;
   const emergency = await getEmergencySecurityState();
-  if (emergency.newLoginRestricted && user.role !== "ADMIN") return null;
+  if ((emergency.newLoginRestricted || emergency.maintenanceMode) && user.role !== "ADMIN") return null;
   return { ...toSessionUser(user), twoFactorEnabled: user.twoFactorEnabled };
 }
 
@@ -162,6 +162,7 @@ export async function resolveSession(token?: string | null): Promise<SessionUser
   if (emergency.sessionInvalidBefore && session.issuedAt <= emergency.sessionInvalidBefore.getTime()) return null;
   const user = await prisma.user.findUnique({ where: { id: session.userId } });
   if (!user?.active) return null;
+  if (emergency.maintenanceMode && user.role !== "ADMIN") return null;
   return toSessionUser(user);
 }
 
