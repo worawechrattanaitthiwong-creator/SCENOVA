@@ -7,3 +7,9 @@
 /* SCENOVA_SHELL_READABILITY_V2 */
 .brand small{font-size:11px}.navText b,.sidebarBottom b{font-size:13px}.navText small,.sidebarBottom small{font-size:11px;line-height:1.35}.context span{font-size:11px}.context b{font-size:13px}.subNav a{font-size:12px;min-height:40px;display:flex;align-items:center}.account span{font-size:12px}.account i{font-size:10px}.mainNav a,.sidebarBottom>a:first-child{min-height:50px}.shell :is(a,button,input,select,textarea,[role="button"]):focus-visible{outline:2px solid #f2c94c;outline-offset:2px}
 @media(max-width:640px){.navText b{font-size:10px}.mainNav a,.mainNav a.active{min-height:68px}.subNav a{font-size:11px;min-height:40px}}
+
+/* SCENOVA_FIXED_WORKSPACE_SCROLL_V1
+   Desktop/tablet: keep navigation chrome visible and scroll only the central page.
+   Mobile: keep top bar + bottom navigation visible while the page owns vertical scrolling. */
+.shell{height:100vh;height:100dvh;min-height:0;overflow:hidden}.sidebar{position:relative;top:auto;height:100vh;height:100dvh;min-height:0;overflow:hidden}.workspace{height:100vh;height:100dvh;min-height:0;overflow:hidden;display:grid;grid-template-rows:auto minmax(0,1fr)}.topbar{position:relative;top:auto}.page{height:auto;min-height:0;min-width:0;overflow-x:clip;overflow-y:auto;overscroll-behavior-y:contain;scrollbar-gutter:stable;scroll-padding-top:20px;-webkit-overflow-scrolling:touch}
+@media(max-width:640px){.shell{height:100vh;height:100dvh;overflow:hidden}.workspace{height:100vh;height:100dvh;min-height:0;padding-bottom:calc(76px + env(safe-area-inset-bottom));display:grid;grid-template-rows:auto minmax(0,1fr);overflow:hidden}.page{height:auto;min-height:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior-y:contain;scrollbar-gutter:auto;scroll-padding-top:14px}.topbar{position:relative;top:auto;z-index:45}}
