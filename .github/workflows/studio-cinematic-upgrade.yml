@@ -34,7 +34,10 @@ jobs:
           from pathlib import Path
           p = Path("scripts/apply-studio-cinematic-upgrade.mjs")
           s = p.read_text()
-          s = s.replace('`AI Auto — ${help}`', '`AI Auto — \\${help}`')
+          # The patcher itself contains a template literal that must emit a
+          # template literal into the generated TSX. Escape both backticks and
+          # the interpolation so Node parses the patcher instead of evaluating it.
+          s = s.replace('`AI Auto — ${help}`', '\\`AI Auto — \\${help}\\`')
           s = s.replace(
               'if (!text.includes(search)) throw new Error(`Missing patch target: ${label}`);',
               'if (!text.includes(search)) { console.warn(`WARN missing patch target: ${label}`); return text; }'
