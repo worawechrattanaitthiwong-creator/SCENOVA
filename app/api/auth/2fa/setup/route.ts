@@ -6,10 +6,15 @@ import { buildOtpAuthUri, encryptTwoFactorSecret, generateRecoveryCodes, generat
 
 export const runtime = "nodejs";
 
-async function resolveSetupUserId() {
+async function resolveSetupUserId(request: Request) {
+  const headerToken = request.headers.get("x-scenova-2fa-challenge");
+  const headerChallenge = verifyTwoFactorChallenge(headerToken);
+  if (headerChallenge) return headerChallenge.userId;
+
   const store = await cookies();
-  const challenge = verifyTwoFactorChallenge(store.get("scenova_2fa_challenge")?.value);
-  if (challenge) return challenge.userId;
+  const cookieChallenge = verifyTwoFactorChallenge(store.get("scenova_2fa_challenge")?.value);
+  if (cookieChallenge) return cookieChallenge.userId;
+
   const session = await resolveSession(store.get("scenova_session")?.value);
   return session?.id || null;
 }
@@ -25,10 +30,10 @@ function setupFailure(stage: string, error: unknown) {
   );
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   let userId: string | null = null;
   try {
-    userId = await resolveSetupUserId();
+    userId = await resolveSetupUserId(request);
   } catch (error) {
     return setupFailure("CHALLENGE", error);
   }
@@ -76,7 +81,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const userId = await resolveSetupUserId();
+    const userId = await resolveSetupUserId(request);
     if (!userId) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
     const body = await request.json().catch(() => ({}));
