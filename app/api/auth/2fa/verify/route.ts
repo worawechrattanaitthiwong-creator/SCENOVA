@@ -5,8 +5,10 @@ import { completeLogin, signSession, verifyTwoFactorChallenge, verifyTwoFactorFo
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  const headerChallenge = verifyTwoFactorChallenge(request.headers.get("x-scenova-2fa-challenge"));
   const store = await cookies();
-  const challenge = verifyTwoFactorChallenge(store.get("scenova_2fa_challenge")?.value);
+  const cookieChallenge = verifyTwoFactorChallenge(store.get("scenova_2fa_challenge")?.value);
+  const challenge = headerChallenge || cookieChallenge;
   if (!challenge) return NextResponse.json({ error: "เซสชันยืนยันตัวตนหมดอายุ กรุณาเข้าสู่ระบบใหม่" }, { status: 401 });
 
   const body = await request.json().catch(() => ({}));
