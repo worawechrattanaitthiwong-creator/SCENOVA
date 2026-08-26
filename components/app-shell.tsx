@@ -9,43 +9,52 @@ type Me = { authenticated: boolean; name?: string; email?: string; role?: "ADMIN
 type NavItem = readonly [href: string, icon: string, label: string, short: string];
 
 const MAIN_NAV: NavItem[] = [
-  ["/studio", "✦", "Studio", "พื้นที่สร้างงาน"],
-  ["/series", "EP", "Series", "ความต่อเนื่องของตอน"],
-  ["/agent", "AI", "AI Agent", "จัดการและอนุมัติงาน AI"],
-  ["/libraries", "▦", "Asset Library", "สื่อและข้อมูลอ้างอิง"],
-  ["/render", "▶", "Render Queue", "คิวสร้างวิดีโอ"],
-  ["/models", "⬡", "Model Center", "โมเดลและราคา"],
-  ["/wallet", "●", "Credit Wallet", "เครดิตและการใช้งาน"],
+  ["/studio", "✦", "Studio", "สร้างหนังและวิดีโอ"],
+  ["/series", "EP", "Series", "สร้างซีรีส์ต่อเนื่อง"],
+  ["/agent", "AI", "AI Agent", "อัตโนมัติและอนุมัติงาน"],
+  ["/libraries", "▦", "Asset Library", "ตัวละคร เสียง และสไตล์"],
+  ["/render", "▶", "Render Queue", "งานที่กำลังสร้าง"],
+  ["/models", "⬡", "Model Center", "โมเดล ราคา และความสามารถ"],
+  ["/wallet", "●", "Credit Wallet", "ยอดเครดิตและค่าใช้จ่าย"],
 ];
 
 const studioSubNav = [
-  ["/studio#setup", "Production Setup — ตั้งค่างาน"],
-  ["/studio#characters", "Characters — ตัวละคร"],
-  ["/studio#scenes", "Scene Direction — กำกับฉาก"],
-  ["/studio#sound", "Dialogue & Sound — บทพูดและเสียง"],
-  ["/studio#review", "Prompt & Render — สร้างงาน"],
+  ["/studio#setup", "ตั้งค่างาน"],
+  ["/studio#characters", "ตัวละครและเสียง"],
+  ["/studio#scenes", "กำกับฉาก"],
+  ["/libraries?tab=characters", "คลังตัวละคร"],
+  ["/libraries?tab=voices", "คลังเสียง"],
+  ["/studio#review", "Prompt & Render"],
 ] as const;
 
 const seriesSubNav = [
-  ["/series#history", "Series History — ประวัติซีรีส์"],
-  ["/series#episode-editor", "Episode Workspace — พื้นที่ทำตอน"],
-  ["/series#continuity", "Continuity — ความต่อเนื่อง"],
-  ["/libraries?tab=videos", "Generated Episodes — ตอนที่สร้างแล้ว"],
+  ["/series#history", "ลำดับตอน"],
+  ["/series#episode-editor", "พื้นที่ทำตอน"],
+  ["/series#continuity", "ความต่อเนื่อง"],
+  ["/libraries?tab=characters", "ตัวละคร"],
+  ["/libraries?tab=videos", "ตอนที่สร้างแล้ว"],
 ] as const;
 
 function ScenovaMark() {
-  return <svg viewBox="0 0 40 40" width="30" height="30" aria-hidden="true" focusable="false">
+  return <svg viewBox="0 0 48 48" width="34" height="34" aria-hidden="true" focusable="false">
     <defs>
-      <linearGradient id="scenova-mark-gold" x1="8" y1="6" x2="32" y2="34" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#fff0a3" />
-        <stop offset="0.45" stopColor="#f2c94c" />
-        <stop offset="1" stopColor="#9d7620" />
+      <linearGradient id="scenova-core" x1="9" y1="8" x2="39" y2="40" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#fff4b0" />
+        <stop offset=".46" stopColor="#f2c94c" />
+        <stop offset="1" stopColor="#9d7421" />
       </linearGradient>
+      <radialGradient id="scenova-glow" cx="0" cy="0" r="1" gradientTransform="translate(24 24) rotate(90) scale(18)">
+        <stop stopColor="#f2c94c" stopOpacity=".18" />
+        <stop offset="1" stopColor="#f2c94c" stopOpacity="0" />
+      </radialGradient>
     </defs>
-    <rect x="5.5" y="5.5" width="29" height="29" rx="8" fill="#0b0b09" stroke="url(#scenova-mark-gold)" strokeWidth="1.2" />
-    <path d="M27.8 13.1c-2.05-1.9-4.55-2.85-7.45-2.85-4.35 0-7.2 2.05-7.2 5.05 0 3.15 2.5 4.2 7.45 5.25 4.1.85 5.65 1.55 5.65 3.55 0 2.25-2.15 3.65-5.7 3.65-3.25 0-6.05-1.05-8.35-3.2" fill="none" stroke="url(#scenova-mark-gold)" strokeWidth="2.05" strokeLinecap="round" />
-    <path d="M9.5 8.5h4M26.5 31.5h4" stroke="#f7df7a" strokeWidth="1.1" strokeLinecap="round" opacity=".9" />
-    <circle cx="30.6" cy="9.4" r="1.15" fill="#fff0a3" />
+    <rect x="4.5" y="4.5" width="39" height="39" rx="13" fill="#0a0a09" stroke="#51441f" />
+    <circle cx="24" cy="24" r="16" fill="url(#scenova-glow)" />
+    <path d="M24 10.5c5.8 0 10.8 3.5 12.9 8.5l-8.8 1.1a7.2 7.2 0 0 0-6.2-3.5c-3.1 0-5.8 2-6.8 4.8l-4.7-7.5A16.8 16.8 0 0 1 24 10.5Z" fill="none" stroke="url(#scenova-core)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M37.5 24c0 5.8-3.5 10.8-8.5 12.9l-1.1-8.8a7.2 7.2 0 0 0 3.5-6.2c0-3.1-2-5.8-4.8-6.8l7.5-4.7A16.8 16.8 0 0 1 37.5 24Z" fill="none" stroke="url(#scenova-core)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" transform="rotate(120 24 24)" />
+    <path d="M37.5 24c0 5.8-3.5 10.8-8.5 12.9l-1.1-8.8a7.2 7.2 0 0 0 3.5-6.2c0-3.1-2-5.8-4.8-6.8l7.5-4.7A16.8 16.8 0 0 1 37.5 24Z" fill="none" stroke="url(#scenova-core)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" transform="rotate(240 24 24)" />
+    <path d="M24 18.6l1.55 3.85L29.4 24l-3.85 1.55L24 29.4l-1.55-3.85L18.6 24l3.85-1.55L24 18.6Z" fill="url(#scenova-core)" />
+    <circle cx="38" cy="10" r="1.45" fill="#fff1a0" />
   </svg>;
 }
 
@@ -72,13 +81,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const subNav = useMemo(() => {
     if (pathname.startsWith("/series")) return seriesSubNav;
-    if (pathname.startsWith("/agent")) return [["/agent", "Agent Runs — งาน AI"], ["/wallet", "Credit Activity — การใช้เครดิต"], ["/render", "Render Queue — คิวสร้างวิดีโอ"]] as const;
-    if (pathname.startsWith("/libraries")) return [["/libraries", "Asset Library — คลังสื่อ"]] as const;
-    if (pathname.startsWith("/render")) return [["/render", "Render Queue — คิวสร้างวิดีโอ"], ["/libraries?tab=videos", "Completed Renders — งานที่สร้างแล้ว"]] as const;
-    if (pathname.startsWith("/models")) return [["/models", "Model Comparison — เปรียบเทียบโมเดล"], ["/studio", "Studio — สตูดิโอ"]] as const;
-    if (pathname.startsWith("/wallet")) return [["/wallet", "Credit Balance & Activity — เครดิตและการใช้งาน"], ["/agent", "Agent Usage — การใช้ AI"], ["/render", "Usage Jobs — งานที่ใช้เครดิต"]] as const;
-    if (pathname.startsWith("/admin")) return [["/admin", "Members & Assets — สมาชิกและสื่อ"], ["/admin/security", "Security — ความปลอดภัย"], ["/admin/ai-costs", "AI Cost — ค่าใช้จ่าย AI"], ["/profile", "Account Security — ความปลอดภัยบัญชี"]] as const;
-    if (pathname.startsWith("/profile")) return [["/profile", "Account & Security — บัญชีและความปลอดภัย"], ["/studio", "Studio — สตูดิโอ"]] as const;
+    if (pathname.startsWith("/agent")) return [["/agent#runs", "งาน AI"], ["/agent#approvals", "รออนุมัติ"], ["/studio", "เริ่มจาก Studio"], ["/wallet#activity", "เครดิตที่ใช้"], ["/render", "คิวสร้างวิดีโอ"]] as const;
+    if (pathname.startsWith("/libraries")) return [["/libraries?tab=images", "ภาพ & สไตล์"], ["/libraries?tab=characters", "ตัวละคร"], ["/libraries?tab=voices", "เสียง"], ["/libraries?tab=ambience", "บรรยากาศ / SFX"], ["/libraries?tab=videos", "วิดีโอ"]] as const;
+    if (pathname.startsWith("/render")) return [["/render", "คิวสร้างวิดีโอ"], ["/wallet#activity", "ค่าใช้เครดิต"], ["/libraries?tab=videos", "งานที่สร้างแล้ว"]] as const;
+    if (pathname.startsWith("/models")) return [["/models", "เปรียบเทียบโมเดล"], ["/wallet", "เครดิตและงบ"], ["/studio", "ใช้ใน Studio"]] as const;
+    if (pathname.startsWith("/wallet")) return [["/wallet", "ยอดเครดิต"], ["/wallet#activity", "ประวัติการใช้"], ["/models", "ราคาโมเดล"], ["/render", "งานที่ใช้เครดิต"]] as const;
+    if (pathname.startsWith("/admin")) return [["/admin", "สมาชิกและคลัง"], ["/admin/security", "ความปลอดภัย"], ["/admin/ai-costs", "ค่าใช้จ่าย AI"], ["/profile", "บัญชี"]] as const;
+    if (pathname.startsWith("/profile")) return [["/profile", "บัญชีและความปลอดภัย"], ["/studio", "กลับ Studio"]] as const;
     return studioSubNav;
   }, [pathname]);
 
@@ -89,7 +98,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return <div className={styles.shell}>
     <aside className={styles.sidebar}>
-      <Link href="/portal" className={styles.brand} prefetch={false}><span className={styles.logo} style={{ background: "linear-gradient(145deg,#17130a 0%,#0a0a09 68%)", border: "1px solid #6d5820", color: "#f2c94c", boxShadow: "inset 0 0 0 1px rgba(255,232,135,.08),0 10px 28px rgba(170,128,24,.14)" }}><ScenovaMark /></span><span><b>SCENOVA</b><small>AI Cinematic Production Studio</small></span></Link>
+      <Link href="/portal" className={styles.brand} prefetch={false}><span className={styles.logo}><ScenovaMark /></span><span><b>SCENOVA</b><small>AI Cinematic Studio</small></span></Link>
       <nav className={styles.mainNav} aria-label="Primary navigation">{MAIN_NAV.map(([href, icon, label, short]) => {
         const active = pathname.startsWith(href);
         return <Link key={href} href={href} prefetch={false} className={active ? styles.active : ""}><span className={styles.navIcon}>{icon}</span><span className={styles.navText}><b>{label}</b><small>{short}</small></span></Link>;

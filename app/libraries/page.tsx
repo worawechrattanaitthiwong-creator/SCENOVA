@@ -66,7 +66,7 @@ function typeLabel(tab: Tab) {
 function detailFor(tab: Tab, item: Item): DetailInfo {
   const metadata = item.metadata || {};
   const common = {
-    compatibility: metadata.compatibility || "ใช้กับโมเดลที่รองรับ Asset / Reference ประเภทนี้ โดย Model Center จะตรวจความสามารถจริงของ Provider ก่อน Generate",
+    compatibility: metadata.compatibility || "ใช้กับโมเดลที่รองรับ Asset / Reference ประเภทนี้ โดย Model Center จะตรวจความสามารถจริงของระบบก่อน Generate",
     lockNote: metadata.lockNote || "เมื่อนำไปใช้ใน Production สามารถเปิด Lock ที่เกี่ยวข้องเพื่อรักษาความต่อเนื่องข้าม Scene / Episode ได้",
   };
   if (tab === "images") return {
@@ -99,6 +99,18 @@ function characterQuality(item: Item) {
   if (metadata.performanceStyle) score += 5;
   if (metadata.negativeIdentityRules) score += 6;
   return Math.min(100, score);
+}
+
+function voiceTuning(item: Item, voices: SpeechSynthesisVoice[]) {
+  let hash = 0;
+  for (let index = 0; index < item.title.length; index += 1) hash = ((hash << 5) - hash + item.title.charCodeAt(index)) | 0;
+  const value = Math.abs(hash);
+  const presets = [
+    { pitch: .82, rate: .9 }, { pitch: .94, rate: .96 }, { pitch: 1.08, rate: .98 }, { pitch: 1.2, rate: 1.02 },
+    { pitch: .74, rate: .86 }, { pitch: .9, rate: .92 }, { pitch: 1.14, rate: 1.06 }, { pitch: 1.28, rate: 1.0 },
+  ];
+  const candidates = voices.filter((voice) => /^th|^en/i.test(voice.lang));
+  return { ...presets[value % presets.length], voice: candidates.length ? candidates[value % candidates.length] : voices[value % Math.max(1, voices.length)] };
 }
 
 export default function LibrariesPage() {
@@ -198,9 +210,19 @@ export default function LibrariesPage() {
       return;
     }
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(`สวัสดีค่ะ นี่คือตัวอย่างเสียง ${item.title} จาก SCENOVA`);
-    utterance.lang = "th-TH";
-    utterance.rate = 0.96;
+    const voices = window.speechSynthesis.getVoices();
+    const tuning = voiceTuning(item, voices);
+    const sample = item.title.toLowerCase().includes("narrator")
+      ? `นี่คือตัวอย่างผู้บรรยาย ${item.title} สำหรับงานภาพยนตร์และซีรีส์จาก SCENOVA`
+      : item.title.toLowerCase().includes("nyx") || item.title.toLowerCase().includes("astra")
+        ? `ระบบพร้อมแล้ว นี่คือตัวอย่างบุคลิกเสียง ${item.title} จาก SCENOVA`
+        : `สวัสดี นี่คือตัวอย่างเสียง ${item.title} ลองฟังน้ำเสียง จังหวะ และบุคลิกก่อนเลือกใช้กับตัวละคร`;
+    const utterance = new SpeechSynthesisUtterance(sample);
+    utterance.lang = tuning.voice?.lang || "th-TH";
+    if (tuning.voice) utterance.voice = tuning.voice;
+    utterance.rate = tuning.rate;
+    utterance.pitch = tuning.pitch;
+    utterance.volume = .96;
     utterance.onstart = () => setPlayingVoiceId(item.id);
     utterance.onend = () => setPlayingVoiceId((currentId) => currentId === item.id ? null : currentId);
     utterance.onerror = () => setPlayingVoiceId((currentId) => currentId === item.id ? null : currentId);
@@ -221,14 +243,14 @@ export default function LibrariesPage() {
   return (
     <main className={styles.main}>
       <header className={styles.header}>
-        <div><span>SCENOVA LIBRARY</span><h1>คลังเดียว เลือกประเภทที่ต้องการ</h1><p>รายการในหน้านี้ซิงก์กับ Admin Console โดยตรง Admin เพิ่มหรือลบแล้วคลังผู้ใช้จะเปลี่ยนตามจริง</p></div>
+        <div><span>SCENOVA LIBRARY</span><h1>คลังเดียว เลือกแล้วใช้ต่อได้ทันที</h1><p>รวมสไตล์ ตัวละคร เสียง บรรยากาศ พล็อต และวิดีโอไว้ในที่เดียว รายการที่เลือกสามารถนำไปใช้ต่อใน Studio หรือ Series ตามประเภทได้</p></div>
         <Link className={styles.adminLink} href="/admin">Admin จัดการคลัง →</Link>
       </header>
 
       <div className={styles.tabs}>{TABS.map((item) => <button key={item.id} className={tab === item.id ? styles.active : ""} onClick={() => selectTab(item.id)}>{item.icon} {item.label}</button>)}</div>
 
       <section className={styles.section}>
-        <div className={styles.sectionHead}><div><h2>{current.label}</h2><p>{current.desc} — {tab === "characters" ? "เลือก Character Profile แล้วส่งเข้า Studio ได้โดยไม่ต้องพิมพ์ Character Bible ซ้ำ" : "ดูตัวอย่างก่อนนำไปใช้ใน Studio หรือ Series"}</p></div><small>{filtered.length} รายการ</small></div>
+        <div className={styles.sectionHead}><div><h2>{current.label}</h2><p>{current.desc} — {tab === "characters" ? "เลือก Character Profile แล้วส่งเข้า Studio ได้โดยไม่ต้องพิมพ์ Character Bible ซ้ำ" : tab === "voices" ? "เสียงตัวอย่างใช้เสียงที่อุปกรณ์มีอยู่ พร้อมปรับโทนและจังหวะให้แต่ละโปรไฟล์แตกต่างกัน" : "ดูตัวอย่างก่อนนำไปใช้ใน Studio หรือ Series"}</p></div><small>{filtered.length} รายการ</small></div>
         {libraryLoading && tab !== "videos" ? <div className={styles.statusBox}>กำลังโหลด Asset Library...</div> : null}{libraryWarning && tab !== "videos" ? <div className={`${styles.statusBox} ${styles.statusWarning}`}>{libraryWarning}</div> : null}{loadError && tab !== "videos" ? <div className={`${styles.statusBox} ${styles.statusError}`}><span>{loadError}</span><button className={styles.retryButton} onClick={() => setLibraryReloadKey((value) => value + 1)}>ลองโหลดอีกครั้ง</button></div> : null}
         <div className={styles.toolbar}><input className={styles.search} placeholder={`ค้นหาใน${current.label}...`} value={search} onChange={(e) => setSearch(e.target.value)} /><span className={styles.count}>SCENOVA System • สีเขียว = Admin Upload</span></div>
         <div className={styles.grid}>
@@ -255,7 +277,7 @@ export default function LibrariesPage() {
       </section>
 
       {selectedItem && selectedDetail ? <div className={styles.modalBackdrop} role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target) setSelectedItem(null); }}><section className={styles.detailModal} role="dialog" aria-modal="true" aria-label={`รายละเอียด ${selectedItem.title}`}><button className={styles.closeButton} onClick={() => setSelectedItem(null)} aria-label="ปิดรายละเอียด">×</button><div className={styles.detailHero} style={selectedItem.url ? { backgroundImage: `linear-gradient(180deg,rgba(0,0,0,.05),rgba(0,0,0,.72)),url(${selectedItem.url})` } : undefined} onClick={() => { if (selectedItem.url) setImagePreview(selectedItem); }} role={selectedItem.url ? "button" : undefined} tabIndex={selectedItem.url ? 0 : undefined}>{!selectedItem.url ? <span className={styles.detailHeroIcon}>{selectedItem.icon}</span> : null}<div className={styles.detailHeroText}><span>{selectedDetail.typeLabel}</span><h2>{selectedItem.title}</h2><p>{selectedItem.description}</p><div className={styles.detailTags}><b style={selectedItem.source === "ADMIN" ? { color: "#8bcf98", borderColor: "#28432e", background: "rgba(16,27,18,.8)" } : undefined}>{selectedItem.tag}</b><b>Asset ID: {selectedItem.id}</b></div></div></div><div className={styles.detailBody}>
-        {tab === "characters" ? <CharacterDetail item={selectedItem} onPreview={(url) => setImagePreview({ ...selectedItem, url })} /> : <><div className={styles.detailIntro}><span>PRODUCTION REFERENCE</span><h3>รายละเอียดสำหรับใช้งานจริง</h3><p>ข้อมูลนี้มาจากคลัง Admin เพื่อให้ผู้ใช้เข้าใจว่ารายการนี้ควบคุมอะไรและเหมาะกับงานแบบไหน</p></div><div className={styles.detailGrid}><article><span>VISUAL LANGUAGE — ภาษาภาพ / ลักษณะหลัก</span><p>{selectedDetail.visualLanguage}</p></article><article><span>LIGHTING — แนวทางแสง</span><p>{selectedDetail.lighting}</p></article><article><span>COLOR & MOOD — สีและอารมณ์</span><p>{selectedDetail.colorMood}</p></article><article><span>BEST FOR — เหมาะกับงาน</span><p>{selectedDetail.bestFor}</p></article><article className={styles.wideDetail}><span>PROMPT GUIDANCE — แนวทางเขียน Prompt</span><p>{selectedDetail.promptHint}</p></article><article className={styles.wideDetail}><span>REFERENCE USAGE — วิธีใช้เป็น Reference</span><p>{selectedDetail.referenceUsage}</p></article><article><span>MODEL / PROVIDER — การรองรับโมเดล</span><p>{selectedDetail.compatibility}</p></article><article><span>LOCK & CONTINUITY — การล็อกความต่อเนื่อง</span><p>{selectedDetail.lockNote}</p></article></div></>}
+        {tab === "characters" ? <CharacterDetail item={selectedItem} onPreview={(url) => setImagePreview({ ...selectedItem, url })} /> : <><div className={styles.detailIntro}><span>PRODUCTION REFERENCE</span><h3>รายละเอียดสำหรับใช้งานจริง</h3><p>ข้อมูลนี้มาจากคลังเพื่อให้เข้าใจว่ารายการนี้ควบคุมอะไรและเหมาะกับงานแบบไหน</p></div><div className={styles.detailGrid}><article><span>ลักษณะหลัก</span><p>{selectedDetail.visualLanguage}</p></article><article><span>แนวทางแสง</span><p>{selectedDetail.lighting}</p></article><article><span>สีและอารมณ์</span><p>{selectedDetail.colorMood}</p></article><article><span>เหมาะกับงาน</span><p>{selectedDetail.bestFor}</p></article><article className={styles.wideDetail}><span>แนวทางเขียน Prompt</span><p>{selectedDetail.promptHint}</p></article><article className={styles.wideDetail}><span>วิธีใช้เป็น Reference</span><p>{selectedDetail.referenceUsage}</p></article><article><span>การรองรับโมเดล</span><p>{selectedDetail.compatibility}</p></article><article><span>การล็อกความต่อเนื่อง</span><p>{selectedDetail.lockNote}</p></article></div></>}
         <div className={styles.detailFooter}><div><span>นำ Asset ไปใช้ต่อ</span><p>{tab === "characters" ? "Character Bible, Voice Profile และ Identity Rules จะถูกส่งไปยัง Studio เพื่อใช้ต่อ" : "เลือกใช้รายการนี้จาก Library แล้วปรับรายละเอียดต่อใน Studio หรือ Series ได้"}</p></div><div className={styles.detailActions}><button className={styles.secondaryAction} onClick={() => setSelectedItem(null)}>กลับไปดู Library</button>{tab === "characters" ? <button className={styles.primaryAction} onClick={() => useCharacter(selectedItem)}>ใช้ใน Studio</button> : <button className={styles.primaryAction}>ใช้รายการนี้</button>}</div></div></div></section></div> : null}
 
       {imagePreview?.url ? <div className={styles.imageLightbox} role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target) setImagePreview(null); }}><button className={styles.lightboxClose} onClick={() => setImagePreview(null)} aria-label="ปิดรูป">×</button><img className={styles.lightboxImage} src={imagePreview.url} alt={imagePreview.title} /></div> : null}
