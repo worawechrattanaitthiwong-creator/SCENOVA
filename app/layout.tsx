@@ -4,6 +4,7 @@ import "./globals.css";
 import "./standards.css";
 import "./scenova-yellow-theme.css";
 import "./mobile-overrides.css";
+import "./mode-help-overrides.css";
 
 export const metadata: Metadata = {
   title: "SCENOVA — AI Movie & Series Studio",
