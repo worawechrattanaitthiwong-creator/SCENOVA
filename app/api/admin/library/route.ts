@@ -6,6 +6,7 @@ import { createLibraryAsset, listLibraryAssets, removeLibraryAsset, type Library
 import { resolveSession } from "@/lib/auth-core";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 const ALLOWED_KINDS: LibraryKind[] = ["images", "voices", "characters", "pets", "ambience", "plots"];
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -66,6 +67,11 @@ export async function POST(request: Request) {
   if (referenceFiles.length > MAX_REFERENCE_FILES) return NextResponse.json({ error: `Reference Pack ได้สูงสุด ${MAX_REFERENCE_FILES} ภาพ` }, { status: 400 });
   if (referenceFiles.some((item) => item.size > MAX_FILE_SIZE || !item.type.startsWith("image/"))) return NextResponse.json({ error: "Reference Pack ต้องเป็นภาพและแต่ละไฟล์ไม่เกิน 10MB" }, { status: 400 });
   if (referenceFiles.reduce((sum, item) => sum + item.size, 0) > MAX_REFERENCE_TOTAL) return NextResponse.json({ error: "Reference Pack รวมกันใหญ่เกิน 30MB" }, { status: 400 });
+
+  const hasBinaryUpload = (file instanceof File && file.size > 0) || referenceFiles.length > 0;
+  if (process.env.NODE_ENV === "production" && hasBinaryUpload) {
+    return NextResponse.json({ error: "การอัปโหลดไฟล์บน Cloudflare ยังปิดไว้เพื่อป้องกันไฟล์สูญหาย กรุณาเชื่อม R2/Object Storage ก่อน ส่วน Asset แบบข้อมูล/Prompt ที่ไม่แนบไฟล์ยังเพิ่มได้" }, { status: 503 });
+  }
 
   const writtenUrls: string[] = [];
   try {

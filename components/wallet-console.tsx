@@ -13,7 +13,7 @@ export default function WalletConsole() {
     <div className="content" style={{ maxWidth: 1150 }}>
       <div className="page-head">
         <div className="row" style={{ justifyContent: "space-between" }}>
-          <div><span style={{ color: "#f2c94c", fontSize: 10, fontWeight: 900, letterSpacing: ".14em" }}>CREDIT WALLET</span><h1 style={{ marginTop: 7 }}>เครดิตแบบ Prepaid</h1><p>ไม่มีแพ็กเกจสมาชิกแบบรายเดือน ผู้ใช้แต่ละบัญชีเติมเครดิตเมื่ออยากใช้ แล้วระบบหักตาม Prompt / Preview / Video / Regenerate ที่เกิดขึ้นจริง โดยราคาถูกคำนวณจาก Server</p></div>
+          <div><span style={{ color: "#f2c94c", fontSize: 12, fontWeight: 900, letterSpacing: ".14em" }}>CREDIT WALLET</span><h1 style={{ marginTop: 7 }}>เครดิตแบบ Prepaid</h1><p>ไม่มีแพ็กเกจสมาชิกแบบรายเดือน ผู้ใช้แต่ละบัญชีเติมเครดิตเมื่ออยากใช้ แล้วระบบหักตาม Prompt / Preview / Video / Regenerate ที่เกิดขึ้นจริง โดยราคาถูกคำนวณจาก Server</p></div>
           <Link href="/render" className="btn">ดูงานที่ใช้เครดิต →</Link>
         </div>
       </div>
@@ -29,7 +29,7 @@ export default function WalletConsole() {
           <div className="card-title"><div><h2>เติมเครดิต</h2><p>เลือกยอด แล้วระบบจริงจะสร้าง PromptPay QR หรือ Checkout Session จาก Backend</p></div></div>
           <div className="grid-3">{topups.map((amount) => <button className={`model-card ${selected === amount ? "selected" : ""}`} key={amount} onClick={() => setSelected(amount)}><h3>฿{amount.toLocaleString()}</h3><p>{amount.toLocaleString()} Credits ก่อนโปรโมชั่น</p></button>)}</div>
           <div style={{ height: 14 }} />
-          <div className="row"><button className="btn btn-primary btn-lg" onClick={() => setMessage(`เลือกเติม ฿${selected.toLocaleString()} แล้ว — รอเชื่อม PromptPay/Payment Gateway จริง`)}>สร้าง QR PromptPay</button><span className="badge warn">ยังไม่เชื่อมเงินจริง</span></div>
+          <div className="row"><button className="btn btn-lg" type="button" disabled title="จะเปิดใช้งานหลังเชื่อม Payment Gateway และ Webhook จริง">PromptPay — กำลังเชื่อมระบบ</button><span className="badge warn">โหมดแสดงผลเท่านั้น • ไม่มีการชำระเงินจริง</span></div>
           <div className="help">เครดิตจะเพิ่มหลัง Backend ตรวจ webhook signature และยอดชำระสำเร็จเท่านั้น</div>
         </div>
 

@@ -27,7 +27,7 @@ export default function AgentControlCenter() {
   const [busy, setBusy] = useState(false);
 
   const loadRuns = useCallback(async () => {
-    const response = await fetch("/api/agent/runs", { cache: "no-store" });
+    const response = await fetch("/api/agent/runs", { cache: "no-store", credentials: "same-origin" });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "โหลด Agent Runs ไม่สำเร็จ");
     setRuns(data.runs || []);
@@ -36,7 +36,7 @@ export default function AgentControlCenter() {
 
   const loadDetails = useCallback(async (id: string) => {
     if (!id) return;
-    const response = await fetch(`/api/agent/runs/${id}`, { cache: "no-store" });
+    const response = await fetch(`/api/agent/runs/${id}`, { cache: "no-store", credentials: "same-origin" });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "โหลด Agent Run ไม่สำเร็จ");
     setDetails(data);
@@ -55,7 +55,7 @@ export default function AgentControlCenter() {
     if ((name === "cancel" || name === "reject") && !window.confirm(name === "cancel" ? "ยืนยันยกเลิก Agent Run? ระบบจะพยายาม Cancel Provider Task และคืน Reservation ที่ยังไม่ settle" : "ไม่อนุมัติแผนนี้และยกเลิก Run ใช่หรือไม่?")) return;
     setBusy(true); setMessage("");
     try {
-      const response = await fetch(`/api/agent/runs/${selectedId}/${name}`, { method: "POST" });
+      const response = await fetch(`/api/agent/runs/${selectedId}/${name}`, { method: "POST", credentials: "same-origin" });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || `${name} ไม่สำเร็จ`);
       setMessage(`${name.toUpperCase()} สำเร็จ`);
