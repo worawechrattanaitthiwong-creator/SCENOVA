@@ -1,0 +1,80 @@
+name: Deploy SCENOVA to VPS
+
+on:
+  push:
+    branches:
+      - vps-production
+  workflow_dispatch:
+
+concurrency:
+  group: scenova-vps-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to Hostinger VPS
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Configure SSH
+        shell: bash
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Deploy SCENOVA
+        shell: bash
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 "$VPS_USER@$VPS_HOST" 'bash -se' <<'REMOTE'
+            set -euo pipefail
+
+            cd /home/scenova/app
+
+            if [ ! -f .env.production ]; then
+              echo "ERROR: /home/scenova/app/.env.production is missing"
+              exit 1
+            fi
+
+            git fetch origin vps-production
+            git checkout vps-production
+            git reset --hard origin/vps-production
+
+            node scripts/prepare-vps-runtime.mjs
+            npm ci
+            npm run db:generate
+            npm run typecheck
+            npm run test
+            npm run build
+
+            pm2 reload ecosystem.config.cjs --update-env
+            pm2 save
+
+            curl --fail --silent --show-error --retry 5 --retry-delay 3 \
+              http://127.0.0.1:3000/api/health/db
+            echo
+            echo "SCENOVA VPS deploy completed successfully"
+          REMOTE
+
+      - name: Verify public production health
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 5 --retry-delay 5 \
+            https://scnva.com/api/health/db
+          echo
