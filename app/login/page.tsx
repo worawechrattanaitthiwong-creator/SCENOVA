@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import styles from "./login.module.css";
 
 type Stage = "password" | "otp" | "setup" | "recovery";
 type SetupData = { secret: string; otpauthUri: string; account: string; issuer: string };
 type ApiData = Record<string, unknown>;
+type SessionProbe = { authenticated?: boolean; reason?: string };
 
 async function readJson(response: Response): Promise<ApiData> {
   try {
@@ -39,8 +39,19 @@ function parseSetupData(value: unknown): SetupData | null {
   };
 }
 
+function delay(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function sessionError(reason: string) {
+  if (reason === "SESSION_COOKIE_MISSING") return "ยืนยันตัวตนสำเร็จ แต่เบราว์เซอร์ยังไม่ได้รับ Session Cookie กรุณาลองอีกครั้งหลังหน้าเว็บอัปเดต";
+  if (reason === "SESSION_COOKIE_INVALID") return "ยืนยันตัวตนสำเร็จ แต่ Session Cookie ไม่ผ่านการตรวจลายเซ็น";
+  if (reason === "SESSION_REJECTED") return "ยืนยันตัวตนสำเร็จ แต่ระบบปฏิเสธ Session หลังตรวจฐานข้อมูล";
+  if (reason === "SESSION_CHECK_FAILED") return "ยืนยันตัวตนสำเร็จ แต่ระบบตรวจ Session ฝั่งเซิร์ฟเวอร์ไม่สำเร็จ";
+  return `ยืนยันตัวตนสำเร็จ แต่ Session ยังไม่พร้อม${reason ? ` (${reason})` : ""}`;
+}
+
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
@@ -50,6 +61,47 @@ export default function LoginPage() {
   const [challengeToken, setChallengeToken] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  async function probeSession() {
+    let reason = "SESSION_NOT_READY";
+
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      try {
+        const response = await fetch(`/api/auth/me?t=${Date.now()}-${attempt}`, {
+          method: "GET",
+          credentials: "same-origin",
+          cache: "no-store",
+          headers: { "Cache-Control": "no-cache" },
+        });
+        const data = await readJson(response) as SessionProbe;
+        if (response.ok && data.authenticated === true) return { ok: true, reason: "" };
+        if (typeof data.reason === "string" && data.reason) reason = data.reason;
+        else reason = `HTTP_${response.status}`;
+      } catch {
+        reason = "SESSION_PROBE_NETWORK_ERROR";
+      }
+
+      if (attempt < 3) await delay(250 * (attempt + 1));
+    }
+
+    return { ok: false, reason };
+  }
+
+  async function enterPortal() {
+    setLoading(true);
+    const probe = await probeSession();
+    if (!probe.ok) {
+      setError(sessionError(probe.reason));
+      setLoading(false);
+      return false;
+    }
+
+    // Use a full document navigation only after /api/auth/me proves that the
+    // browser is sending the authenticated cookie back to the Worker. This
+    // avoids a client-router race immediately after a Set-Cookie response.
+    window.location.replace("/portal");
+    return true;
+  }
 
   async function login(event: React.FormEvent) {
     event.preventDefault();
@@ -68,7 +120,7 @@ export default function LoginPage() {
       const data = await readJson(response);
 
       if (!response.ok) {
-        setError(apiError(data, "Authentication failed"));
+        setError(apiError(data, `Authentication failed (HTTP ${response.status})`));
         return;
       }
 
@@ -101,7 +153,7 @@ export default function LoginPage() {
       }
 
       setPassword("");
-      enterPortal();
+      await enterPortal();
     } catch {
       setError("ไม่สามารถเชื่อมต่อระบบเข้าสู่ระบบได้ กรุณาตรวจสอบเครือข่ายแล้วลองใหม่อีกครั้ง");
     } finally {
@@ -134,7 +186,7 @@ export default function LoginPage() {
       const data = await readJson(response);
 
       if (!response.ok) {
-        setError(apiError(data, "Authenticator verification failed"));
+        setError(apiError(data, `Authenticator verification failed (HTTP ${response.status})`));
         return;
       }
 
@@ -177,22 +229,17 @@ export default function LoginPage() {
       const data = await readJson(response);
 
       if (!response.ok) {
-        setError(apiError(data, "Verification failed"));
+        setError(apiError(data, `Verification failed (HTTP ${response.status})`));
         return;
       }
 
-      setChallengeToken("");
-      enterPortal();
+      const entered = await enterPortal();
+      if (entered) setChallengeToken("");
     } catch {
       setError("ไม่สามารถตรวจสอบรหัส 2FA ได้ กรุณาลองใหม่อีกครั้ง");
     } finally {
       setLoading(false);
     }
-  }
-
-  function enterPortal() {
-    router.push("/portal");
-    router.refresh();
   }
 
   function backToPassword() {
@@ -284,7 +331,7 @@ export default function LoginPage() {
               </label>
 
               {error ? <ErrorBox text={error} /> : null}
-              <button disabled={loading} className={styles.primary}>{loading ? "Verifying..." : "Verify & Continue"}</button>
+              <button disabled={loading} className={styles.primary}>{loading ? "Verifying session..." : "Verify & Continue"}</button>
               <button type="button" disabled={loading} onClick={backToPassword} className={styles.secondary}>Back to Password</button>
             </form>
           ) : null}
@@ -334,8 +381,9 @@ export default function LoginPage() {
               <div className={styles.recoveryGrid}>
                 {recoveryCodes.map((item) => <code key={item} className={styles.recoveryCode}>{item}</code>)}
               </div>
+              {error ? <ErrorBox text={error} /> : null}
               <button onClick={() => navigator.clipboard.writeText(recoveryCodes.join("\n"))} className={styles.secondary}>Copy All</button>
-              <button onClick={enterPortal} className={styles.primary}>Saved → Enter SCENOVA</button>
+              <button disabled={loading} onClick={() => void enterPortal()} className={styles.primary}>{loading ? "Verifying session..." : "Saved → Enter SCENOVA"}</button>
             </div>
           ) : null}
         </div>
