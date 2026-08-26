@@ -1,4 +1,4 @@
-import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "crypto";
+import { createHmac, randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 import type { User } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { getEmergencySecurityState } from "@/lib/emergency-security";
@@ -10,6 +10,8 @@ export type SafeMember = SessionUser & { active: boolean; createdAt: string; las
 export type PasswordUser = SessionUser & { twoFactorEnabled: boolean };
 
 type SignedPayload = { sub: string; exp: number; iat: number; purpose: "session" | "2fa" };
+
+const PASSWORD_KEY_LENGTH = 64;
 
 function sessionSecret() {
   if (process.env.SESSION_SECRET) return process.env.SESSION_SECRET;
@@ -24,16 +26,28 @@ function adminBootstrapCredentials() {
   };
 }
 
-export function hashPassword(password: string) {
+function derivePasswordKey(password: string, salt: string) {
+  return new Promise<Buffer>((resolve, reject) => {
+    scrypt(password, salt, PASSWORD_KEY_LENGTH, (error, derivedKey) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve(Buffer.from(derivedKey));
+    });
+  });
+}
+
+export async function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
-  const hash = scryptSync(password, salt, 64).toString("hex");
+  const hash = (await derivePasswordKey(password, salt)).toString("hex");
   return `${salt}:${hash}`;
 }
 
-export function verifyPassword(password: string, stored: string) {
+export async function verifyPassword(password: string, stored: string) {
   const [salt, expected] = stored.split(":");
   if (!salt || !expected) return false;
-  const actual = scryptSync(password, salt, 64);
+  const actual = await derivePasswordKey(password, salt);
   const expectedBuffer = Buffer.from(expected, "hex");
   return actual.length === expectedBuffer.length && timingSafeEqual(actual, expectedBuffer);
 }
@@ -53,11 +67,12 @@ export async function createMember(input: { email: string; name: string; passwor
   const exists = await prisma.user.findUnique({ where: { email }, select: { id: true } });
   if (exists) throw new Error("EMAIL_EXISTS");
 
+  const passwordHash = await hashPassword(input.password);
   const user = await prisma.user.create({
     data: {
       email,
       displayName: input.name.trim() || email,
-      passwordHash: hashPassword(input.password),
+      passwordHash,
       role: "MEMBER",
       active: true,
       wallet: { create: {} },
@@ -98,11 +113,12 @@ export async function authenticatePassword(emailInput: string, password: string)
   // Bootstrap the first Admin from environment variables.
   if (!user) {
     if (admin.email && admin.password && email === admin.email && password === admin.password) {
+      const passwordHash = await hashPassword(admin.password);
       user = await prisma.user.create({
         data: {
           email: admin.email,
           displayName: "SCENOVA Admin",
-          passwordHash: hashPassword(admin.password),
+          passwordHash,
           role: "ADMIN",
           active: true,
           wallet: { create: {} },
@@ -115,7 +131,7 @@ export async function authenticatePassword(emailInput: string, password: string)
 
   if (!user.active) return null;
 
-  let passwordValid = verifyPassword(password, user.passwordHash);
+  let passwordValid = await verifyPassword(password, user.passwordHash);
 
   // Production recovery path: SCENOVA_ADMIN_PASSWORD is also a break-glass
   // credential for the configured Admin account. This fixes the common case
@@ -123,9 +139,10 @@ export async function authenticatePassword(emailInput: string, password: string)
   // been bootstrapped. It never promotes MEMBER accounts to ADMIN.
   const isConfiguredAdmin = user.role === "ADMIN" && Boolean(admin.email) && user.email.toLowerCase() === admin.email;
   if (!passwordValid && isConfiguredAdmin && admin.password && password === admin.password) {
+    const passwordHash = await hashPassword(admin.password);
     user = await prisma.user.update({
       where: { id: user.id },
-      data: { passwordHash: hashPassword(admin.password) },
+      data: { passwordHash },
     });
     passwordValid = true;
   }
