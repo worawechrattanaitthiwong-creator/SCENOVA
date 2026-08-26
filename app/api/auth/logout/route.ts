@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
+import { clearSessionCookie } from "@/lib/auth-cookie";
 
-export async function POST() {
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+export async function POST(request: Request) {
   const response = NextResponse.json({ ok: true });
-  response.cookies.set("scenova_session", "", { httpOnly: true, path: "/", maxAge: 0, sameSite: "lax" });
-  response.cookies.set("scenova_2fa_challenge", "", { httpOnly: true, path: "/", maxAge: 0, sameSite: "strict" });
-  return response;
+  return clearSessionCookie(response, request);
 }
