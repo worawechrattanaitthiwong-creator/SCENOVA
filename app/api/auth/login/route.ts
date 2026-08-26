@@ -13,12 +13,14 @@ export async function POST(request: Request) {
 
     const mustSetupTwoFactor = user.role === "ADMIN" && !user.twoFactorEnabled;
     if (user.twoFactorEnabled || mustSetupTwoFactor) {
+      const challengeToken = signTwoFactorChallenge(user.id);
       const response = NextResponse.json({
         ok: true,
         twoFactorRequired: user.twoFactorEnabled,
         twoFactorSetupRequired: mustSetupTwoFactor,
+        challengeToken,
       });
-      response.cookies.set("scenova_2fa_challenge", signTwoFactorChallenge(user.id), {
+      response.cookies.set("scenova_2fa_challenge", challengeToken, {
         httpOnly: true,
         sameSite: "strict",
         secure: process.env.NODE_ENV === "production",
