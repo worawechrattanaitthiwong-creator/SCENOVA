@@ -54,17 +54,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       .catch(() => { setChecking(false); router.replace("/login"); });
   }, [standalone, router]);
 
-  useEffect(() => {
-    if (!me.authenticated) return;
-    const warm = () => {
-      for (const [href] of MAIN_NAV) router.prefetch(href);
-      router.prefetch("/profile");
-      if (me.role === "ADMIN") { router.prefetch("/admin"); router.prefetch("/admin/ai-costs"); router.prefetch("/admin/security"); }
-    };
-    const timer = window.setTimeout(warm, 80);
-    return () => window.clearTimeout(timer);
-  }, [me.authenticated, me.role, router]);
-
   const subNav = useMemo(() => {
     if (pathname.startsWith("/series")) return seriesSubNav;
     if (pathname.startsWith("/agent")) return [["/agent", "Agent Runs"], ["/wallet", "Credit Activity"], ["/render", "Render Queue"]] as const;
@@ -84,21 +73,21 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return <div className={styles.shell}>
     <aside className={styles.sidebar}>
-      <Link href="/portal" className={styles.brand} prefetch><span className={styles.logo}>S</span><span><b>SCENOVA</b><small>AI Cinematic Production Studio</small></span></Link>
+      <Link href="/portal" className={styles.brand} prefetch={false}><span className={styles.logo}>S</span><span><b>SCENOVA</b><small>AI Cinematic Production Studio</small></span></Link>
       <nav className={styles.mainNav} aria-label="Primary navigation">{MAIN_NAV.map(([href, icon, label, short]) => {
         const active = pathname.startsWith(href);
-        return <Link key={href} href={href} prefetch className={active ? styles.active : ""}><span className={styles.navIcon}>{icon}</span><span className={styles.navText}><b>{label}</b><small>{short}</small></span></Link>;
+        return <Link key={href} href={href} prefetch={false} className={active ? styles.active : ""}><span className={styles.navIcon}>{icon}</span><span className={styles.navText}><b>{label}</b><small>{short}</small></span></Link>;
       })}
-        {me.role === "ADMIN" ? <Link href="/admin" prefetch className={`${styles.mobileOnly} ${pathname.startsWith("/admin") ? styles.active : ""}`}><span className={styles.navIcon}>⚙</span><span className={styles.navText}><b>Admin</b><small>Console</small></span></Link> : null}
-        <Link href="/profile" prefetch className={`${styles.mobileOnly} ${pathname.startsWith("/profile") ? styles.active : ""}`}><span className={styles.navIcon}>◉</span><span className={styles.navText}><b>Profile</b><small>Account</small></span></Link>
+        {me.role === "ADMIN" ? <Link href="/admin" prefetch={false} className={`${styles.mobileOnly} ${pathname.startsWith("/admin") ? styles.active : ""}`}><span className={styles.navIcon}>⚙</span><span className={styles.navText}><b>Admin</b><small>Console</small></span></Link> : null}
+        <Link href="/profile" prefetch={false} className={`${styles.mobileOnly} ${pathname.startsWith("/profile") ? styles.active : ""}`}><span className={styles.navIcon}>◉</span><span className={styles.navText}><b>Profile</b><small>Account</small></span></Link>
       </nav>
       <div className={styles.sidebarBottom}>
-        {me.role === "ADMIN" ? <Link href="/admin" prefetch className={pathname.startsWith("/admin") ? styles.active : ""}><span className={styles.navIcon}>⚙</span><span className={styles.navText}><b>Admin Console</b><small>Security, Members & Cost</small></span></Link> : null}
-        <Link href="/profile" prefetch className={styles.profileCard}><span className={styles.profileAvatar}>{me.name?.slice(0, 1).toUpperCase() || "U"}</span><span><b>{me.name || "Profile"}</b><small>{me.twoFactorEnabled ? "2FA Secured" : me.role === "ADMIN" ? "Security Setup" : me.email}</small></span></Link>
+        {me.role === "ADMIN" ? <Link href="/admin" prefetch={false} className={pathname.startsWith("/admin") ? styles.active : ""}><span className={styles.navIcon}>⚙</span><span className={styles.navText}><b>Admin Console</b><small>Security, Members & Cost</small></span></Link> : null}
+        <Link href="/profile" prefetch={false} className={styles.profileCard}><span className={styles.profileAvatar}>{me.name?.slice(0, 1).toUpperCase() || "U"}</span><span><b>{me.name || "Profile"}</b><small>{me.twoFactorEnabled ? "2FA Secured" : me.role === "ADMIN" ? "Security Setup" : me.email}</small></span></Link>
       </div>
     </aside>
     <div className={styles.workspace}>
-      <header className={styles.topbar}><div className={styles.context}><span>SCENOVA</span><b>{context}</b></div><div className={styles.subNav}>{subNav.map(([href, label]) => <Link key={href} href={href} prefetch>{label}</Link>)}</div><Link className={styles.account} href="/profile" prefetch><span>{me.name || "Profile"}</span><i>{me.role === "ADMIN" ? "ADMIN" : "USER"}</i></Link></header>
+      <header className={styles.topbar}><div className={styles.context}><span>SCENOVA</span><b>{context}</b></div><div className={styles.subNav}>{subNav.map(([href, label]) => <Link key={href} href={href} prefetch={false}>{label}</Link>)}</div><Link className={styles.account} href="/profile" prefetch={false}><span>{me.name || "Profile"}</span><i>{me.role === "ADMIN" ? "ADMIN" : "USER"}</i></Link></header>
       <div className={styles.page}>{children}</div>
     </div>
   </div>;
