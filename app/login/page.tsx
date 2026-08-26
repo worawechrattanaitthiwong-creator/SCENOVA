@@ -28,6 +28,7 @@ export default function LoginPage() {
   const [stage, setStage] = useState<Stage>("password");
   const [setup, setSetup] = useState<SetupData | null>(null);
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
+  const [challengeToken, setChallengeToken] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -40,6 +41,7 @@ export default function LoginPage() {
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
         body: JSON.stringify({ email, password }),
       });
       const data = await readJson(response);
@@ -47,11 +49,23 @@ export default function LoginPage() {
         setError(apiError(data, "Authentication failed"));
         return;
       }
+
+      const nextChallengeToken = typeof data.challengeToken === "string" ? data.challengeToken : "";
       if (data.twoFactorSetupRequired === true) {
-        await startSetup();
+        if (!nextChallengeToken) {
+          setError("ไม่สามารถสร้างเซสชันยืนยัน 2FA ได้ กรุณาเข้าสู่ระบบใหม่อีกครั้ง");
+          return;
+        }
+        setChallengeToken(nextChallengeToken);
+        await startSetup(nextChallengeToken);
         return;
       }
       if (data.twoFactorRequired === true) {
+        if (!nextChallengeToken) {
+          setError("ไม่สามารถสร้างเซสชันยืนยัน 2FA ได้ กรุณาเข้าสู่ระบบใหม่อีกครั้ง");
+          return;
+        }
+        setChallengeToken(nextChallengeToken);
         setCode("");
         setStage("otp");
         return;
@@ -64,11 +78,15 @@ export default function LoginPage() {
     }
   }
 
-  async function startSetup() {
+  async function startSetup(token = challengeToken) {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch("/api/auth/2fa/setup", { cache: "no-store" });
+      const response = await fetch("/api/auth/2fa/setup", {
+        cache: "no-store",
+        credentials: "same-origin",
+        headers: token ? { "x-scenova-2fa-challenge": token } : undefined,
+      });
       const data = await readJson(response);
       if (!response.ok) {
         setError(apiError(data, "Unable to start 2FA setup"));
@@ -101,7 +119,11 @@ export default function LoginPage() {
     try {
       const response = await fetch("/api/auth/2fa/setup", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(challengeToken ? { "x-scenova-2fa-challenge": challengeToken } : {}),
+        },
+        credentials: "same-origin",
         body: JSON.stringify({ code }),
       });
       const data = await readJson(response);
@@ -114,6 +136,7 @@ export default function LoginPage() {
         : [];
       setRecoveryCodes(codes);
       setCode("");
+      setChallengeToken("");
       setStage("recovery");
     } catch {
       setError("ไม่สามารถยืนยัน Authenticator ได้ กรุณาลองรหัสใหม่อีกครั้ง");
@@ -130,7 +153,11 @@ export default function LoginPage() {
     try {
       const response = await fetch("/api/auth/2fa/verify", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(challengeToken ? { "x-scenova-2fa-challenge": challengeToken } : {}),
+        },
+        credentials: "same-origin",
         body: JSON.stringify({ code }),
       });
       const data = await readJson(response);
@@ -138,6 +165,7 @@ export default function LoginPage() {
         setError(apiError(data, "Verification failed"));
         return;
       }
+      setChallengeToken("");
       enterPortal();
     } catch {
       setError("ไม่สามารถตรวจสอบรหัส 2FA ได้ กรุณาลองใหม่อีกครั้ง");
@@ -156,6 +184,7 @@ export default function LoginPage() {
     setCode("");
     setError("");
     setSetup(null);
+    setChallengeToken("");
   }
 
   return (
