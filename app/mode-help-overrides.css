@@ -1,0 +1,264 @@
+/* SCENOVA mode/help presentation layer.
+   UI-only overrides: no Studio or Series business logic is changed. */
+
+/* ---------- Studio: compact video mode selector ---------- */
+main:has(> section#setup) > section:first-of-type {
+  gap: 10px !important;
+  margin-bottom: 8px !important;
+}
+
+main:has(> section#setup) > section:first-of-type > button[aria-pressed] {
+  position: relative !important;
+  min-height: 78px !important;
+  padding: 11px 48px 11px 12px !important;
+  align-items: center !important;
+  overflow: visible !important;
+}
+
+main:has(> section#setup) > section:first-of-type > button[aria-pressed] > i {
+  width: 38px !important;
+  height: 38px !important;
+  flex: 0 0 38px !important;
+}
+
+/* Hide feature/explanation chips from the card face. */
+main:has(> section#setup) > section:first-of-type > button[aria-pressed] ul {
+  display: none !important;
+  position: absolute !important;
+  z-index: 120 !important;
+  top: calc(100% + 7px) !important;
+  left: 8px !important;
+  width: min(320px, calc(100vw - 32px)) !important;
+  padding: 10px !important;
+  margin: 0 !important;
+  gap: 6px !important;
+  border: 1px solid #4b421f !important;
+  border-radius: 12px !important;
+  background: rgba(12, 12, 10, .98) !important;
+  box-shadow: 0 18px 50px rgba(0,0,0,.48) !important;
+}
+
+main:has(> section#setup) > section:first-of-type > button[aria-pressed]:hover ul,
+main:has(> section#setup) > section:first-of-type > button[aria-pressed]:focus-visible ul {
+  display: flex !important;
+}
+
+main:has(> section#setup) > section:first-of-type > button[aria-pressed]::after {
+  content: "ⓘ";
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #4a421f;
+  border-radius: 999px;
+  background: #14130d;
+  color: #f1cf55;
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+/* Keep only the selected/not-selected state on the card; descriptions stay hidden. */
+main:has(> section#setup) > section:first-of-type > button[aria-pressed] small {
+  margin-top: 4px !important;
+  font-size: 10px !important;
+}
+
+/* ---------- Studio: full selected-mode explanation becomes a small info popover ---------- */
+main:has(> section#setup) > details {
+  position: relative !important;
+  z-index: 100 !important;
+  width: 38px !important;
+  min-height: 38px !important;
+  margin: 0 0 12px auto !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+
+main:has(> section#setup) > details > summary {
+  width: 38px !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  display: grid !important;
+  place-items: center !important;
+  padding: 0 !important;
+  border: 1px solid #4a421f !important;
+  border-radius: 999px !important;
+  background: #14130d !important;
+  color: #f1cf55 !important;
+  list-style: none !important;
+  cursor: help !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,.24) !important;
+}
+
+main:has(> section#setup) > details > summary::-webkit-details-marker {
+  display: none !important;
+}
+
+main:has(> section#setup) > details > summary > * {
+  display: none !important;
+}
+
+main:has(> section#setup) > details > summary::before {
+  content: "ⓘ" !important;
+  position: static !important;
+  transform: none !important;
+  color: #f1cf55 !important;
+  font-size: 18px !important;
+  font-weight: 900 !important;
+}
+
+main:has(> section#setup) > details > summary::after {
+  content: none !important;
+}
+
+main:has(> section#setup) > details > div {
+  display: none !important;
+  position: absolute !important;
+  z-index: 160 !important;
+  top: calc(100% + 8px) !important;
+  right: 0 !important;
+  width: min(560px, calc(100vw - 34px)) !important;
+  max-height: min(68vh, 560px) !important;
+  overflow: auto !important;
+  padding: 14px !important;
+  border: 1px solid #4b421f !important;
+  border-radius: 14px !important;
+  background: rgba(12, 12, 10, .985) !important;
+  box-shadow: 0 22px 65px rgba(0,0,0,.58) !important;
+}
+
+/* Hover/focus opens it; leaving the control hides it again. */
+main:has(> section#setup) > details:hover > div,
+main:has(> section#setup) > details:focus-within > div {
+  display: block !important;
+}
+
+/* ---------- Series: hide explanations in the top 4-step selector/guide ---------- */
+main:has(> section#history) > header + section > div:first-child {
+  position: relative !important;
+  padding-right: 38px !important;
+}
+
+main:has(> section#history) > header + section > div:first-child > span {
+  display: none !important;
+  position: absolute !important;
+  z-index: 130 !important;
+  right: 0 !important;
+  top: calc(100% + 7px) !important;
+  width: min(330px, calc(100vw - 32px)) !important;
+  padding: 10px 12px !important;
+  border: 1px solid #4b421f !important;
+  border-radius: 11px !important;
+  background: rgba(12,12,10,.985) !important;
+  color: #aaa99f !important;
+  line-height: 1.55 !important;
+  box-shadow: 0 16px 48px rgba(0,0,0,.48) !important;
+}
+
+main:has(> section#history) > header + section > div:first-child::after {
+  content: "ⓘ";
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #4a421f;
+  border-radius: 999px;
+  background: #14130d;
+  color: #f1cf55;
+  font-size: 15px;
+  cursor: help;
+}
+
+main:has(> section#history) > header + section > div:first-child:hover > span {
+  display: block !important;
+}
+
+main:has(> section#history) > header + section > div:nth-child(2) > article {
+  position: relative !important;
+  min-height: 66px !important;
+  padding: 10px 42px 10px 10px !important;
+  overflow: visible !important;
+}
+
+main:has(> section#history) > header + section > div:nth-child(2) > article::after {
+  content: "ⓘ";
+  position: absolute;
+  right: 9px;
+  top: 10px;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #40391d;
+  border-radius: 999px;
+  background: #0e0e0b;
+  color: #f1cf55;
+  font-size: 14px;
+  cursor: help;
+}
+
+main:has(> section#history) > header + section > div:nth-child(2) > article > span {
+  display: none !important;
+  position: absolute !important;
+  z-index: 140 !important;
+  top: calc(100% + 7px) !important;
+  left: 0 !important;
+  width: min(300px, calc(100vw - 32px)) !important;
+  padding: 10px 12px !important;
+  border: 1px solid #4b421f !important;
+  border-radius: 11px !important;
+  background: rgba(12,12,10,.985) !important;
+  color: #aaa99f !important;
+  line-height: 1.55 !important;
+  box-shadow: 0 16px 48px rgba(0,0,0,.5) !important;
+}
+
+main:has(> section#history) > header + section > div:nth-child(2) > article:hover > span {
+  display: block !important;
+}
+
+@media (max-width: 900px) {
+  main:has(> section#setup) > section:first-of-type {
+    display: flex !important;
+    overflow-x: auto !important;
+    padding-bottom: 4px !important;
+    scroll-snap-type: x proximity;
+  }
+
+  main:has(> section#setup) > section:first-of-type > button[aria-pressed] {
+    flex: 0 0 min(280px, 82vw) !important;
+    scroll-snap-align: start;
+  }
+
+  main:has(> section#setup) > details > div {
+    position: fixed !important;
+    top: auto !important;
+    right: 12px !important;
+    bottom: 16px !important;
+    left: 12px !important;
+    width: auto !important;
+    max-height: 62vh !important;
+  }
+
+  main:has(> section#history) > header + section > div:nth-child(2) {
+    display: flex !important;
+    overflow-x: auto !important;
+    gap: 8px !important;
+    padding-bottom: 4px !important;
+  }
+
+  main:has(> section#history) > header + section > div:nth-child(2) > article {
+    flex: 0 0 min(250px, 78vw) !important;
+  }
+}
