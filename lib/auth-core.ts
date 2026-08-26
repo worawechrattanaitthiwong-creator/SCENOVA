@@ -238,7 +238,8 @@ export async function verifyTwoFactorForUser(userId: string, code: string) {
 
   const normalized = code.trim().toUpperCase();
   if (/^\d{6}$/.test(normalized)) {
-    return verifyTotp(decryptTwoFactorSecret(user.twoFactorSecret), normalized);
+    const secret = await decryptTwoFactorSecret(user.twoFactorSecret);
+    return verifyTotp(secret, normalized);
   }
 
   const hashes = Array.isArray(user.twoFactorRecoveryCodes) ? user.twoFactorRecoveryCodes.filter((item): item is string => typeof item === "string") : [];
