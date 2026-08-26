@@ -66,7 +66,9 @@ jobs:
             pm2 reload ecosystem.config.cjs --update-env
             pm2 save
 
-            curl --fail --silent --show-error --retry 5 --retry-delay 3 \
+            sleep 2
+            curl --fail --silent --show-error \
+              --retry 10 --retry-delay 2 --retry-connrefused \
               http://127.0.0.1:3000/api/health/db
             echo
             echo "SCENOVA VPS deploy completed successfully"
@@ -76,6 +78,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl --fail --silent --show-error --retry 5 --retry-delay 5 \
+          curl --fail --silent --show-error \
+            --retry 10 --retry-delay 3 --retry-all-errors \
             https://scnva.com/api/health/db
           echo
