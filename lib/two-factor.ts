@@ -1,8 +1,11 @@
-import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, timingSafeEqual } from "crypto";
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 const BASE32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 const STEP_SECONDS = 30;
 const OTP_DIGITS = 6;
+const AES_GCM_TAG_BYTES = 16;
+const textEncoder = new TextEncoder();
+const textDecoder = new TextDecoder();
 
 function keySource() {
   const source = process.env.TWO_FACTOR_ENCRYPTION_KEY || (process.env.NODE_ENV !== "production" ? process.env.SESSION_SECRET || "scenova-dev-2fa-key" : "");
@@ -10,8 +13,22 @@ function keySource() {
   return source;
 }
 
-function encryptionKey() {
-  return createHash("sha256").update(keySource()).digest();
+async function encryptionKey() {
+  const digest = await crypto.subtle.digest("SHA-256", textEncoder.encode(keySource()));
+  return crypto.subtle.importKey("raw", digest, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+}
+
+function toBase64Url(bytes: Uint8Array) {
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function fromBase64Url(value: string) {
+  const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+  const binary = atob(padded);
+  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
 }
 
 export function generateTotpSecret(bytes = 20) {
@@ -66,20 +83,45 @@ export function buildOtpAuthUri(input: { secret: string; email: string; issuer?:
   return `otpauth://totp/${encodeURIComponent(label)}?secret=${encodeURIComponent(input.secret)}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=6&period=30`;
 }
 
-export function encryptTwoFactorSecret(secret: string) {
-  const iv = randomBytes(12);
-  const cipher = createCipheriv("aes-256-gcm", encryptionKey(), iv);
-  const encrypted = Buffer.concat([cipher.update(secret, "utf8"), cipher.final()]);
-  const tag = cipher.getAuthTag();
-  return `${iv.toString("base64url")}.${tag.toString("base64url")}.${encrypted.toString("base64url")}`;
+// Use Web Crypto for AES-GCM so the same implementation runs natively in
+// Cloudflare Workers and Node 22. The serialized format remains compatible
+// with the previous Node createCipheriv implementation: iv.tag.ciphertext.
+export async function encryptTwoFactorSecret(secret: string) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await encryptionKey();
+  const sealed = new Uint8Array(
+    await crypto.subtle.encrypt(
+      { name: "AES-GCM", iv, tagLength: AES_GCM_TAG_BYTES * 8 },
+      key,
+      textEncoder.encode(secret),
+    ),
+  );
+
+  if (sealed.length <= AES_GCM_TAG_BYTES) throw new Error("INVALID_ENCRYPTED_SECRET");
+  const encrypted = sealed.slice(0, sealed.length - AES_GCM_TAG_BYTES);
+  const tag = sealed.slice(sealed.length - AES_GCM_TAG_BYTES);
+  return `${toBase64Url(iv)}.${toBase64Url(tag)}.${toBase64Url(encrypted)}`;
 }
 
-export function decryptTwoFactorSecret(value: string) {
+export async function decryptTwoFactorSecret(value: string) {
   const [ivPart, tagPart, encryptedPart] = value.split(".");
   if (!ivPart || !tagPart || !encryptedPart) throw new Error("INVALID_ENCRYPTED_SECRET");
-  const decipher = createDecipheriv("aes-256-gcm", encryptionKey(), Buffer.from(ivPart, "base64url"));
-  decipher.setAuthTag(Buffer.from(tagPart, "base64url"));
-  return Buffer.concat([decipher.update(Buffer.from(encryptedPart, "base64url")), decipher.final()]).toString("utf8");
+
+  const iv = fromBase64Url(ivPart);
+  const tag = fromBase64Url(tagPart);
+  const encrypted = fromBase64Url(encryptedPart);
+  if (iv.length !== 12 || tag.length !== AES_GCM_TAG_BYTES) throw new Error("INVALID_ENCRYPTED_SECRET");
+
+  const sealed = new Uint8Array(encrypted.length + tag.length);
+  sealed.set(encrypted, 0);
+  sealed.set(tag, encrypted.length);
+  const key = await encryptionKey();
+  const decrypted = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv, tagLength: AES_GCM_TAG_BYTES * 8 },
+    key,
+    sealed,
+  );
+  return textDecoder.decode(decrypted);
 }
 
 export function generateRecoveryCodes(count = 8) {
