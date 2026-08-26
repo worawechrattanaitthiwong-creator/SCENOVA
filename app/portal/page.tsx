@@ -14,7 +14,11 @@ export default function PortalPage() {
 
   useEffect(() => {
     let alive = true;
-    fetch("/api/auth/me", { cache: "no-store" })
+    fetch(`/api/auth/me?t=${Date.now()}`, {
+      cache: "no-store",
+      credentials: "same-origin",
+      headers: { "Cache-Control": "no-cache" },
+    })
       .then((response) => response.json())
       .then((data: Me) => {
         if (!alive) return;
