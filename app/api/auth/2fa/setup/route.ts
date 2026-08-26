@@ -1,98 +1,44 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { completeLogin, signSession, verifyTwoFactorChallenge } from "@/lib/auth-core";
 import { prisma } from "@/lib/db";
-import { completeLogin, resolveSession, signSession, verifyTwoFactorChallenge } from "@/lib/auth-core";
-import { buildOtpAuthUri, encryptTwoFactorSecret, generateRecoveryCodes, generateTotpSecret, hashRecoveryCodes, verifyTotp, decryptTwoFactorSecret } from "@/lib/two-factor";
+import { decryptTwoFactorSecret, generateRecoveryCodes, hashRecoveryCodes, verifyTotp } from "@/lib/two-factor";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-async function resolveSetupUserId(request: Request) {
-  const headerToken = request.headers.get("x-scenova-2fa-challenge");
-  const headerChallenge = verifyTwoFactorChallenge(headerToken);
-  if (headerChallenge) return headerChallenge.userId;
-
-  const store = await cookies();
-  const cookieChallenge = verifyTwoFactorChallenge(store.get("scenova_2fa_challenge")?.value);
-  if (cookieChallenge) return cookieChallenge.userId;
-
-  const session = await resolveSession(store.get("scenova_session")?.value);
-  return session?.id || null;
-}
-
-function setupFailure(stage: string, error: unknown) {
-  console.error(`SCENOVA_2FA_SETUP_FAILED:${stage}`, error);
-  return NextResponse.json(
-    {
-      error: `2FA setup failed (${stage}). กรุณาลองใหม่อีกครั้งหลังระบบอัปเดต`,
-      code: `SCENOVA_2FA_${stage}`,
-    },
-    { status: 503 },
-  );
-}
-
-export async function GET(request: Request) {
-  let userId: string | null = null;
-  try {
-    userId = await resolveSetupUserId(request);
-  } catch (error) {
-    return setupFailure("CHALLENGE", error);
-  }
-  if (!userId) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
-
-  let user;
-  try {
-    user = await prisma.user.findUnique({ where: { id: userId } });
-  } catch (error) {
-    return setupFailure("USER_LOOKUP", error);
-  }
-  if (!user?.active) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
-  if (user.twoFactorEnabled) return NextResponse.json({ enabled: true });
-
-  let secret: string;
-  let encryptedSecret: string;
-  try {
-    secret = generateTotpSecret();
-    encryptedSecret = await encryptTwoFactorSecret(secret);
-  } catch (error) {
-    return setupFailure("CRYPTO", error);
-  }
-
-  try {
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { twoFactorSecret: encryptedSecret, twoFactorRecoveryCodes: [], twoFactorConfirmedAt: null },
-    });
-  } catch (error) {
-    return setupFailure("DATABASE_WRITE", error);
-  }
-
-  try {
-    return NextResponse.json({
-      enabled: false,
-      secret,
-      otpauthUri: buildOtpAuthUri({ secret, email: user.email }),
-      account: user.email,
-      issuer: "SCENOVA",
-    });
-  } catch (error) {
-    return setupFailure("RESPONSE", error);
-  }
+function challengeFromRequest(request: Request) {
+  const token = request.headers.get("x-scenova-2fa-challenge");
+  return verifyTwoFactorChallenge(token);
 }
 
 export async function POST(request: Request) {
   try {
-    const userId = await resolveSetupUserId(request);
-    if (!userId) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
+    const challenge = challengeFromRequest(request);
+    if (!challenge) {
+      return NextResponse.json(
+        { error: "เซสชันตั้งค่า 2FA หมดอายุ กรุณาเข้าสู่ระบบใหม่" },
+        { status: 401 },
+      );
+    }
 
     const body = await request.json().catch(() => ({}));
     const code = typeof body.code === "string" ? body.code.trim() : "";
-    if (!/^\d{6}$/.test(code)) return NextResponse.json({ error: "กรอกรหัส 6 หลักจาก Authenticator" }, { status: 400 });
+    if (!/^\d{6}$/.test(code)) {
+      return NextResponse.json({ error: "กรอกรหัส 6 หลักจาก Authenticator" }, { status: 400 });
+    }
 
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user?.active || !user.twoFactorSecret) return NextResponse.json({ error: "SETUP_NOT_STARTED" }, { status: 400 });
+    const user = await prisma.user.findUnique({ where: { id: challenge.userId } });
+    if (!user?.active || user.role !== "ADMIN") {
+      return NextResponse.json({ error: "ไม่พบบัญชี Admin สำหรับการตั้งค่า 2FA" }, { status: 401 });
+    }
+    if (!user.twoFactorSecret) {
+      return NextResponse.json({ error: "ยังไม่มี Setup Key กรุณาเข้าสู่ระบบใหม่" }, { status: 400 });
+    }
 
     const secret = await decryptTwoFactorSecret(user.twoFactorSecret);
-    if (!verifyTotp(secret, code)) return NextResponse.json({ error: "รหัส Authenticator ไม่ถูกต้องหรือหมดอายุแล้ว" }, { status: 400 });
+    if (!verifyTotp(secret, code)) {
+      return NextResponse.json({ error: "รหัส Authenticator ไม่ถูกต้องหรือหมดอายุแล้ว" }, { status: 400 });
+    }
 
     const recoveryCodes = generateRecoveryCodes();
     await prisma.user.update({
@@ -113,9 +59,12 @@ export async function POST(request: Request) {
       path: "/",
       maxAge: 60 * 60 * 24 * 7,
     });
-    response.cookies.set("scenova_2fa_challenge", "", { httpOnly: true, path: "/", maxAge: 0, sameSite: "strict" });
     return response;
   } catch (error) {
-    return setupFailure("CONFIRM", error);
+    console.error("SCENOVA_2FA_SETUP_CONFIRM_FAILED", error);
+    return NextResponse.json(
+      { error: "ไม่สามารถยืนยัน Authenticator ได้ กรุณาเข้าสู่ระบบใหม่แล้วลองอีกครั้ง" },
+      { status: 503 },
+    );
   }
 }
