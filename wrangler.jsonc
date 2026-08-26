@@ -4,6 +4,7 @@
   "name": "scenova",
   "compatibility_date": "2026-08-20",
   "compatibility_flags": [
+    "nodejs_compat",
     "global_fetch_strictly_public"
   ],
   "assets": {
