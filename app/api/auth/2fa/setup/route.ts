@@ -47,7 +47,7 @@ export async function GET() {
   let encryptedSecret: string;
   try {
     secret = generateTotpSecret();
-    encryptedSecret = encryptTwoFactorSecret(secret);
+    encryptedSecret = await encryptTwoFactorSecret(secret);
   } catch (error) {
     return setupFailure("CRYPTO", error);
   }
@@ -61,13 +61,17 @@ export async function GET() {
     return setupFailure("DATABASE_WRITE", error);
   }
 
-  return NextResponse.json({
-    enabled: false,
-    secret,
-    otpauthUri: buildOtpAuthUri({ secret, email: user.email }),
-    account: user.email,
-    issuer: "SCENOVA",
-  });
+  try {
+    return NextResponse.json({
+      enabled: false,
+      secret,
+      otpauthUri: buildOtpAuthUri({ secret, email: user.email }),
+      account: user.email,
+      issuer: "SCENOVA",
+    });
+  } catch (error) {
+    return setupFailure("RESPONSE", error);
+  }
 }
 
 export async function POST(request: Request) {
@@ -82,7 +86,7 @@ export async function POST(request: Request) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user?.active || !user.twoFactorSecret) return NextResponse.json({ error: "SETUP_NOT_STARTED" }, { status: 400 });
 
-    const secret = decryptTwoFactorSecret(user.twoFactorSecret);
+    const secret = await decryptTwoFactorSecret(user.twoFactorSecret);
     if (!verifyTotp(secret, code)) return NextResponse.json({ error: "รหัส Authenticator ไม่ถูกต้องหรือหมดอายุแล้ว" }, { status: 400 });
 
     const recoveryCodes = generateRecoveryCodes();
