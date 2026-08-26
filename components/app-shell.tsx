@@ -9,13 +9,15 @@ type Me = { authenticated: boolean; name?: string; email?: string; role?: "ADMIN
 type NavItem = readonly [href: string, icon: string, label: string, short: string];
 
 const MAIN_NAV: NavItem[] = [
-  ["/studio", "✦", "Studio", "สร้างหนังและวิดีโอ"],
-  ["/series", "EP", "Series", "สร้างซีรีส์ต่อเนื่อง"],
-  ["/agent", "AI", "AI Agent", "อัตโนมัติและอนุมัติงาน"],
-  ["/libraries", "▦", "Asset Library", "ตัวละคร เสียง และสไตล์"],
-  ["/render", "▶", "Render Queue", "งานที่กำลังสร้าง"],
+  ["/portal", "✦", "เริ่มต้น", "ภาพรวมสตูดิโอ"],
+  ["/series", "EP", "โปรเจกต์", "หนังและซีรีส์ของคุณ"],
+  ["/studio", "AI", "AI Studio", "สร้างหนังและวิดีโอ"],
+  ["/director", "▤", "สตอรี่บอร์ด", "ฉาก กล้อง และการกำกับ"],
+  ["/libraries", "▦", "คลังทรัพยากร", "ตัวละคร เสียง และสไตล์"],
+  ["/agent", "✧", "AI Agent", "อัตโนมัติและอนุมัติงาน"],
   ["/models", "⬡", "Model Center", "โมเดล ราคา และความสามารถ"],
-  ["/wallet", "●", "Credit Wallet", "ยอดเครดิตและค่าใช้จ่าย"],
+  ["/render", "▶", "คิวสร้าง", "งานที่กำลังสร้าง"],
+  ["/wallet", "●", "เครดิต", "ยอดเครดิตและค่าใช้จ่าย"],
 ];
 
 const studioSubNav = [
@@ -81,6 +83,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const subNav = useMemo(() => {
     if (pathname.startsWith("/series")) return seriesSubNav;
+    if (pathname.startsWith("/director") || pathname.startsWith("/camera") || pathname.startsWith("/dialogue") || pathname.startsWith("/reference")) return [["/director", "สตอรี่บอร์ด"], ["/camera", "กล้องและเลนส์"], ["/dialogue", "บทและเสียงพูด"], ["/reference", "ภาพอ้างอิง"], ["/studio#scenes", "กลับไปกำกับฉาก"]] as const;
     if (pathname.startsWith("/agent")) return [["/agent#runs", "งาน AI"], ["/agent#approvals", "รออนุมัติ"], ["/studio", "เริ่มจาก Studio"], ["/wallet#activity", "เครดิตที่ใช้"], ["/render", "คิวสร้างวิดีโอ"]] as const;
     if (pathname.startsWith("/libraries")) return [["/libraries?tab=images", "ภาพ & สไตล์"], ["/libraries?tab=characters", "ตัวละคร"], ["/libraries?tab=voices", "เสียง"], ["/libraries?tab=ambience", "บรรยากาศ / SFX"], ["/libraries?tab=videos", "วิดีโอ"]] as const;
     if (pathname.startsWith("/render")) return [["/render", "คิวสร้างวิดีโอ"], ["/wallet#activity", "ค่าใช้เครดิต"], ["/libraries?tab=videos", "งานที่สร้างแล้ว"]] as const;
@@ -94,11 +97,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   if (standalone) return <>{children}</>;
   if (checking || !me.authenticated) return <div className={styles.loading}>กำลังเปิด SCENOVA...</div>;
 
-  const context = pathname.startsWith("/series") ? "Series" : pathname.startsWith("/agent") ? "AI Agent" : pathname.startsWith("/libraries") ? "Asset Library" : pathname.startsWith("/render") ? "Render Queue" : pathname.startsWith("/models") ? "Model Center" : pathname.startsWith("/wallet") ? "Credit Wallet" : pathname.startsWith("/admin") ? "Admin Console" : pathname.startsWith("/profile") ? "Profile" : "Studio";
+  const context = pathname.startsWith("/series") ? "Projects" : pathname.startsWith("/director") || pathname.startsWith("/camera") || pathname.startsWith("/dialogue") || pathname.startsWith("/reference") ? "Cinematic Direction" : pathname.startsWith("/agent") ? "AI Agent" : pathname.startsWith("/libraries") ? "Asset Library" : pathname.startsWith("/render") ? "Render Queue" : pathname.startsWith("/models") ? "Model Center" : pathname.startsWith("/wallet") ? "Credit Wallet" : pathname.startsWith("/admin") ? "Admin Console" : pathname.startsWith("/profile") ? "Profile" : "AI Studio";
 
   return <div className={styles.shell}>
     <aside className={styles.sidebar}>
-      <Link href="/portal" className={styles.brand} prefetch={false}><span className={styles.logo}><ScenovaMark /></span><span><b>SCENOVA</b><small>AI Cinematic Studio</small></span></Link>
+      <Link href="/portal" className={styles.brand} prefetch={false}><span className={styles.logo}><ScenovaMark /></span><span><b>SCENOVA</b><small>PRODUCTION STUDIO</small></span></Link>
       <nav className={styles.mainNav} aria-label="Primary navigation">{MAIN_NAV.map(([href, icon, label, short]) => {
         const active = pathname.startsWith(href);
         return <Link key={href} href={href} prefetch={false} className={active ? styles.active : ""}><span className={styles.navIcon}>{icon}</span><span className={styles.navText}><b>{label}</b><small>{short}</small></span></Link>;
@@ -107,12 +110,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <Link href="/profile" prefetch={false} className={`${styles.mobileOnly} ${pathname.startsWith("/profile") ? styles.active : ""}`}><span className={styles.navIcon}>◉</span><span className={styles.navText}><b>Profile</b><small>บัญชี</small></span></Link>
       </nav>
       <div className={styles.sidebarBottom}>
+        <Link href="/wallet" prefetch={false} className={styles.creditShortcut}><span><small>เครดิตและค่าใช้จ่าย</small><b>Credit Wallet</b></span><i>เติมเครดิต</i></Link>
         {me.role === "ADMIN" ? <Link href="/admin" prefetch={false} className={pathname.startsWith("/admin") ? styles.active : ""}><span className={styles.navIcon}>⚙</span><span className={styles.navText}><b>Admin Console</b><small>ความปลอดภัย สมาชิก และค่าใช้จ่าย</small></span></Link> : null}
         <Link href="/profile" prefetch={false} className={styles.profileCard}><span className={styles.profileAvatar}>{me.name?.slice(0, 1).toUpperCase() || "U"}</span><span><b>{me.name || "Profile"}</b><small>{me.twoFactorEnabled ? "2FA เปิดใช้งาน" : me.role === "ADMIN" ? "ตั้งค่าความปลอดภัย" : me.email}</small></span></Link>
       </div>
     </aside>
     <div className={styles.workspace}>
-      <header className={styles.topbar}><div className={styles.context}><span>SCENOVA</span><b>{context}</b></div><div className={styles.subNav}>{subNav.map(([href, label]) => <Link key={href} href={href} prefetch={false}>{label}</Link>)}</div><Link className={styles.account} href="/profile" prefetch={false}><span>{me.name || "Profile"}</span><i>{me.role === "ADMIN" ? "ADMIN" : "USER"}</i></Link></header>
+      <header className={styles.topbar}><div className={styles.context}><span>SCENOVA WORKSPACE</span><b>{context}</b></div><div className={styles.subNav}>{subNav.map(([href, label], index) => <Link key={href} href={href} prefetch={false} className={index === 0 ? styles.subActive : ""}><i>{String(index + 1).padStart(2, "0")}</i><span>{label}</span></Link>)}</div><Link className={styles.helpLink} href="/portal#guide" prefetch={false}><span>?</span><b>คู่มือ</b></Link><Link className={styles.account} href="/profile" prefetch={false}><span>{me.name || "Profile"}</span><i>{me.role === "ADMIN" ? "ADMIN" : "USER"}</i></Link></header>
       <div className={styles.page}>{children}</div>
     </div>
   </div>;
