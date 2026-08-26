@@ -1,0 +1,284 @@
+from pathlib import Path
+
+
+def replace_once(path: str, old: str, new: str, label: str) -> None:
+    p = Path(path)
+    text = p.read_text(encoding="utf-8")
+    if old not in text:
+        raise SystemExit(f"Missing replacement target: {label} in {path}")
+    p.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+
+def append_once(path: str, marker: str, block: str) -> None:
+    p = Path(path)
+    text = p.read_text(encoding="utf-8")
+    if marker not in text:
+        p.write_text(text.rstrip() + "\n\n" + block.strip() + "\n", encoding="utf-8")
+
+
+# Library repository: browsing must be read-only. Seeding remains available to
+# explicit bootstrap/admin paths instead of running dozens of writes on every GET.
+replace_once(
+    "lib/library-repository.ts",
+    'const SYSTEM_ASSETS: Array<Omit<LibraryAssetRecord, "createdAt" | "updatedAt" | "active">> = [',
+    'export const SYSTEM_ASSETS: Array<Omit<LibraryAssetRecord, "createdAt" | "updatedAt" | "active">> = [',
+    "export system assets",
+)
+replace_once(
+    "lib/library-repository.ts",
+    'export async function listLibraryAssets(options: { includeInactive?: boolean } = {}) {\n  await ensureSystemLibraryAssets();\n',
+    'export async function listLibraryAssets(options: { includeInactive?: boolean } = {}) {\n',
+    "read-only library listing",
+)
+replace_once(
+    "lib/library-repository.ts",
+    'export async function disabledSystemAssetIds() {\n  await ensureSystemLibraryAssets();\n',
+    'export async function disabledSystemAssetIds() {\n',
+    "read-only disabled asset lookup",
+)
+
+# Library API: require a session, disable caching and fall back to built-ins if
+# Neon is temporarily unavailable. Missing system rows are merged without writes.
+Path("app/api/library/route.ts").write_text(
+    '''import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { resolveSession } from "@/lib/auth-core";
+import { disabledSystemAssetIds, listLibraryAssets, SYSTEM_ASSETS } from "@/lib/library-repository";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+function noStore(response: NextResponse) {
+  response.headers.set("Cache-Control", "private, no-store, max-age=0, must-revalidate");
+  response.headers.set("Pragma", "no-cache");
+  return response;
+}
+
+export async function GET() {
+  const store = await cookies();
+  const user = await resolveSession(store.get("scenova_session")?.value);
+  if (!user) return noStore(NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 }));
+
+  try {
+    const items = await listLibraryAssets();
+    let disabledSystemIds: string[] = [];
+    let canMergeBuiltIns = true;
+    try {
+      disabledSystemIds = await disabledSystemAssetIds();
+    } catch (error) {
+      canMergeBuiltIns = false;
+      console.error("LIBRARY_DISABLED_IDS_FAILED", error);
+    }
+
+    const existingIds = new Set(items.map((item) => item.id));
+    const disabledIds = new Set(disabledSystemIds);
+    const builtInFallback = canMergeBuiltIns
+      ? SYSTEM_ASSETS.filter((item) => !existingIds.has(item.id) && !disabledIds.has(item.id))
+      : [];
+
+    return noStore(NextResponse.json({
+      items: [...items, ...builtInFallback],
+      disabledSystemIds,
+      degraded: false,
+    }));
+  } catch (error) {
+    console.error("LIBRARY_GET_FAILED", error);
+    return noStore(NextResponse.json({
+      items: SYSTEM_ASSETS,
+      disabledSystemIds: [],
+      degraded: true,
+      warning: "เชื่อมต่อคลังข้อมูลชั่วคราวไม่ได้ จึงแสดง SCENOVA System Library จากชุดสำรอง",
+    }));
+  }
+}
+''',
+    encoding="utf-8",
+)
+
+# Library client states and retry behavior.
+replace_once(
+    "app/libraries/page.tsx",
+    '  const [loadError, setLoadError] = useState("");\n  const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);',
+    '  const [loadError, setLoadError] = useState("");\n  const [libraryWarning, setLibraryWarning] = useState("");\n  const [libraryLoading, setLibraryLoading] = useState(true);\n  const [libraryReloadKey, setLibraryReloadKey] = useState(0);\n  const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);',
+    "library status state",
+)
+replace_once(
+    "app/libraries/page.tsx",
+    '''  useEffect(() => {
+    fetch("/api/library", { cache: "no-store" })
+      .then(async (response) => { const data = await response.json(); if (!response.ok) throw new Error(data.error || "LIBRARY_UNAVAILABLE"); return data; })
+      .then((data) => { setApiItems(data.items || []); setLoadError(""); })
+      .catch(() => { setApiItems([]); setLoadError("โหลด Asset Library ไม่สำเร็จ กรุณาตรวจสอบ Database migration"); });
+  }, []);''',
+    '''  useEffect(() => {
+    let active = true;
+    setLibraryLoading(true);
+    fetch("/api/library", { cache: "no-store", credentials: "same-origin" })
+      .then(async (response) => {
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "LIBRARY_UNAVAILABLE");
+        return data;
+      })
+      .then((data) => {
+        if (!active) return;
+        setApiItems(Array.isArray(data.items) ? data.items : []);
+        setLibraryWarning(typeof data.warning === "string" ? data.warning : "");
+        setLoadError("");
+      })
+      .catch(() => {
+        if (!active) return;
+        setApiItems([]);
+        setLibraryWarning("");
+        setLoadError("ไม่สามารถโหลด Asset Library จากเซิร์ฟเวอร์ได้ กรุณาลองใหม่อีกครั้ง");
+      })
+      .finally(() => { if (active) setLibraryLoading(false); });
+    return () => { active = false; };
+  }, [libraryReloadKey]);''',
+    "resilient library loading",
+)
+replace_once(
+    "app/libraries/page.tsx",
+    'tag: "SCENOVA System", visual: visualFor(tab)',
+    'tag: item.source === "ADMIN" ? "Admin Upload" : "SCENOVA System", visual: visualFor(tab)',
+    "correct library source tag",
+)
+replace_once(
+    "app/libraries/page.tsx",
+    '''  function useCharacter(item: Item) {
+    localStorage.setItem("scenova-selected-character-v1", JSON.stringify({ id: item.id, title: item.title, assetUrl: item.url, metadata: item.metadata || {} }));
+    router.push("/studio#characters");
+  }
+''',
+    '''  function useCharacter(item: Item) {
+    localStorage.setItem("scenova-selected-character-v1", JSON.stringify({ id: item.id, title: item.title, assetUrl: item.url, metadata: item.metadata || {} }));
+    router.push("/studio#characters");
+  }
+
+  function useStyle(item: Item) {
+    localStorage.setItem("scenova-selected-style-v1", JSON.stringify({ id: item.id, title: item.title, assetUrl: item.url, metadata: item.metadata || {} }));
+    router.push("/studio#setup");
+  }
+''',
+    "use style from library",
+)
+replace_once(
+    "app/libraries/page.tsx",
+    '{loadError && tab !== "videos" ? <div className={styles.empty}>{loadError}</div> : null}',
+    '{libraryLoading && tab !== "videos" ? <div className={styles.statusBox}>กำลังโหลด Asset Library...</div> : null}{libraryWarning && tab !== "videos" ? <div className={`${styles.statusBox} ${styles.statusWarning}`}>{libraryWarning}</div> : null}{loadError && tab !== "videos" ? <div className={`${styles.statusBox} ${styles.statusError}`}><span>{loadError}</span><button className={styles.retryButton} onClick={() => setLibraryReloadKey((value) => value + 1)}>ลองโหลดอีกครั้ง</button></div> : null}',
+    "library status UI",
+)
+replace_once(
+    "app/libraries/page.tsx",
+    '<img className={styles.previewImage} src={item.url} alt={item.title} />',
+    '<img className={styles.previewImage} src={item.url} alt={item.title} loading="lazy" decoding="async" onError={(event) => { event.currentTarget.style.display = "none"; event.currentTarget.parentElement?.classList.add(styles.imageFailed); }} />',
+    "lazy library images",
+)
+old_actions = '''{tab === "voices" ? <button className={isPlaying ? styles.playingButton : ""} onClick={() => playVoice(item)} aria-pressed={isPlaying}>{isPlaying ? "■ หยุดเสียง" : "▶ ฟังตัวอย่าง"}</button> : tab === "videos" && item.url ? <a className={styles.primary} href={item.url} download={`SCENOVA-${item.title}.mp4`}>↓ ดาวน์โหลด</a> : isCharacter ? <button className={styles.primary} onClick={() => useCharacter(item)}>ใช้ตัวละครนี้</button> : <button className={styles.primary}>ใช้รายการนี้</button>}
+                    {tab !== "videos" ? <button onClick={() => setSelectedItem(item)}>ดูรายละเอียด</button> : null}'''
+new_actions = '''{tab === "voices" ? <button className={isPlaying ? styles.playingButton : ""} onClick={() => playVoice(item)} aria-pressed={isPlaying}>{isPlaying ? "■ หยุดเสียง" : "▶ ฟังตัวอย่าง"}</button> : tab === "videos" && item.url ? <a className={styles.primary} href={item.url} download={`SCENOVA-${item.title}.mp4`}>↓ ดาวน์โหลด</a> : isCharacter ? <button className={styles.primary} onClick={() => useCharacter(item)}>ใช้ตัวละครนี้</button> : tab === "images" ? <button className={styles.primary} onClick={() => useStyle(item)}>ใช้เป็นสไตล์</button> : <button className={styles.primary} onClick={() => setSelectedItem(item)}>ดูรายละเอียด</button>}
+                    {(tab === "voices" || tab === "images" || isCharacter) ? <button onClick={() => setSelectedItem(item)}>ดูรายละเอียด</button> : null}'''
+replace_once("app/libraries/page.tsx", old_actions, new_actions, "functional library actions")
+
+# Studio style presets now match the built-in Library.
+replace_once(
+    "components/scenova-studio-v3.tsx",
+    '''const STYLES = [
+  "Cinematic Anime — อนิเมะภาพยนตร์",
+  "Photorealistic Film — สมจริงแบบภาพยนตร์",
+  "Warm Golden Hour — อบอุ่นแสงทอง",
+  "Action Blockbuster — แอ็กชันบล็อกบัสเตอร์",
+  "Sci-Fi Neon — ไซไฟนีออน",
+  "Fantasy Storybook — แฟนตาซีภาพเล่าเรื่อง",
+  "Dark Thriller — ทริลเลอร์โทนมืด",
+  "Cute 3D — สามมิติน่ารัก",
+];''',
+    '''const STYLES = [
+  "Cinematic Anime — อนิเมะภาพยนตร์",
+  "Photorealistic Film — สมจริงแบบภาพยนตร์",
+  "Warm Golden Hour — อบอุ่นแสงทอง",
+  "Action Blockbuster — แอ็กชันบล็อกบัสเตอร์",
+  "Sci-Fi Neon — ไซไฟนีออน",
+  "Fantasy Storybook — แฟนตาซีภาพเล่าเรื่อง",
+  "Dark Thriller — ทริลเลอร์โทนมืด",
+  "Gothic Horror — สยองขวัญโกธิก",
+  "Cinematic Romance — โรแมนติกภาพยนตร์",
+  "Period Drama — ดราม่าย้อนยุค",
+  "Cute 3D — สามมิติน่ารัก",
+];''',
+    "align Studio style presets",
+)
+replace_once(
+    "components/scenova-studio-v3.tsx",
+    '  const selected = scenes.find((scene) => scene.id === selectedId) ?? scenes[0];',
+    '''  useEffect(() => {
+    const raw = localStorage.getItem("scenova-selected-style-v1");
+    if (!raw) return;
+    try {
+      const selectedStyle = JSON.parse(raw) as { title?: string };
+      const title = selectedStyle.title?.trim();
+      if (!title) return;
+      const matchedStyle = STYLES.find((item) => item.toLowerCase().startsWith(title.toLowerCase()));
+      if (matchedStyle) {
+        setStyle(matchedStyle);
+        setMessage(`โหลด ${title} จาก Asset Library เป็น Visual Style แล้ว`);
+      }
+    } finally {
+      localStorage.removeItem("scenova-selected-style-v1");
+    }
+  }, []);
+
+  const selected = scenes.find((scene) => scene.id === selectedId) ?? scenes[0];''',
+    "consume selected Library style",
+)
+old_modes = '''    <section className={styles.modeGrid}>{MODES.map((item) => <button key={item.id} className={mode === item.id ? styles.modeActive : ""} onClick={() => setMode(item.id)}><i>{item.icon}</i><div><div className={styles.modeTitle}><strong>{item.name}</strong><span>{item.level}</span></div><b className={styles.modeThai}>{item.nameTh}</b><p>{item.desc}</p><ul>{item.features.map((feature) => <li key={feature}>{feature}</li>)}</ul></div></button>)}</section>
+    <section className={styles.modeGuide}><div className={styles.modeGuideHead}><span>คำอธิบายโหมดที่เลือก</span><h2>{modeInfo.name} — {modeInfo.nameTh}</h2><p>{modeInfo.desc}</p></div><div className={styles.modeGuideGrid}><article><b>เหมาะกับงานแบบไหน</b><span>{modeInfo.bestFor}</span></article><article><b>ผู้ใช้ควบคุมอะไร</b><span>{modeInfo.userControl}</span></article><article><b>AI ทำหน้าที่อะไร</b><span>{modeInfo.aiRole}</span></article></div></section>'''
+new_modes = '''    <section className={styles.modeGrid}>{MODES.map((item) => <button key={item.id} className={mode === item.id ? styles.modeActive : ""} onClick={() => setMode(item.id)} aria-pressed={mode === item.id}><i>{item.icon}</i><div><div className={styles.modeTitle}><strong>{item.name}</strong><span>{item.level}</span></div><b className={styles.modeThai}>{item.nameTh}</b><ul>{item.features.map((feature) => <li key={feature}>{feature}</li>)}</ul><small className={styles.modeCardHint}>{mode === item.id ? "✓ เลือกอยู่" : "เลือกโหมด"}</small></div></button>)}</section>
+    <details className={styles.modeGuide}><summary><span>รายละเอียดโหมด</span><b>{modeInfo.name} — {modeInfo.nameTh}</b><small>กดเพื่ออ่านคำอธิบาย ขอบเขตการควบคุม และหน้าที่ของ AI</small></summary><div className={styles.modeGuideBody}><div className={styles.modeGuideHead}><span>คำอธิบายโหมดที่เลือก</span><h2>{modeInfo.name} — {modeInfo.nameTh}</h2><p>{modeInfo.desc}</p></div><div className={styles.modeGuideGrid}><article><b>เหมาะกับงานแบบไหน</b><span>{modeInfo.bestFor}</span></article><article><b>ผู้ใช้ควบคุมอะไร</b><span>{modeInfo.userControl}</span></article><article><b>AI ทำหน้าที่อะไร</b><span>{modeInfo.aiRole}</span></article></div></div></details>'''
+replace_once("components/scenova-studio-v3.tsx", old_modes, new_modes, "compact Studio mode cards")
+
+append_once(
+    "components/scenova-studio-v3.module.css",
+    "SCENOVA_READABILITY_STANDARD_V2",
+    r'''/* SCENOVA_READABILITY_STANDARD_V2 */
+.main{font-size:14px}.hero>div:first-child>span{font-size:12px}.hero h1{font-size:clamp(30px,3vw,38px)}.hero p{font-size:14px;line-height:1.7}.heroActions>span{font-size:12px}.hero button,.heroActions button,.finalActions button,.quick button,.sceneToolbar button{font-size:13px;min-height:42px}.primary{min-height:42px}.modeGrid{gap:14px}.modeGrid>button{padding:18px;min-height:166px;align-items:flex-start}.modeGrid i{width:44px;height:44px;font-size:18px}.modeTitle strong{font-size:18px}.modeTitle span{font-size:11px;padding:5px 8px}.modeThai{font-size:13px;margin-top:6px}.modeGrid ul{margin-top:12px;gap:7px}.modeGrid li{font-size:11px;line-height:1.35;padding:5px 8px}.modeCardHint{display:block;margin-top:12px;color:#8f8f88;font-size:12px;font-weight:800}.modeActive .modeCardHint{color:#f1cf55}.modeGuide{padding:0;overflow:hidden}.modeGuide summary{position:relative;display:grid;grid-template-columns:auto 1fr;align-items:center;gap:5px 12px;padding:14px 48px 14px 16px;cursor:pointer;list-style:none}.modeGuide summary::-webkit-details-marker{display:none}.modeGuide summary::after{content:"＋";position:absolute;right:16px;top:50%;transform:translateY(-50%);color:#f1cf55;font-size:20px}.modeGuide[open] summary::after{content:"−"}.modeGuide summary>span{color:#f1cf55;font-size:11px;font-weight:900;letter-spacing:.09em;text-transform:uppercase}.modeGuide summary>b{font-size:15px}.modeGuide summary>small{grid-column:1/-1;color:#8f8f88;font-size:12px}.modeGuideBody{padding:0 16px 16px;border-top:1px solid #28261b}.modeGuideHead{padding-top:14px}.modeGuideHead>span{font-size:11px}.modeGuideHead h2{font-size:20px;margin:5px 0}.modeGuideHead p{font-size:14px;line-height:1.7}.modeGuideGrid{gap:10px;margin-top:12px}.modeGuideGrid article{padding:12px 13px}.modeGuideGrid b{font-size:12px}.modeGuideGrid span{font-size:13px;line-height:1.6}.step strong{font-size:18px}.step span{font-size:13px;line-height:1.5}.field>b,.fieldLabel>b{font-size:13px}.fieldLabel button{font-size:11px;min-height:34px}.field input,.field select,.field textarea,.characterName{font-size:14px;min-height:44px}.field small,.field a{font-size:12px}.quick a,.quick button,.finalActions a{font-size:12px;min-height:40px}.aiAction{font-size:13px!important;min-height:44px}.budget>div:first-child b{font-size:14px}.budget>div:first-child span{font-size:12px}.budget button b,.budget button span{font-size:11px}.sceneToolbar>span{font-size:12px}.sceneWorkspace aside strong{font-size:13px}.sceneWorkspace aside small{font-size:11px}.sceneWorkspace aside button>b{font-size:11px}.sceneTitle input{font-size:19px}.sceneTitle button{font-size:12px;min-height:38px}.durationBox b{font-size:13px}.durationBox strong{font-size:14px}.durationBox small{font-size:11px}.advanced summary{font-size:13px}.advancedIntro{font-size:12px}.lockHeading b{font-size:13px}.lockHeading span{font-size:11px}.lockGrid label,.lockGrid label b{font-size:12px}.lockGrid label small{font-size:11px}.review b{font-size:11px}.review span{font-size:13px}.main :is(button,a,input,select,textarea,summary):focus-visible{outline:2px solid #f1cf55;outline-offset:2px}
+@media(max-width:620px){.modeGrid>button{min-height:auto;padding:15px}.modeTitle strong{font-size:17px}.modeTitle span{font-size:10px}.modeGrid li{font-size:11px}.modeGuide summary{padding:13px 44px 13px 13px}.modeGuideBody{padding:0 13px 13px}}''',
+)
+
+append_once(
+    "app/libraries/library-hub.module.css",
+    "SCENOVA_LIBRARY_STANDARD_V2",
+    r'''/* SCENOVA_LIBRARY_STANDARD_V2 */
+.header span{font-size:12px}.header h1{font-size:clamp(28px,3vw,34px)}.header p{font-size:14px}.adminLink{font-size:12px;min-height:44px;display:flex;align-items:center}.tabs button{font-size:13px;min-height:44px}.section{padding:18px}.sectionHead h2{font-size:20px}.sectionHead p{font-size:13px;line-height:1.6}.sectionHead small{font-size:12px}.grid{grid-template-columns:repeat(auto-fill,minmax(235px,1fr));gap:12px}.preview,.previewImageButton{height:150px}.content{padding:13px}.content b{font-size:15px;line-height:1.35}.content p{min-height:42px;font-size:13px;line-height:1.6}.tag{font-size:11px;padding:5px 8px}.actions{gap:8px;margin-top:11px}.actions button,.actions a{font-size:12px;min-height:40px;padding:9px 11px}.search{font-size:14px;min-height:44px}.count{font-size:12px}.empty{font-size:13px}.voiceVisualizer small{font-size:11px}.videoMeta{font-size:11px}.statusBox{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;padding:12px 14px;border:1px solid #2d2d2d;border-radius:11px;background:#101010;color:#c7c7c0;font-size:13px;line-height:1.55}.statusWarning{border-color:#4b4020;background:#17150d;color:#e2cd75}.statusError{border-color:#4a2828;background:#180f0f;color:#eab0b0}.retryButton{flex:0 0 auto;border:1px solid #f2c94c;border-radius:8px;background:#f2c94c;color:#090909;font-size:12px;font-weight:850;min-height:38px;padding:8px 12px;cursor:pointer}.imageFailed{display:grid;place-items:center;background:linear-gradient(145deg,#171717,#0d0d0d)}.imageFailed::after{content:"ไม่สามารถโหลดภาพตัวอย่าง";color:#8e8e87;font-size:12px}.detailHeroText>span{font-size:12px}.detailHeroText p{font-size:14px}.detailTags b{font-size:11px}.detailIntro span{font-size:11px}.detailIntro p{font-size:13px}.detailGrid article span{font-size:11px}.detailGrid article p{font-size:13px}.detailFooter>div:first-child span{font-size:12px}.detailFooter>div:first-child p{font-size:12px}.detailActions button{font-size:12px;min-height:44px}.main :is(button,a,input,select,textarea,[role="button"]):focus-visible{outline:2px solid #f2c94c;outline-offset:2px}
+@media(max-width:640px){.header p,.sectionHead p,.content p{font-size:13px}.sectionHead small,.count{font-size:11px}.grid{grid-template-columns:1fr}.preview,.previewImageButton{height:180px}.actions button,.actions a{font-size:13px}.statusBox{align-items:stretch;flex-direction:column}.retryButton{width:100%}}''',
+)
+
+append_once(
+    "components/app-shell.module.css",
+    "SCENOVA_SHELL_READABILITY_V2",
+    r'''/* SCENOVA_SHELL_READABILITY_V2 */
+.brand small{font-size:11px}.navText b,.sidebarBottom b{font-size:13px}.navText small,.sidebarBottom small{font-size:11px;line-height:1.35}.context span{font-size:11px}.context b{font-size:13px}.subNav a{font-size:12px;min-height:40px;display:flex;align-items:center}.account span{font-size:12px}.account i{font-size:10px}.mainNav a,.sidebarBottom>a:first-child{min-height:50px}.shell :is(a,button,input,select,textarea,[role="button"]):focus-visible{outline:2px solid #f2c94c;outline-offset:2px}
+@media(max-width:640px){.navText b{font-size:10px}.mainNav a,.mainNav a.active{min-height:68px}.subNav a{font-size:11px;min-height:40px}}''',
+)
+
+Path("app/standards.css").write_text(
+    '''/* Shared SCENOVA UI standards — readable defaults without overriding page identity. */
+:root{--sc-text-xs:12px;--sc-text-sm:13px;--sc-text-md:14px;--sc-text-lg:16px;--sc-focus:#f2c94c}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{font-size:var(--sc-text-md);line-height:1.5;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit}
+::placeholder{color:#777;opacity:1}
+:where(button,a,input,select,textarea,summary,[role="button"]):focus-visible{outline:2px solid var(--sc-focus);outline-offset:2px}
+@media(pointer:coarse){button,[role="button"],input:not([type="range"]),select{min-height:44px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto!important}*,*::before,*::after{scroll-behavior:auto!important}}
+''',
+    encoding="utf-8",
+)
+replace_once(
+    "app/layout.tsx",
+    'import "./globals.css";\n',
+    'import "./globals.css";\nimport "./standards.css";\n',
+    "shared standards import",
+)
+
+print("SCENOVA standards pass applied")
