@@ -150,6 +150,9 @@ const STYLES = [
   "Sci-Fi Neon — ไซไฟนีออน",
   "Fantasy Storybook — แฟนตาซีภาพเล่าเรื่อง",
   "Dark Thriller — ทริลเลอร์โทนมืด",
+  "Gothic Horror — สยองขวัญโกธิก",
+  "Cinematic Romance — โรแมนติกภาพยนตร์",
+  "Period Drama — ดราม่าย้อนยุค",
   "Cute 3D — สามมิติน่ารัก",
 ];
 const VOICES = VOICE_PROFILES;
@@ -277,6 +280,23 @@ export default function ScenovaStudioV3() {
     }
   }, []);
 
+  useEffect(() => {
+    const raw = localStorage.getItem("scenova-selected-style-v1");
+    if (!raw) return;
+    try {
+      const selectedStyle = JSON.parse(raw) as { title?: string };
+      const title = selectedStyle.title?.trim();
+      if (!title) return;
+      const matchedStyle = STYLES.find((item) => item.toLowerCase().startsWith(title.toLowerCase()));
+      if (matchedStyle) {
+        setStyle(matchedStyle);
+        setMessage(`โหลด ${title} จาก Asset Library เป็น Visual Style แล้ว`);
+      }
+    } finally {
+      localStorage.removeItem("scenova-selected-style-v1");
+    }
+  }, []);
+
   const selected = scenes.find((scene) => scene.id === selectedId) ?? scenes[0];
   const used = useMemo(() => scenes.reduce((sum, scene) => sum + scene.duration, 0), [scenes]);
   const remaining = Math.max(0, duration - used);
@@ -322,8 +342,8 @@ export default function ScenovaStudioV3() {
       <div className={styles.heroActions}><span>{message}</span>{mode === "ai" ? <button className={styles.aiAction} onClick={fillProduction}>✦ AI Fill Production — ให้ AI เติมร่างทั้งงาน</button> : null}<button className={styles.primary}>Prompt & Render</button></div>
     </header>
 
-    <section className={styles.modeGrid}>{MODES.map((item) => <button key={item.id} className={mode === item.id ? styles.modeActive : ""} onClick={() => setMode(item.id)}><i>{item.icon}</i><div><div className={styles.modeTitle}><strong>{item.name}</strong><span>{item.level}</span></div><b className={styles.modeThai}>{item.nameTh}</b><p>{item.desc}</p><ul>{item.features.map((feature) => <li key={feature}>{feature}</li>)}</ul></div></button>)}</section>
-    <section className={styles.modeGuide}><div className={styles.modeGuideHead}><span>คำอธิบายโหมดที่เลือก</span><h2>{modeInfo.name} — {modeInfo.nameTh}</h2><p>{modeInfo.desc}</p></div><div className={styles.modeGuideGrid}><article><b>เหมาะกับงานแบบไหน</b><span>{modeInfo.bestFor}</span></article><article><b>ผู้ใช้ควบคุมอะไร</b><span>{modeInfo.userControl}</span></article><article><b>AI ทำหน้าที่อะไร</b><span>{modeInfo.aiRole}</span></article></div></section>
+    <section className={styles.modeGrid}>{MODES.map((item) => <button key={item.id} className={mode === item.id ? styles.modeActive : ""} onClick={() => setMode(item.id)} aria-pressed={mode === item.id}><i>{item.icon}</i><div><div className={styles.modeTitle}><strong>{item.name}</strong><span>{item.level}</span></div><b className={styles.modeThai}>{item.nameTh}</b><ul>{item.features.map((feature) => <li key={feature}>{feature}</li>)}</ul><small className={styles.modeCardHint}>{mode === item.id ? "✓ เลือกอยู่" : "เลือกโหมด"}</small></div></button>)}</section>
+    <details className={styles.modeGuide}><summary><span>รายละเอียดโหมด</span><b>{modeInfo.name} — {modeInfo.nameTh}</b><small>กดเพื่ออ่านคำอธิบาย ขอบเขตการควบคุม และหน้าที่ของ AI</small></summary><div className={styles.modeGuideBody}><div className={styles.modeGuideHead}><span>คำอธิบายโหมดที่เลือก</span><h2>{modeInfo.name} — {modeInfo.nameTh}</h2><p>{modeInfo.desc}</p></div><div className={styles.modeGuideGrid}><article><b>เหมาะกับงานแบบไหน</b><span>{modeInfo.bestFor}</span></article><article><b>ผู้ใช้ควบคุมอะไร</b><span>{modeInfo.userControl}</span></article><article><b>AI ทำหน้าที่อะไร</b><span>{modeInfo.aiRole}</span></article></div></div></details>
 
     <section id="setup" className={styles.card}>
       <div className={styles.step}><b>1</b><div><strong>Production Setup</strong><span>กำหนดข้อจำกัดหลักของงาน ทุกช่องมี Preset และแก้ Custom ได้</span></div></div>

@@ -51,7 +51,7 @@ type DbLibraryAsset = {
   updatedAt: Date;
 };
 
-const SYSTEM_ASSETS: Array<Omit<LibraryAssetRecord, "createdAt" | "updatedAt" | "active">> = [
+export const SYSTEM_ASSETS: Array<Omit<LibraryAssetRecord, "createdAt" | "updatedAt" | "active">> = [
   { id: "anime", kind: "images", title: "Cinematic Anime", description: "อนิเมะภาพยนตร์ แสงมีมิติ เหมาะกับเรื่องเล่า Coming-of-age และ Fantasy", assetUrl: "/library/styles/cinematic-anime.png", source: "SYSTEM", sortOrder: 10, metadata: { visualLanguage: "อนิเมะภาพยนตร์ที่ใช้มุมกล้องและองค์ประกอบแบบหนังจริง เส้นสะอาด ฉากมีมิติ และเน้นอารมณ์ของตัวละคร", lighting: "แสงนุ่มแบบภาพยนตร์ มี Rim Light และแสงบรรยากาศช่วยแยกตัวละครออกจากฉาก", colorMood: "สีสดแต่คุมโทน อบอุ่นและมี Highlight ชัด", bestFor: "Anime, Coming-of-age, Fantasy, Romance และเรื่องเล่าที่เน้นอารมณ์", promptHint: "cinematic anime, expressive character acting, dimensional background, controlled film lighting", referenceUsage: "ใช้เป็น Style Reference เพื่อคุมโทนทั้ง Production หรือ Image Reference เฉพาะ Scene" } },
   { id: "golden", kind: "images", title: "Warm Golden Hour", description: "แสงเย็นสีทอง อบอุ่น นุ่ม เหมาะกับ Romance, Slice of Life และฉากความทรงจำ", assetUrl: "/library/styles/warm-golden-hour.png", source: "SYSTEM", sortOrder: 20, metadata: { visualLanguage: "ภาพเน้นความอบอุ่น ความทรงจำ และความใกล้ชิด ใช้แสงอาทิตย์ต่ำสร้างมิติและเงายาว", lighting: "Golden Hour / Backlight / Soft Flare แสงอุ่นจากด้านหลังหรือด้านข้าง", colorMood: "ทอง ส้ม น้ำตาลอ่อน และ Skin Tone อบอุ่น", bestFor: "Romance, Slice of Life, Family, Memory และ Emotional Scene", promptHint: "warm golden-hour sunlight, soft backlight, natural atmosphere, gentle contrast", referenceUsage: "ใช้เป็น Style Reference หรือภาพอ้างอิงเฉพาะ Scene ได้" } },
   { id: "real", kind: "images", title: "Photorealistic Film", description: "ภาพสมจริงแบบภาพยนตร์ ผิว วัสดุ และแสงเป็นธรรมชาติ", assetUrl: "/library/styles/photorealistic-film.png", source: "SYSTEM", sortOrder: 30, metadata: { visualLanguage: "ภาพสมจริงแบบกองถ่ายภาพยนตร์ เน้นผิว วัสดุ สภาพอากาศ และ Depth ที่เป็นธรรมชาติ", lighting: "Motivated Lighting เลียนแบบแหล่งแสงจริงในฉาก พร้อม Contrast แบบฟิล์ม", colorMood: "Natural Film Color, Skin Tone สมจริง และ Saturation พอดี", bestFor: "Drama, Commercial, Documentary-style, Thriller และงานสมจริง", promptHint: "photorealistic cinematic film, natural skin texture, realistic materials, motivated lighting", referenceUsage: "เหมาะเป็น Style Reference หลักสำหรับงานสมจริง" } },
@@ -113,7 +113,6 @@ export async function ensureSystemLibraryAssets() {
 }
 
 export async function listLibraryAssets(options: { includeInactive?: boolean } = {}) {
-  await ensureSystemLibraryAssets();
   const rows = await prisma.$queryRaw<DbLibraryAsset[]>(Prisma.sql`
     SELECT "id","kind","title","description","assetUrl","source","metadata","active","sortOrder","createdAt","updatedAt"
     FROM "LibraryAsset"
@@ -139,7 +138,6 @@ export async function removeLibraryAsset(id: string) {
 }
 
 export async function disabledSystemAssetIds() {
-  await ensureSystemLibraryAssets();
   const rows = await prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT "id" FROM "LibraryAsset" WHERE "source" = 'SYSTEM' AND "active" = false`);
   return rows.map((row) => row.id);
 }

@@ -110,6 +110,9 @@ export default function LibrariesPage() {
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [imagePreview, setImagePreview] = useState<Item | null>(null);
   const [loadError, setLoadError] = useState("");
+  const [libraryWarning, setLibraryWarning] = useState("");
+  const [libraryLoading, setLibraryLoading] = useState(true);
+  const [libraryReloadKey, setLibraryReloadKey] = useState(0);
   const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -127,11 +130,29 @@ export default function LibrariesPage() {
   }, []);
 
   useEffect(() => {
-    fetch("/api/library", { cache: "no-store" })
-      .then(async (response) => { const data = await response.json(); if (!response.ok) throw new Error(data.error || "LIBRARY_UNAVAILABLE"); return data; })
-      .then((data) => { setApiItems(data.items || []); setLoadError(""); })
-      .catch(() => { setApiItems([]); setLoadError("โหลด Asset Library ไม่สำเร็จ กรุณาตรวจสอบ Database migration"); });
-  }, []);
+    let active = true;
+    setLibraryLoading(true);
+    fetch("/api/library", { cache: "no-store", credentials: "same-origin" })
+      .then(async (response) => {
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "LIBRARY_UNAVAILABLE");
+        return data;
+      })
+      .then((data) => {
+        if (!active) return;
+        setApiItems(Array.isArray(data.items) ? data.items : []);
+        setLibraryWarning(typeof data.warning === "string" ? data.warning : "");
+        setLoadError("");
+      })
+      .catch(() => {
+        if (!active) return;
+        setApiItems([]);
+        setLibraryWarning("");
+        setLoadError("ไม่สามารถโหลด Asset Library จากเซิร์ฟเวอร์ได้ กรุณาลองใหม่อีกครั้ง");
+      })
+      .finally(() => { if (active) setLibraryLoading(false); });
+    return () => { active = false; };
+  }, [libraryReloadKey]);
 
   useEffect(() => {
     const load = () => { try { setVideos(JSON.parse(localStorage.getItem("scenova-video-library-v1") || "[]")); } catch { setVideos([]); } };
@@ -157,7 +178,7 @@ export default function LibrariesPage() {
   const current = TABS.find((item) => item.id === tab)!;
   const items = useMemo<Item[]>(() => {
     if (tab === "videos") return videos.map((video) => ({ id: video.id, title: `EP.${String(video.ep).padStart(2, "0")} — ${video.epTitle}`, description: `${video.projectTitle} • ${video.duration} วินาที`, tag: video.status === "completed" ? "สร้างเสร็จแล้ว" : "กำลังประมวลผล", visual: "video", icon: "▶", url: video.url, ep: video.ep, duration: video.duration }));
-    return apiItems.filter((item) => item.kind === tab).map((item) => ({ id: item.id, title: item.title, description: item.description, tag: "SCENOVA System", visual: visualFor(tab), icon: current.icon, url: item.assetUrl, source: item.source, metadata: item.metadata }));
+    return apiItems.filter((item) => item.kind === tab).map((item) => ({ id: item.id, title: item.title, description: item.description, tag: item.source === "ADMIN" ? "Admin Upload" : "SCENOVA System", visual: visualFor(tab), icon: current.icon, url: item.assetUrl, source: item.source, metadata: item.metadata }));
   }, [tab, videos, apiItems, current.icon]);
 
   const filtered = items.filter((item) => `${item.title} ${item.description} ${item.tag} ${item.metadata?.role || ""} ${item.metadata?.ageRange || ""}`.toLowerCase().includes(search.toLowerCase()));
@@ -192,6 +213,11 @@ export default function LibrariesPage() {
     router.push("/studio#characters");
   }
 
+  function useStyle(item: Item) {
+    localStorage.setItem("scenova-selected-style-v1", JSON.stringify({ id: item.id, title: item.title, assetUrl: item.url, metadata: item.metadata || {} }));
+    router.push("/studio#setup");
+  }
+
   return (
     <main className={styles.main}>
       <header className={styles.header}>
@@ -203,7 +229,7 @@ export default function LibrariesPage() {
 
       <section className={styles.section}>
         <div className={styles.sectionHead}><div><h2>{current.label}</h2><p>{current.desc} — {tab === "characters" ? "เลือก Character Profile แล้วส่งเข้า Studio ได้โดยไม่ต้องพิมพ์ Character Bible ซ้ำ" : "ดูตัวอย่างก่อนนำไปใช้ใน Studio หรือ Series"}</p></div><small>{filtered.length} รายการ</small></div>
-        {loadError && tab !== "videos" ? <div className={styles.empty}>{loadError}</div> : null}
+        {libraryLoading && tab !== "videos" ? <div className={styles.statusBox}>กำลังโหลด Asset Library...</div> : null}{libraryWarning && tab !== "videos" ? <div className={`${styles.statusBox} ${styles.statusWarning}`}>{libraryWarning}</div> : null}{loadError && tab !== "videos" ? <div className={`${styles.statusBox} ${styles.statusError}`}><span>{loadError}</span><button className={styles.retryButton} onClick={() => setLibraryReloadKey((value) => value + 1)}>ลองโหลดอีกครั้ง</button></div> : null}
         <div className={styles.toolbar}><input className={styles.search} placeholder={`ค้นหาใน${current.label}...`} value={search} onChange={(e) => setSearch(e.target.value)} /><span className={styles.count}>SCENOVA System • สีเขียว = Admin Upload</span></div>
         <div className={styles.grid}>
           {filtered.map((item) => {
@@ -212,13 +238,13 @@ export default function LibrariesPage() {
             const quality = isCharacter ? characterQuality(item) : 0;
             return (
               <article className={`${styles.card} ${isPlaying ? styles.playingCard : ""}`} key={item.id}>
-                {(tab === "images" || tab === "characters") && item.url ? <button className={styles.previewImageButton} onClick={() => setImagePreview(item)} aria-label={`ดูรูป ${item.title} แบบเต็ม`}><img className={styles.previewImage} src={item.url} alt={item.title} /></button> : <div className={`${styles.preview} ${styles[item.visual as keyof typeof styles] || ""} ${isPlaying ? styles.voicePlaying : ""}`} style={item.url && tab !== "videos" ? { backgroundImage: `url(${item.url})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}>{tab === "voices" ? <div className={styles.voiceVisualizer} aria-live="polite"><span className={styles.voiceDisc}>{isPlaying ? "■" : "♫"}</span><div className={styles.waveBars} aria-hidden="true">{[0,1,2,3,4,5,6].map((bar) => <i key={bar} style={{ animationDelay:`${bar * 70}ms` }} />)}</div><small>{isPlaying ? "กำลังเล่นตัวอย่างเสียง..." : "แตะเพื่อฟังตัวอย่าง"}</small></div> : <span className={styles.previewIcon}>{item.icon}</span>}</div>}
+                {(tab === "images" || tab === "characters") && item.url ? <button className={styles.previewImageButton} onClick={() => setImagePreview(item)} aria-label={`ดูรูป ${item.title} แบบเต็ม`}><img className={styles.previewImage} src={item.url} alt={item.title} loading="lazy" decoding="async" onError={(event) => { event.currentTarget.style.display = "none"; event.currentTarget.parentElement?.classList.add(styles.imageFailed); }} /></button> : <div className={`${styles.preview} ${styles[item.visual as keyof typeof styles] || ""} ${isPlaying ? styles.voicePlaying : ""}`} style={item.url && tab !== "videos" ? { backgroundImage: `url(${item.url})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}>{tab === "voices" ? <div className={styles.voiceVisualizer} aria-live="polite"><span className={styles.voiceDisc}>{isPlaying ? "■" : "♫"}</span><div className={styles.waveBars} aria-hidden="true">{[0,1,2,3,4,5,6].map((bar) => <i key={bar} style={{ animationDelay:`${bar * 70}ms` }} />)}</div><small>{isPlaying ? "กำลังเล่นตัวอย่างเสียง..." : "แตะเพื่อฟังตัวอย่าง"}</small></div> : <span className={styles.previewIcon}>{item.icon}</span>}</div>}
                 <div className={styles.content}><b>{item.title}</b><p>{item.description}</p><span className={styles.tag} style={item.source === "ADMIN" ? { color: "#8bcf98", background: "#101b12", boxShadow: "inset 0 0 0 1px #28432e" } : undefined}>{item.tag}</span>
                   {isCharacter ? <><div className={characterStyles.characterCardMeta}><span><b>Role</b>{item.metadata?.role || "กำหนดใน Studio"}</span><span><b>Age</b>{item.metadata?.ageRange || "Flexible"}</span><span><b>Voice</b>{item.metadata?.voiceProfile || "เลือกภายหลัง"}</span></div><div className={characterStyles.qualityWrap}><div className={characterStyles.qualityHead}><span>Reference Quality — ความพร้อมอ้างอิง</span><strong>{quality}%</strong></div><div className={characterStyles.qualityTrack}><i style={{ width: `${quality}%` }} /></div></div></> : null}
                   {tab === "videos" ? <div className={styles.videoMeta}><span>EP {item.ep}</span><span>{item.duration}s</span></div> : null}
                   <div className={styles.actions}>
-                    {tab === "voices" ? <button className={isPlaying ? styles.playingButton : ""} onClick={() => playVoice(item)} aria-pressed={isPlaying}>{isPlaying ? "■ หยุดเสียง" : "▶ ฟังตัวอย่าง"}</button> : tab === "videos" && item.url ? <a className={styles.primary} href={item.url} download={`SCENOVA-${item.title}.mp4`}>↓ ดาวน์โหลด</a> : isCharacter ? <button className={styles.primary} onClick={() => useCharacter(item)}>ใช้ตัวละครนี้</button> : <button className={styles.primary}>ใช้รายการนี้</button>}
-                    {tab !== "videos" ? <button onClick={() => setSelectedItem(item)}>ดูรายละเอียด</button> : null}
+                    {tab === "voices" ? <button className={isPlaying ? styles.playingButton : ""} onClick={() => playVoice(item)} aria-pressed={isPlaying}>{isPlaying ? "■ หยุดเสียง" : "▶ ฟังตัวอย่าง"}</button> : tab === "videos" && item.url ? <a className={styles.primary} href={item.url} download={`SCENOVA-${item.title}.mp4`}>↓ ดาวน์โหลด</a> : isCharacter ? <button className={styles.primary} onClick={() => useCharacter(item)}>ใช้ตัวละครนี้</button> : tab === "images" ? <button className={styles.primary} onClick={() => useStyle(item)}>ใช้เป็นสไตล์</button> : <button className={styles.primary} onClick={() => setSelectedItem(item)}>ดูรายละเอียด</button>}
+                    {(tab === "voices" || tab === "images" || isCharacter) ? <button onClick={() => setSelectedItem(item)}>ดูรายละเอียด</button> : null}
                   </div>
                 </div>
               </article>

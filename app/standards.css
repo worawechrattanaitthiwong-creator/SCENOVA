@@ -1,0 +1,9 @@
+/* Shared SCENOVA UI standards — readable defaults without overriding page identity. */
+:root{--sc-text-xs:12px;--sc-text-sm:13px;--sc-text-md:14px;--sc-text-lg:16px;--sc-focus:#f2c94c}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{font-size:var(--sc-text-md);line-height:1.5;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit}
+::placeholder{color:#777;opacity:1}
+:where(button,a,input,select,textarea,summary,[role="button"]):focus-visible{outline:2px solid var(--sc-focus);outline-offset:2px}
+@media(pointer:coarse){button,[role="button"],input:not([type="range"]),select{min-height:44px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto!important}*,*::before,*::after{scroll-behavior:auto!important}}
