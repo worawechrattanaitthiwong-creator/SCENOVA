@@ -39,7 +39,20 @@ jobs:
           PY
 
       - name: Apply Studio UX and multi-camera upgrade
-        run: node scripts/apply-studio-cinematic-upgrade.mjs
+        run: |
+          set +e
+          node scripts/apply-studio-cinematic-upgrade.mjs > /tmp/studio-upgrade.log 2>&1
+          code=$?
+          cat /tmp/studio-upgrade.log
+          if [ "$code" -ne 0 ]; then
+            cp /tmp/studio-upgrade.log studio-upgrade-error.log
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add studio-upgrade-error.log
+            git commit -m "Capture Studio upgrade patch error" || true
+            git push origin HEAD:main || true
+            exit "$code"
+          fi
 
       - name: Prepare cinematic generator dependencies
         run: |
@@ -71,7 +84,7 @@ jobs:
           git diff --check
 
       - name: Remove one-shot upgrade helpers
-        run: rm -f scripts/apply-studio-cinematic-upgrade.mjs scripts/generate-login-cinematic.py .github/workflows/studio-cinematic-upgrade.yml
+        run: rm -f scripts/apply-studio-cinematic-upgrade.mjs scripts/generate-login-cinematic.py .github/workflows/studio-cinematic-upgrade.yml studio-upgrade-error.log
 
       - name: Commit validated upgrade
         run: |
