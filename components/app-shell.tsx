@@ -33,6 +33,22 @@ const seriesSubNav = [
   ["/libraries?tab=videos", "Generated Episodes"],
 ] as const;
 
+function ScenovaMark() {
+  return <svg viewBox="0 0 40 40" width="30" height="30" aria-hidden="true" focusable="false">
+    <defs>
+      <linearGradient id="scenova-mark-gold" x1="8" y1="6" x2="32" y2="34" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#fff0a3" />
+        <stop offset="0.45" stopColor="#f2c94c" />
+        <stop offset="1" stopColor="#9d7620" />
+      </linearGradient>
+    </defs>
+    <rect x="5.5" y="5.5" width="29" height="29" rx="8" fill="#0b0b09" stroke="url(#scenova-mark-gold)" strokeWidth="1.2" />
+    <path d="M27.8 13.1c-2.05-1.9-4.55-2.85-7.45-2.85-4.35 0-7.2 2.05-7.2 5.05 0 3.15 2.5 4.2 7.45 5.25 4.1.85 5.65 1.55 5.65 3.55 0 2.25-2.15 3.65-5.7 3.65-3.25 0-6.05-1.05-8.35-3.2" fill="none" stroke="url(#scenova-mark-gold)" strokeWidth="2.05" strokeLinecap="round" />
+    <path d="M9.5 8.5h4M26.5 31.5h4" stroke="#f7df7a" strokeWidth="1.1" strokeLinecap="round" opacity=".9" />
+    <circle cx="30.6" cy="9.4" r="1.15" fill="#fff0a3" />
+  </svg>;
+}
+
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -73,7 +89,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return <div className={styles.shell}>
     <aside className={styles.sidebar}>
-      <Link href="/portal" className={styles.brand} prefetch={false}><span className={styles.logo}>S</span><span><b>SCENOVA</b><small>AI Cinematic Production Studio</small></span></Link>
+      <Link href="/portal" className={styles.brand} prefetch={false}><span className={styles.logo} style={{ background: "linear-gradient(145deg,#17130a 0%,#0a0a09 68%)", border: "1px solid #6d5820", color: "#f2c94c", boxShadow: "inset 0 0 0 1px rgba(255,232,135,.08),0 10px 28px rgba(170,128,24,.14)" }}><ScenovaMark /></span><span><b>SCENOVA</b><small>AI Cinematic Production Studio</small></span></Link>
       <nav className={styles.mainNav} aria-label="Primary navigation">{MAIN_NAV.map(([href, icon, label, short]) => {
         const active = pathname.startsWith(href);
         return <Link key={href} href={href} prefetch={false} className={active ? styles.active : ""}><span className={styles.navIcon}>{icon}</span><span className={styles.navText}><b>{label}</b><small>{short}</small></span></Link>;
