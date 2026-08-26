@@ -1,25 +1,31 @@
 import { PrismaClient } from "@/generated/prisma/client";
 import { PrismaNeon } from "@prisma/adapter-neon";
 
-function createPrismaClient() {
+const globalForPrisma = globalThis as unknown as {
+  prismaClient?: PrismaClient;
+};
+
+function getPrismaClient() {
+  if (globalForPrisma.prismaClient) return globalForPrisma.prismaClient;
+
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) throw new Error("DATABASE_URL_REQUIRED");
 
   const adapter = new PrismaNeon({ connectionString });
-  return new PrismaClient({ adapter });
+  const client = new PrismaClient({ adapter });
+
+  // A long-lived Node.js VPS process is not subject to Cloudflare Workers'
+  // request-bound I/O isolation. Reusing one client avoids creating a new
+  // Neon adapter/pool for every Prisma operation.
+  globalForPrisma.prismaClient = client;
+  return client;
 }
 
-// Cloudflare Workers reuse isolates across requests. Database adapters can hold
-// request-bound I/O internally, so a PrismaClient created for one request must
-// never be cached in globalThis and reused by a later request.
-//
-// Keep this export lazy so Next/OpenNext can import route modules during builds
-// without requiring DATABASE_URL. Each database operation receives a fresh
-// client/adapter and therefore cannot inherit request-scoped sockets/state from
-// a previous Worker invocation.
+// Keep construction lazy so Next.js can import route modules during build
+// without requiring runtime secrets. The singleton is created on first DB use.
 export const prisma = new Proxy({} as PrismaClient, {
   get(_target, property) {
-    const client = createPrismaClient();
+    const client = getPrismaClient();
     const value = Reflect.get(client, property);
     return typeof value === "function" ? value.bind(client) : value;
   },
