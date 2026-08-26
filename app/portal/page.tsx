@@ -1,5 +1,6 @@
 "use client";
 
+// Portal-only visual layer. Authentication, session verification and workspace routing stay unchanged.
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./portal.module.css";
