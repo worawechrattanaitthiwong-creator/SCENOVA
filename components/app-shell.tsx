@@ -9,28 +9,28 @@ type Me = { authenticated: boolean; name?: string; email?: string; role?: "ADMIN
 type NavItem = readonly [href: string, icon: string, label: string, short: string];
 
 const MAIN_NAV: NavItem[] = [
-  ["/studio", "✦", "Studio", "Production Workspace"],
-  ["/series", "EP", "Series", "Episode Continuity"],
-  ["/agent", "AI", "AI Agent", "Orchestration & Approval"],
-  ["/libraries", "▦", "Asset Library", "Media & References"],
-  ["/render", "▶", "Render Queue", "Generation Jobs"],
-  ["/models", "⬡", "Model Center", "Models & Pricing"],
-  ["/wallet", "●", "Credit Wallet", "Balance & Usage"],
+  ["/studio", "✦", "Studio", "พื้นที่สร้างงาน"],
+  ["/series", "EP", "Series", "ความต่อเนื่องของตอน"],
+  ["/agent", "AI", "AI Agent", "จัดการและอนุมัติงาน AI"],
+  ["/libraries", "▦", "Asset Library", "สื่อและข้อมูลอ้างอิง"],
+  ["/render", "▶", "Render Queue", "คิวสร้างวิดีโอ"],
+  ["/models", "⬡", "Model Center", "โมเดลและราคา"],
+  ["/wallet", "●", "Credit Wallet", "เครดิตและการใช้งาน"],
 ];
 
 const studioSubNav = [
-  ["/studio#setup", "Production Setup"],
-  ["/studio#characters", "Characters"],
-  ["/studio#scenes", "Scene Direction"],
-  ["/studio#sound", "Dialogue & Sound"],
-  ["/studio#review", "Prompt & Render"],
+  ["/studio#setup", "Production Setup — ตั้งค่างาน"],
+  ["/studio#characters", "Characters — ตัวละคร"],
+  ["/studio#scenes", "Scene Direction — กำกับฉาก"],
+  ["/studio#sound", "Dialogue & Sound — บทพูดและเสียง"],
+  ["/studio#review", "Prompt & Render — สร้างงาน"],
 ] as const;
 
 const seriesSubNav = [
-  ["/series#history", "Series History"],
-  ["/series#episode-editor", "Episode Workspace"],
-  ["/series#continuity", "Continuity"],
-  ["/libraries?tab=videos", "Generated Episodes"],
+  ["/series#history", "Series History — ประวัติซีรีส์"],
+  ["/series#episode-editor", "Episode Workspace — พื้นที่ทำตอน"],
+  ["/series#continuity", "Continuity — ความต่อเนื่อง"],
+  ["/libraries?tab=videos", "Generated Episodes — ตอนที่สร้างแล้ว"],
 ] as const;
 
 function ScenovaMark() {
@@ -72,18 +72,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const subNav = useMemo(() => {
     if (pathname.startsWith("/series")) return seriesSubNav;
-    if (pathname.startsWith("/agent")) return [["/agent", "Agent Runs"], ["/wallet", "Credit Activity"], ["/render", "Render Queue"]] as const;
-    if (pathname.startsWith("/libraries")) return [["/libraries", "Asset Library"]] as const;
-    if (pathname.startsWith("/render")) return [["/render", "Render Queue"], ["/libraries?tab=videos", "Completed Renders"]] as const;
-    if (pathname.startsWith("/models")) return [["/models", "Model Comparison"], ["/studio", "Studio"]] as const;
-    if (pathname.startsWith("/wallet")) return [["/wallet", "Credit Balance & Activity"], ["/agent", "Agent Usage"], ["/render", "Usage Jobs"]] as const;
-    if (pathname.startsWith("/admin")) return [["/admin", "Members & Assets"], ["/admin/security", "Emergency Security"], ["/admin/ai-costs", "LLM Cost Meter"], ["/profile", "Account Security"]] as const;
-    if (pathname.startsWith("/profile")) return [["/profile", "Account & Security"], ["/studio", "Studio"]] as const;
+    if (pathname.startsWith("/agent")) return [["/agent", "Agent Runs — งาน AI"], ["/wallet", "Credit Activity — การใช้เครดิต"], ["/render", "Render Queue — คิวสร้างวิดีโอ"]] as const;
+    if (pathname.startsWith("/libraries")) return [["/libraries", "Asset Library — คลังสื่อ"]] as const;
+    if (pathname.startsWith("/render")) return [["/render", "Render Queue — คิวสร้างวิดีโอ"], ["/libraries?tab=videos", "Completed Renders — งานที่สร้างแล้ว"]] as const;
+    if (pathname.startsWith("/models")) return [["/models", "Model Comparison — เปรียบเทียบโมเดล"], ["/studio", "Studio — สตูดิโอ"]] as const;
+    if (pathname.startsWith("/wallet")) return [["/wallet", "Credit Balance & Activity — เครดิตและการใช้งาน"], ["/agent", "Agent Usage — การใช้ AI"], ["/render", "Usage Jobs — งานที่ใช้เครดิต"]] as const;
+    if (pathname.startsWith("/admin")) return [["/admin", "Members & Assets — สมาชิกและสื่อ"], ["/admin/security", "Security — ความปลอดภัย"], ["/admin/ai-costs", "AI Cost — ค่าใช้จ่าย AI"], ["/profile", "Account Security — ความปลอดภัยบัญชี"]] as const;
+    if (pathname.startsWith("/profile")) return [["/profile", "Account & Security — บัญชีและความปลอดภัย"], ["/studio", "Studio — สตูดิโอ"]] as const;
     return studioSubNav;
   }, [pathname]);
 
   if (standalone) return <>{children}</>;
-  if (checking || !me.authenticated) return <div className={styles.loading}>Opening SCENOVA Workspace...</div>;
+  if (checking || !me.authenticated) return <div className={styles.loading}>กำลังเปิด SCENOVA...</div>;
 
   const context = pathname.startsWith("/series") ? "Series" : pathname.startsWith("/agent") ? "AI Agent" : pathname.startsWith("/libraries") ? "Asset Library" : pathname.startsWith("/render") ? "Render Queue" : pathname.startsWith("/models") ? "Model Center" : pathname.startsWith("/wallet") ? "Credit Wallet" : pathname.startsWith("/admin") ? "Admin Console" : pathname.startsWith("/profile") ? "Profile" : "Studio";
 
@@ -94,12 +94,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         const active = pathname.startsWith(href);
         return <Link key={href} href={href} prefetch={false} className={active ? styles.active : ""}><span className={styles.navIcon}>{icon}</span><span className={styles.navText}><b>{label}</b><small>{short}</small></span></Link>;
       })}
-        {me.role === "ADMIN" ? <Link href="/admin" prefetch={false} className={`${styles.mobileOnly} ${pathname.startsWith("/admin") ? styles.active : ""}`}><span className={styles.navIcon}>⚙</span><span className={styles.navText}><b>Admin</b><small>Console</small></span></Link> : null}
-        <Link href="/profile" prefetch={false} className={`${styles.mobileOnly} ${pathname.startsWith("/profile") ? styles.active : ""}`}><span className={styles.navIcon}>◉</span><span className={styles.navText}><b>Profile</b><small>Account</small></span></Link>
+        {me.role === "ADMIN" ? <Link href="/admin" prefetch={false} className={`${styles.mobileOnly} ${pathname.startsWith("/admin") ? styles.active : ""}`}><span className={styles.navIcon}>⚙</span><span className={styles.navText}><b>Admin</b><small>จัดการระบบ</small></span></Link> : null}
+        <Link href="/profile" prefetch={false} className={`${styles.mobileOnly} ${pathname.startsWith("/profile") ? styles.active : ""}`}><span className={styles.navIcon}>◉</span><span className={styles.navText}><b>Profile</b><small>บัญชี</small></span></Link>
       </nav>
       <div className={styles.sidebarBottom}>
-        {me.role === "ADMIN" ? <Link href="/admin" prefetch={false} className={pathname.startsWith("/admin") ? styles.active : ""}><span className={styles.navIcon}>⚙</span><span className={styles.navText}><b>Admin Console</b><small>Security, Members & Cost</small></span></Link> : null}
-        <Link href="/profile" prefetch={false} className={styles.profileCard}><span className={styles.profileAvatar}>{me.name?.slice(0, 1).toUpperCase() || "U"}</span><span><b>{me.name || "Profile"}</b><small>{me.twoFactorEnabled ? "2FA Secured" : me.role === "ADMIN" ? "Security Setup" : me.email}</small></span></Link>
+        {me.role === "ADMIN" ? <Link href="/admin" prefetch={false} className={pathname.startsWith("/admin") ? styles.active : ""}><span className={styles.navIcon}>⚙</span><span className={styles.navText}><b>Admin Console</b><small>ความปลอดภัย สมาชิก และค่าใช้จ่าย</small></span></Link> : null}
+        <Link href="/profile" prefetch={false} className={styles.profileCard}><span className={styles.profileAvatar}>{me.name?.slice(0, 1).toUpperCase() || "U"}</span><span><b>{me.name || "Profile"}</b><small>{me.twoFactorEnabled ? "2FA เปิดใช้งาน" : me.role === "ADMIN" ? "ตั้งค่าความปลอดภัย" : me.email}</small></span></Link>
       </div>
     </aside>
     <div className={styles.workspace}>
