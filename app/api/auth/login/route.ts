@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { authenticatePassword, completeLogin, signSession, signTwoFactorChallenge } from "@/lib/auth-core";
+import { attachSessionCookie, setPrivateNoStore } from "@/lib/auth-cookie";
 import { prisma } from "@/lib/db";
 import { buildOtpAuthUri, encryptTwoFactorSecret, generateTotpSecret } from "@/lib/two-factor";
 
@@ -14,23 +15,18 @@ export async function POST(request: Request) {
 
     const user = await authenticatePassword(email, password);
     if (!user) {
-      return NextResponse.json({ ok: false, error: "อีเมลหรือรหัสผ่านไม่ถูกต้อง" }, { status: 401 });
+      return setPrivateNoStore(NextResponse.json({ ok: false, error: "อีเมลหรือรหัสผ่านไม่ถูกต้อง" }, { status: 401 }));
     }
 
-    // Existing 2FA: password is correct, so issue a short-lived signed challenge
-    // that only exists in the login page memory and is required for OTP verify.
     if (user.twoFactorEnabled) {
-      return NextResponse.json({
+      return setPrivateNoStore(NextResponse.json({
         ok: true,
         twoFactorRequired: true,
         twoFactorSetupRequired: false,
         challengeToken: signTwoFactorChallenge(user.id),
-      });
+      }));
     }
 
-    // Admin accounts must enroll 2FA. Bootstrap the enrollment in this same
-    // password-authenticated request so the browser never has to rely on a
-    // challenge cookie between login and setup.
     if (user.role === "ADMIN") {
       const secret = generateTotpSecret();
       const encryptedSecret = await encryptTwoFactorSecret(secret);
@@ -45,7 +41,7 @@ export async function POST(request: Request) {
         },
       });
 
-      return NextResponse.json({
+      return setPrivateNoStore(NextResponse.json({
         ok: true,
         twoFactorRequired: false,
         twoFactorSetupRequired: true,
@@ -56,25 +52,17 @@ export async function POST(request: Request) {
           account: user.email,
           issuer: "SCENOVA",
         },
-      });
+      }));
     }
 
-    // Members without 2FA can enter immediately after password verification.
     const sessionUser = await completeLogin(user.id);
     const response = NextResponse.json({ ok: true, user: sessionUser });
-    response.cookies.set("scenova_session", signSession(sessionUser), {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 7,
-    });
-    return response;
+    return attachSessionCookie(response, signSession(sessionUser), request);
   } catch (error) {
     console.error("SCENOVA_AUTH_LOGIN_FAILED", error);
-    return NextResponse.json(
+    return setPrivateNoStore(NextResponse.json(
       { ok: false, error: "ระบบเข้าสู่ระบบหรือการเตรียม Authenticator ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" },
       { status: 503 },
-    );
+    ));
   }
 }
