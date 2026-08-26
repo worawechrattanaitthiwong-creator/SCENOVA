@@ -20,6 +20,25 @@ function apiError(data: ApiData, fallback: string) {
   return typeof data.error === "string" && data.error ? data.error : fallback;
 }
 
+function parseSetupData(value: unknown): SetupData | null {
+  if (!value || typeof value !== "object") return null;
+  const data = value as Record<string, unknown>;
+  if (
+    typeof data.secret !== "string" ||
+    typeof data.otpauthUri !== "string" ||
+    typeof data.account !== "string" ||
+    typeof data.issuer !== "string"
+  ) {
+    return null;
+  }
+  return {
+    secret: data.secret,
+    otpauthUri: data.otpauthUri,
+    account: data.account,
+    issuer: data.issuer,
+  };
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -37,29 +56,38 @@ export default function LoginPage() {
     if (loading) return;
     setLoading(true);
     setError("");
+
     try {
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "same-origin",
+        cache: "no-store",
         body: JSON.stringify({ email, password }),
       });
       const data = await readJson(response);
+
       if (!response.ok) {
         setError(apiError(data, "Authentication failed"));
         return;
       }
 
       const nextChallengeToken = typeof data.challengeToken === "string" ? data.challengeToken : "";
+
       if (data.twoFactorSetupRequired === true) {
-        if (!nextChallengeToken) {
-          setError("ไม่สามารถสร้างเซสชันยืนยัน 2FA ได้ กรุณาเข้าสู่ระบบใหม่อีกครั้ง");
+        const setupData = parseSetupData(data.setup);
+        if (!nextChallengeToken || !setupData) {
+          setError("ไม่สามารถเตรียมข้อมูล Authenticator ได้ กรุณาเข้าสู่ระบบใหม่อีกครั้ง");
           return;
         }
         setChallengeToken(nextChallengeToken);
-        await startSetup(nextChallengeToken);
+        setSetup(setupData);
+        setCode("");
+        setPassword("");
+        setStage("setup");
         return;
       }
+
       if (data.twoFactorRequired === true) {
         if (!nextChallengeToken) {
           setError("ไม่สามารถสร้างเซสชันยืนยัน 2FA ได้ กรุณาเข้าสู่ระบบใหม่อีกครั้ง");
@@ -67,9 +95,12 @@ export default function LoginPage() {
         }
         setChallengeToken(nextChallengeToken);
         setCode("");
+        setPassword("");
         setStage("otp");
         return;
       }
+
+      setPassword("");
       enterPortal();
     } catch {
       setError("ไม่สามารถเชื่อมต่อระบบเข้าสู่ระบบได้ กรุณาตรวจสอบเครือข่ายแล้วลองใหม่อีกครั้ง");
@@ -78,59 +109,35 @@ export default function LoginPage() {
     }
   }
 
-  async function startSetup(token = challengeToken) {
-    setLoading(true);
-    setError("");
-    try {
-      const response = await fetch("/api/auth/2fa/setup", {
-        cache: "no-store",
-        credentials: "same-origin",
-        headers: token ? { "x-scenova-2fa-challenge": token } : undefined,
-      });
-      const data = await readJson(response);
-      if (!response.ok) {
-        setError(apiError(data, "Unable to start 2FA setup"));
-        return;
-      }
-      if (typeof data.secret !== "string" || typeof data.otpauthUri !== "string" || typeof data.account !== "string" || typeof data.issuer !== "string") {
-        setError("ข้อมูลตั้งค่า Authenticator ไม่สมบูรณ์ กรุณาเข้าสู่ระบบใหม่อีกครั้ง");
-        return;
-      }
-      setSetup({
-        secret: data.secret,
-        otpauthUri: data.otpauthUri,
-        account: data.account,
-        issuer: data.issuer,
-      });
-      setCode("");
-      setStage("setup");
-    } catch {
-      setError("ไม่สามารถเริ่มตั้งค่า Authenticator ได้ กรุณาลองใหม่อีกครั้ง");
-    } finally {
-      setLoading(false);
-    }
-  }
-
   async function confirmSetup(event: React.FormEvent) {
     event.preventDefault();
     if (loading) return;
+    if (!challengeToken) {
+      setError("เซสชันตั้งค่า 2FA หมดอายุ กรุณากลับไปเข้าสู่ระบบใหม่");
+      return;
+    }
+
     setLoading(true);
     setError("");
+
     try {
       const response = await fetch("/api/auth/2fa/setup", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(challengeToken ? { "x-scenova-2fa-challenge": challengeToken } : {}),
+          "x-scenova-2fa-challenge": challengeToken,
         },
         credentials: "same-origin",
+        cache: "no-store",
         body: JSON.stringify({ code }),
       });
       const data = await readJson(response);
+
       if (!response.ok) {
         setError(apiError(data, "Authenticator verification failed"));
         return;
       }
+
       const codes = Array.isArray(data.recoveryCodes)
         ? data.recoveryCodes.filter((item): item is string => typeof item === "string")
         : [];
@@ -148,23 +155,32 @@ export default function LoginPage() {
   async function verifyOtp(event: React.FormEvent) {
     event.preventDefault();
     if (loading) return;
+    if (!challengeToken) {
+      setError("เซสชันยืนยัน 2FA หมดอายุ กรุณากลับไปเข้าสู่ระบบใหม่");
+      return;
+    }
+
     setLoading(true);
     setError("");
+
     try {
       const response = await fetch("/api/auth/2fa/verify", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(challengeToken ? { "x-scenova-2fa-challenge": challengeToken } : {}),
+          "x-scenova-2fa-challenge": challengeToken,
         },
         credentials: "same-origin",
+        cache: "no-store",
         body: JSON.stringify({ code }),
       });
       const data = await readJson(response);
+
       if (!response.ok) {
         setError(apiError(data, "Verification failed"));
         return;
       }
+
       setChallengeToken("");
       enterPortal();
     } catch {
@@ -181,9 +197,11 @@ export default function LoginPage() {
 
   function backToPassword() {
     setStage("password");
+    setPassword("");
     setCode("");
     setError("");
     setSetup(null);
+    setRecoveryCodes([]);
     setChallengeToken("");
   }
 
@@ -258,7 +276,7 @@ export default function LoginPage() {
                   className={`${styles.input} ${styles.codeInput}`}
                   value={code}
                   onChange={(event) => setCode(event.target.value)}
-                  inputMode="numeric"
+                  inputMode="text"
                   autoComplete="one-time-code"
                   autoFocus
                   placeholder="123456"
@@ -298,11 +316,13 @@ export default function LoginPage() {
                   autoComplete="one-time-code"
                   autoFocus
                   placeholder="123456"
+                  maxLength={6}
                 />
               </label>
 
               {error ? <ErrorBox text={error} /> : null}
               <button disabled={loading} className={styles.primary}>{loading ? "Enabling 2FA..." : "Verify & Enable 2FA"}</button>
+              <button type="button" disabled={loading} onClick={backToPassword} className={styles.secondary}>Start Over</button>
             </form>
           ) : null}
 
