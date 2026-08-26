@@ -53,8 +53,7 @@ jobs:
             fi
 
             git fetch origin main
-            git checkout main
-            git reset --hard origin/main
+            git checkout -B main FETCH_HEAD
 
             node scripts/prepare-vps-runtime.mjs
             npm ci
