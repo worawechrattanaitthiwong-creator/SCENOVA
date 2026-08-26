@@ -23,6 +23,4 @@ jobs:
       - run: npm run db:generate
       - run: npm run typecheck
       - run: npm run test
-      # Compatibility build only. Real production deployment is handled by
-      # deploy-vps.yml from main and serves scnva.com from the VPS.
-      - run: npm run build:cloudflare
+      - run: npm run build
