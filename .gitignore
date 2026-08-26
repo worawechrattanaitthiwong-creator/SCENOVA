@@ -6,6 +6,9 @@ out
 .env.production
 *.log
 *.swp
+*.swo
+*.swn
+*.tmp
 .DS_Store
 coverage
 prisma/dev.db
