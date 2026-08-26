@@ -255,6 +255,13 @@ export default function LoginPage() {
   return (
     <main className={`scenova-auth-shell ${styles.shell}`}>
       <section className={styles.hero}>
+        <div className={styles.cinematicBackdrop} aria-hidden="true">
+          <div className={styles.cinematicFallback}><span className={styles.neonOrbA} /><span className={styles.neonOrbB} /><span className={styles.energySlash} /><span className={styles.cityGrid} /></div>
+          <video className={styles.cinematicVideo} autoPlay muted loop playsInline preload="metadata" poster="/media/scenova-login-cinematic-poster.svg">
+            <source media="(min-width: 901px)" src="/media/scenova-login-cinematic-4k.mp4" type="video/mp4" />
+          </video>
+          <div className={styles.cinematicOverlay} />
+        </div>
         <div className={styles.brand}>
           <span className={styles.brandMark}>S</span>
           <div>

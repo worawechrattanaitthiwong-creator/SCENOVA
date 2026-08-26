@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="3840" height="2160" viewBox="0 0 3840 2160">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#050713"/><stop offset=".52" stop-color="#100922"/><stop offset="1" stop-color="#050609"/></linearGradient>
+    <radialGradient id="cyan"><stop stop-color="#37d8ff" stop-opacity=".46"/><stop offset="1" stop-color="#37d8ff" stop-opacity="0"/></radialGradient>
+    <radialGradient id="mag"><stop stop-color="#ff2aa8" stop-opacity=".4"/><stop offset="1" stop-color="#ff2aa8" stop-opacity="0"/></radialGradient>
+    <linearGradient id="beam" x1="0" x2="1"><stop stop-color="#2ee7ff" stop-opacity="0"/><stop offset=".32" stop-color="#54e8ff"/><stop offset=".52" stop-color="#fff"/><stop offset=".72" stop-color="#ff36b1"/><stop offset="1" stop-color="#ff36b1" stop-opacity="0"/></linearGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="18" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="3840" height="2160" fill="url(#bg)"/>
+  <circle cx="620" cy="420" r="820" fill="url(#cyan)"/>
+  <circle cx="3240" cy="1600" r="980" fill="url(#mag)"/>
+  <g fill="#080a14">
+    <path d="M0 1540h230v-430h130v430h210V930h170v610h180v-510h220v510h160V820h210v720h180v-590h250v590h190V740h170v800h210v-660h250v660h170v-470h230v470h170v-590h240v590h210v-360h190v980H0z"/>
+  </g>
+  <g opacity=".48" fill="#49dfff"><path d="M300 1200h22v58h-22zm70-90h18v42h-18zm630-160h18v48h-18zm760-100h20v54h-20zm860 210h18v48h-18z"/></g>
+  <g opacity=".42" fill="#ff43b4"><path d="M720 1080h20v52h-20zm610-180h20v50h-20zm760 110h20v46h-20zm830-100h20v52h-20z"/></g>
+  <g fill="#03040a">
+    <circle cx="1530" cy="1390" r="46"/><path d="M1482 1440h96l38 270h-42l-24-150-18 150h-46z"/><path d="M1510 1490l-180 85 20 36 200-55z"/>
+    <circle cx="2440" cy="1370" r="48"/><path d="M2392 1422h98l32 288h-44l-22-160-20 160h-48z"/><path d="M2410 1475l190 60-14 38-210-42z"/>
+  </g>
+  <path d="M1160 1510L2840 1180" stroke="url(#beam)" stroke-width="20" filter="url(#glow)"/>
+  <path d="M1350 1290L2600 1600" stroke="url(#beam)" stroke-width="11" opacity=".68" filter="url(#glow)"/>
+  <g fill="#ffd66a" opacity=".8"><circle cx="2010" cy="1370" r="8"/><circle cx="2070" cy="1330" r="5"/><circle cx="2130" cy="1420" r="7"/><circle cx="1940" cy="1450" r="4"/></g>
+  <rect y="1830" width="3840" height="330" fill="#030409" opacity=".88"/>
+</svg>

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import styles from "./scenova-studio-v3.module.css";
 import {
   CAMERA_ANGLES,
@@ -50,6 +50,32 @@ type SelectedCharacterPayload = {
     negativeIdentityRules?: string;
   };
 };
+type OptionalControlKey =
+  | "sound"
+  | "secondarySound"
+  | "sfx"
+  | "music"
+  | "sfxTimeline"
+  | "soundMix"
+  | "focus"
+  | "dof"
+  | "composition"
+  | "cameraSpeed"
+  | "performance"
+  | "colorTemp"
+  | "blocking";
+
+type CameraDirective = {
+  id: string;
+  start: number;
+  end: number;
+  shot: string;
+  angle: string;
+  lens: string;
+  movement: string;
+  height: string;
+};
+
 type Scene = {
   id: string;
   title: string;
@@ -87,6 +113,8 @@ type Scene = {
   keyLight: string;
   fillLight: string;
   rimLight: string;
+  cameraShots: CameraDirective[];
+  manual: Partial<Record<OptionalControlKey, boolean>>;
   locks: string[];
 };
 
@@ -157,6 +185,28 @@ const STYLES = [
 ];
 const VOICES = VOICE_PROFILES;
 
+function cameraDirectiveId() {
+  return `shot_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function fitCameraDirectives(shots: CameraDirective[], duration: number): CameraDirective[] {
+  const minimum = shots.length >= 2
+    ? shots
+    : [...shots, { ...(shots[0] || { id: cameraDirectiveId(), shot: "Wide Shot", angle: "Eye Level", lens: "24mm", movement: "Dolly In", height: "Eye Level", start: 0, end: duration }), id: cameraDirectiveId(), shot: "Medium Close-Up", lens: "50mm", movement: "Tracking" }];
+  return minimum.map((shot, index) => ({
+    ...shot,
+    start: Number(((duration * index) / minimum.length).toFixed(2)),
+    end: index === minimum.length - 1 ? duration : Number(((duration * (index + 1)) / minimum.length).toFixed(2)),
+  }));
+}
+
+function createCameraDirectives(duration: number): CameraDirective[] {
+  return fitCameraDirectives([
+    { id: cameraDirectiveId(), start: 0, end: duration / 2, shot: "Wide Shot", angle: "Eye Level", lens: "24mm", movement: "Dolly In", height: "Eye Level" },
+    { id: cameraDirectiveId(), start: duration / 2, end: duration, shot: "Medium Close-Up", angle: "Low Angle", lens: "50mm", movement: "Tracking", height: "Chest Level" },
+  ], duration);
+}
+
 function createScene(index: number, duration = 6): Scene {
   return {
     id: `scene_${Date.now()}_${index}`,
@@ -195,20 +245,24 @@ function createScene(index: number, duration = 6): Scene {
     keyLight: "AI",
     fillLight: "AI",
     rimLight: "AI",
+    cameraShots: createCameraDirectives(duration),
+    manual: {},
     locks: ["Character", "Style", "Voice"],
   };
 }
 
-function ChoiceField({ label, help, value, options, onChange }: { label: string; help: string; value: string; options: ProductionChoice[]; onChange: (value: string) => void }) {
+function ChoiceField({ label, help, value, options, onChange, manual, onManualChange }: { label: string; help: string; value: string; options: ProductionChoice[]; onChange: (value: string) => void; manual?: boolean; onManualChange?: (manual: boolean) => void }) {
   const selected = options.find((item) => item.value === value);
+  const listId = useId();
+  const isAuto = manual === false;
   return <div className={styles.field}>
-    <div className={styles.fieldLabel}><b>{label}</b></div>
-    <select value={selected ? value : "__custom"} onChange={(event) => event.target.value !== "__custom" && onChange(event.target.value)}>
-      {options.map((item) => <option value={item.value} key={item.value}>{item.label}</option>)}
-      <option value="__custom">Custom — กำหนดเอง</option>
-    </select>
-    <input value={selected ? "" : value} onChange={(event) => onChange(event.target.value)} placeholder="หรือพิมพ์ค่าที่ต้องการเอง (Custom)" />
-    <small>{selected?.help || help}</small>
+    <div className={styles.fieldLabel}>
+      <b>{label}</b>
+      {onManualChange ? <label className={styles.autoToggle}><input type="checkbox" checked={manual === true} onChange={(event) => onManualChange(event.target.checked)} /><span>{manual === true ? "กำหนดเอง" : "AI Auto"}</span></label> : null}
+    </div>
+    <input list={listId} value={isAuto ? "" : value} disabled={isAuto} onChange={(event) => onChange(event.target.value)} placeholder={isAuto ? "AI จะเลือกให้เข้ากับเนื้อเรื่องและจังหวะฉาก" : "เลือกจากรายการ หรือพิมพ์ค่าที่ต้องการในช่องเดียวกัน"} />
+    <datalist id={listId}>{options.map((item) => <option value={item.value} key={item.value}>{item.label}</option>)}</datalist>
+    <small>{isAuto ? `AI Auto — ${help}` : selected?.help || help}</small>
   </div>;
 }
 
@@ -217,6 +271,38 @@ function LevelField({ label, value, onChange }: { label: string; value: number; 
     <div className={styles.fieldLabel}><b>{label}</b><span>{value}%</span></div>
     <input type="range" min={0} max={100} value={value} onChange={(event) => onChange(Number(event.target.value))} />
     <small>ระดับสำหรับการวาง Sound Mix ใน Production Plan; Provider จริงอาจรองรับการ Mix แตกต่างกัน</small>
+  </div>;
+}
+
+function CameraShotEditor({ shots, duration, onChange }: { shots: CameraDirective[]; duration: number; onChange: (shots: CameraDirective[]) => void }) {
+  const normalized = fitCameraDirectives(shots, duration);
+  const patchShot = (id: string, patch: Partial<CameraDirective>) => onChange(normalized.map((shot) => shot.id === id ? { ...shot, ...patch } : shot));
+  const addShot = () => {
+    if (normalized.length >= 8) return;
+    const last = normalized[normalized.length - 1];
+    onChange(fitCameraDirectives([...normalized, { ...last, id: cameraDirectiveId(), shot: "AI", angle: "AI", lens: "AI", movement: "AI", height: "AI" }], duration));
+  };
+  const removeShot = (id: string) => {
+    if (normalized.length <= 2) return;
+    onChange(fitCameraDirectives(normalized.filter((shot) => shot.id !== id), duration));
+  };
+
+  return <div className={styles.cameraPlan}>
+    <div className={styles.cameraPlanHead}>
+      <div><b>Multi-Camera Shot Plan — มุมกล้องหลายช็อตในฉากเดียว</b><small>ทุก Scene มีอย่างน้อย 2 ช็อต ระบบกระจายเวลาให้อัตโนมัติ และเพิ่มได้สูงสุด 8 ช็อต</small></div>
+      <button type="button" onClick={addShot}>＋ เพิ่มมุมกล้อง</button>
+    </div>
+    <div className={styles.cameraShotList}>{normalized.map((shot, index) => <article className={styles.cameraShotCard} key={shot.id}>
+      <div className={styles.cameraShotHead}><div><span>SHOT {index + 1}</span><b>{shot.start.toFixed(2)}–{shot.end.toFixed(2)}s</b></div><button type="button" disabled={normalized.length <= 2} onClick={() => removeShot(shot.id)}>ลบช็อต</button></div>
+      <div className={styles.cameraShotGrid}>
+        <ChoiceField label="Shot Type — ระยะภาพ" help="ขนาด Subject ในกรอบภาพของช็อตนี้" value={shot.shot} options={SHOT_TYPES} onChange={(value) => patchShot(shot.id, { shot: value })} />
+        <ChoiceField label="Camera Angle — มุมกล้อง" help="มุมมองของกล้องในช็อตนี้" value={shot.angle} options={CAMERA_ANGLES} onChange={(value) => patchShot(shot.id, { angle: value })} />
+        <ChoiceField label="Lens — ระยะเลนส์" help="Perspective และความกว้างของภาพในช็อตนี้" value={shot.lens} options={LENSES} onChange={(value) => patchShot(shot.id, { lens: value })} />
+        <ChoiceField label="Movement — การเคลื่อนกล้อง" help="ทิศทางและรูปแบบการเคลื่อนกล้องในช็อตนี้" value={shot.movement} options={CAMERA_MOVEMENTS} onChange={(value) => patchShot(shot.id, { movement: value })} />
+        <ChoiceField label="Camera Height — ความสูงกล้อง" help="ระดับความสูงของกล้องในช็อตนี้" value={shot.height} options={CAMERA_HEIGHTS} onChange={(value) => patchShot(shot.id, { height: value })} />
+      </div>
+    </article>)}</div>
+    <small className={styles.cameraPlanNote}>AI Director สามารถออกแบบลำดับช็อตให้เองได้ แต่ทุกช็อตยังแก้ Preset หรือพิมพ์ Custom ในช่องเดียวกันได้</small>
   </div>;
 }
 
@@ -303,6 +389,7 @@ export default function ScenovaStudioV3() {
   const modeInfo = MODES.find((item) => item.id === mode)!;
 
   function patchScene(patch: Partial<Scene>) { setScenes((current) => current.map((scene) => scene.id === selected.id ? { ...scene, ...patch } : scene)); }
+  function setManual(key: OptionalControlKey, enabled: boolean) { patchScene({ manual: { ...selected.manual, [key]: enabled } }); }
   function patchCharacter(id: string, patch: Partial<Character>) { setCharacters((current) => current.map((item) => item.id === id ? { ...item, ...patch } : item)); }
   function choose<T extends { value: string }>(options: T[], index = 1) { return options[index % Math.max(1, options.length)].value; }
 
@@ -319,13 +406,13 @@ export default function ScenovaStudioV3() {
     patchScene({
       location: choose(LOCATION_PRESETS, i), objective: choose(OBJECTIVE_PRESETS, i), beat: choose(SCENE_BEATS, i),
       action: i % 2 ? "ตัวละครสังเกตเห็นรายละเอียดใหม่ที่เปลี่ยนความเข้าใจของเหตุการณ์ และตอบสนองอย่างเป็นธรรมชาติ" : "เหตุการณ์เดินหน้าอย่างชัดเจน พร้อม Action ที่นำไปสู่ Scene ถัดไป",
-      transition: choose(TRANSITIONS, i), shot: choose(SHOT_TYPES, i + 1), angle: choose(CAMERA_ANGLES, i), lens: choose(LENSES, i + 2), movement: choose(CAMERA_MOVEMENTS, i + 1), height: choose(CAMERA_HEIGHTS, i), lighting: choose(LIGHTING_STYLES, i + 1), emotion: choose(EMOTIONS, i),
-      dialogue: i % 2 ? "Character 1: เราคงไม่ได้บังเอิญมาเจอกันอีกใช่ไหม" : "", sound: choose(AMBIENCE_PRESETS, i), secondarySound: choose(AMBIENCE_PRESETS, i + 5), sfx: choose(SFX_PRESETS, i + 2), sfxTimeline: i % 2 ? "00:02.0 — Footsteps — ฝีเท้าเข้าใกล้\n00:04.5 — Car Pass — รถวิ่งผ่านด้านหลัง" : "00:03.0 — Door Close — ปิดประตูตรงจังหวะจบ Beat", music: choose(MUSIC_PRESETS, i), focus: choose(FOCUS_OPTIONS, i), dof: choose(DOF_OPTIONS, i), composition: choose(COMPOSITION_OPTIONS, i), cameraSpeed: choose(CAMERA_SPEEDS, i), performance: choose(PERFORMANCE_OPTIONS, i), colorTemp: choose(COLOR_TEMPERATURES, i), blocking: "วาง Subject หลักในตำแหน่งที่สอดคล้องกับ Composition และรักษาทิศทางสายตาจาก Shot ก่อนหน้า",
+      transition: choose(TRANSITIONS, i), cameraShots: fitCameraDirectives(selected.cameraShots.map((shot, shotIndex) => ({ ...shot, shot: choose(SHOT_TYPES, i + shotIndex + 1), angle: choose(CAMERA_ANGLES, i + shotIndex), lens: choose(LENSES, i + shotIndex + 2), movement: choose(CAMERA_MOVEMENTS, i + shotIndex + 1), height: choose(CAMERA_HEIGHTS, i + shotIndex) })), selected.duration), shot: choose(SHOT_TYPES, i + 1), angle: choose(CAMERA_ANGLES, i), lens: choose(LENSES, i + 2), movement: choose(CAMERA_MOVEMENTS, i + 1), height: choose(CAMERA_HEIGHTS, i), lighting: choose(LIGHTING_STYLES, i + 1), emotion: choose(EMOTIONS, i),
+      dialogue: i % 2 ? "Character 1: เราคงไม่ได้บังเอิญมาเจอกันอีกใช่ไหม" : "", sound: selected.manual.sound ? selected.sound : choose(AMBIENCE_PRESETS, i), secondarySound: selected.manual.secondarySound ? selected.secondarySound : choose(AMBIENCE_PRESETS, i + 5), sfx: selected.manual.sfx ? selected.sfx : choose(SFX_PRESETS, i + 2), sfxTimeline: i % 2 ? "00:02.0 — Footsteps — ฝีเท้าเข้าใกล้\n00:04.5 — Car Pass — รถวิ่งผ่านด้านหลัง" : "00:03.0 — Door Close — ปิดประตูตรงจังหวะจบ Beat", music: selected.manual.music ? selected.music : choose(MUSIC_PRESETS, i), focus: selected.manual.focus ? selected.focus : choose(FOCUS_OPTIONS, i), dof: selected.manual.dof ? selected.dof : choose(DOF_OPTIONS, i), composition: selected.manual.composition ? selected.composition : choose(COMPOSITION_OPTIONS, i), cameraSpeed: selected.manual.cameraSpeed ? selected.cameraSpeed : choose(CAMERA_SPEEDS, i), performance: selected.manual.performance ? selected.performance : choose(PERFORMANCE_OPTIONS, i), colorTemp: selected.manual.colorTemp ? selected.colorTemp : choose(COLOR_TEMPERATURES, i), blocking: selected.manual.blocking ? selected.blocking : "วาง Subject หลักในตำแหน่งที่สอดคล้องกับ Composition และรักษาทิศทางสายตาจาก Shot ก่อนหน้า",
     });
     setMessage(`AI Suggest เติม Scene Direction, Camera และ Sound Design สำหรับ ${selected.title} ให้แล้ว`);
   }
   function fillProduction() {
-    setScenes((current) => current.map((scene, index) => ({ ...scene, location: choose(LOCATION_PRESETS, index), objective: choose(OBJECTIVE_PRESETS, index), beat: choose(SCENE_BEATS, index), shot: choose(SHOT_TYPES, index + 1), angle: choose(CAMERA_ANGLES, index), lens: choose(LENSES, index + 3), movement: choose(CAMERA_MOVEMENTS, index + 1), height: choose(CAMERA_HEIGHTS, index + 2), lighting: choose(LIGHTING_STYLES, index + 1), emotion: choose(EMOTIONS, index), sound: choose(AMBIENCE_PRESETS, index + 2), secondarySound: choose(AMBIENCE_PRESETS, index + 7), sfx: choose(SFX_PRESETS, index + 1), music: choose(MUSIC_PRESETS, index), action: index === 0 ? "Establish Environment และแนะนำตัวละครหลักอย่างเป็นธรรมชาติ" : index === current.length - 1 ? "จบ Beat ด้วยการตัดสินใจหรือภาพที่ส่งต่อไปเหตุการณ์ถัดไป" : "เดินหน้าเหตุการณ์พร้อม Reaction ของตัวละครและข้อมูลใหม่" })));
+    setScenes((current) => current.map((scene, index) => ({ ...scene, location: choose(LOCATION_PRESETS, index), objective: choose(OBJECTIVE_PRESETS, index), beat: choose(SCENE_BEATS, index), cameraShots: fitCameraDirectives(scene.cameraShots.map((shot, shotIndex) => ({ ...shot, shot: choose(SHOT_TYPES, index + shotIndex + 1), angle: choose(CAMERA_ANGLES, index + shotIndex), lens: choose(LENSES, index + shotIndex + 3), movement: choose(CAMERA_MOVEMENTS, index + shotIndex + 1), height: choose(CAMERA_HEIGHTS, index + shotIndex + 2) })), scene.duration), shot: choose(SHOT_TYPES, index + 1), angle: choose(CAMERA_ANGLES, index), lens: choose(LENSES, index + 3), movement: choose(CAMERA_MOVEMENTS, index + 1), height: choose(CAMERA_HEIGHTS, index + 2), lighting: choose(LIGHTING_STYLES, index + 1), emotion: choose(EMOTIONS, index), sound: scene.manual.sound ? scene.sound : choose(AMBIENCE_PRESETS, index + 2), secondarySound: scene.manual.secondarySound ? scene.secondarySound : choose(AMBIENCE_PRESETS, index + 7), sfx: scene.manual.sfx ? scene.sfx : choose(SFX_PRESETS, index + 1), music: scene.manual.music ? scene.music : choose(MUSIC_PRESETS, index), action: index === 0 ? "Establish Environment และแนะนำตัวละครหลักอย่างเป็นธรรมชาติ" : index === current.length - 1 ? "จบ Beat ด้วยการตัดสินใจหรือภาพที่ส่งต่อไปเหตุการณ์ถัดไป" : "เดินหน้าเหตุการณ์พร้อม Reaction ของตัวละครและข้อมูลใหม่" })));
     setMessage("AI Fill Production เติม Draft ภาพและ Sound Design ให้ทุก Scene แล้ว ทุกค่าปรับต่อได้เอง");
   }
 
@@ -334,7 +421,7 @@ export default function ScenovaStudioV3() {
   function splitScene() { if (selected.duration < 2) return setMessage("Scene ต้องยาวอย่างน้อย 2 วินาทีจึง Split ได้"); const a = Math.ceil(selected.duration / 2); const b = selected.duration - a; const copy = { ...selected, id: `scene_${Date.now()}_split`, title: `${selected.title} B`, duration: b, beat: "Reaction" }; setScenes((current) => current.flatMap((scene) => scene.id === selected.id ? [{ ...scene, duration: a, title: `${scene.title} A` }, copy] : [scene])); setSelectedId(copy.id); }
   function moveScene(direction: -1 | 1) { setScenes((current) => { const index = current.findIndex((scene) => scene.id === selected.id); const target = index + direction; if (target < 0 || target >= current.length) return current; const next = [...current]; [next[index], next[target]] = [next[target], next[index]]; return next; }); }
   function removeScene() { if (scenes.length <= 1) return; const next = scenes.filter((scene) => scene.id !== selected.id); setScenes(next); setSelectedId(next[0].id); }
-  function setSceneDuration(value: number) { const other = used - selected.duration; patchScene({ duration: Math.max(1, Math.min(value, duration - other)) }); }
+  function setSceneDuration(value: number) { const other = used - selected.duration; const nextDuration = Math.max(1, Math.min(value, duration - other)); patchScene({ duration: nextDuration, cameraShots: fitCameraDirectives(selected.cameraShots, nextDuration) }); }
 
   return <main className={styles.main}>
     <header className={styles.hero}>
@@ -365,7 +452,7 @@ export default function ScenovaStudioV3() {
       <div className={styles.budget}><div><b>{used} / {duration} seconds allocated</b><span>{remaining}s remaining</span></div><div>{scenes.map((scene,index) => <button key={scene.id} className={scene.id === selected.id ? styles.timelineActive : ""} onClick={() => setSelectedId(scene.id)} style={{ flexGrow:Math.max(1,scene.duration) }}><b>{index+1}</b><span>{scene.duration}s</span></button>)}</div></div>
       <div className={styles.sceneToolbar}><span>{scenes.length} Scenes • Total duration protected</span><div>{mode !== "ai" ? <><button onClick={() => moveScene(-1)}>← Move</button><button onClick={() => moveScene(1)}>Move →</button><button onClick={duplicateScene}>Duplicate</button><button onClick={splitScene}>Split</button></> : null}<button onClick={addScene}>＋ Add Scene</button></div></div>
       <div className={styles.sceneWorkspace}>
-        <aside>{scenes.map((scene,index) => <button key={scene.id} className={scene.id === selected.id ? styles.sceneActive : ""} onClick={() => setSelectedId(scene.id)}><b>{String(index+1).padStart(2,"0")}</b><span><strong>{scene.title}</strong><small>{scene.duration}s • {scene.shot === "AI" ? "AI Suggest" : scene.shot}</small></span></button>)}</aside>
+        <aside>{scenes.map((scene,index) => <button key={scene.id} className={scene.id === selected.id ? styles.sceneActive : ""} onClick={() => setSelectedId(scene.id)}><b>{String(index+1).padStart(2,"0")}</b><span><strong>{scene.title}</strong><small>{scene.duration}s • {scene.cameraShots.length} camera shots</small></span></button>)}</aside>
         <div className={styles.sceneEditor}>
           <div className={styles.sceneTitle}><input value={selected.title} onChange={(e) => patchScene({ title:e.target.value })} /><button onClick={removeScene}>Delete Scene</button></div>
           <div className={styles.durationBox}><div><b>Scene Duration — เวลาของ Scene</b><strong>{selected.duration}s</strong></div><input type="range" min={1} max={Math.max(1,selected.duration+remaining)} value={selected.duration} onChange={(e) => setSceneDuration(Number(e.target.value))} /><small>เลื่อนปรับเวลาได้ ระบบล็อกไม่ให้ Scene รวมเกิน {duration} วินาที</small></div>
@@ -373,15 +460,15 @@ export default function ScenovaStudioV3() {
           <div className={styles.two}><ChoiceField label="Scene Beat — จังหวะของเรื่อง" help="เลือกตำแหน่งทาง Dramatic Structure ของ Scene" value={selected.beat} options={SCENE_BEATS} onChange={(value) => patchScene({ beat:value })} /><ChoiceField label="Transition — วิธีเชื่อม Scene" help="กำหนดการเปลี่ยนจาก Scene นี้ไป Scene ถัดไป" value={selected.transition} options={TRANSITIONS} onChange={(value) => patchScene({ transition:value })} /></div>
           <div className={styles.field}><div className={styles.fieldLabel}><b>Scene Action / Narrative — เหตุการณ์ใน Scene</b></div><textarea value={selected.action} onChange={(e) => patchScene({ action:e.target.value })} /><small>บรรยายว่าใครทำอะไร เกิดอะไรขึ้น และ Scene จบด้วยสถานะอะไร สามารถพิมพ์เองได้เต็มที่</small></div>
           {mode !== "ai" ? <div className={styles.field}><b>Continuity Note — บันทึกความต่อเนื่อง</b><textarea value={selected.continuity} onChange={(e) => patchScene({ continuity:e.target.value })} /><small>ระบุ Position, Costume, Prop, Emotion, Lighting, Movement และ Soundscape ที่ Scene ถัดไปต้องต่อให้ตรง</small></div> : null}
-          <div className={styles.cameraGrid}><ChoiceField label="Shot Type — ระยะภาพ" help="กำหนดขนาดตัวละครหรือวัตถุหลักในกรอบภาพ" value={selected.shot} options={SHOT_TYPES} onChange={(value) => patchScene({ shot:value })} /><ChoiceField label="Camera Angle — มุมกล้อง" help="กำหนดระดับและทิศทางที่กล้องมองตัวละครหรือวัตถุ" value={selected.angle} options={CAMERA_ANGLES} onChange={(value) => patchScene({ angle:value })} /><ChoiceField label="Lens — ระยะเลนส์" help="กำหนดมุมมอง Perspective และความรู้สึกกว้าง/แคบของภาพ" value={selected.lens} options={LENSES} onChange={(value) => patchScene({ lens:value })} /><ChoiceField label="Movement — การเคลื่อนกล้อง" help="กำหนดวิธีและทิศทางที่กล้องเคลื่อนระหว่าง Shot" value={selected.movement} options={CAMERA_MOVEMENTS} onChange={(value) => patchScene({ movement:value })} /><ChoiceField label="Camera Height — ความสูงกล้อง" help="กำหนดระดับกล้องจากพื้นเพื่อควบคุมมุมมองและความรู้สึกของภาพ" value={selected.height} options={CAMERA_HEIGHTS} onChange={(value) => patchScene({ height:value })} /><ChoiceField label="Lighting — รูปแบบแสง" help="กำหนดคุณภาพ ทิศทาง และอารมณ์ของแสงใน Scene" value={selected.lighting} options={LIGHTING_STYLES} onChange={(value) => patchScene({ lighting:value })} /></div>
+          <CameraShotEditor shots={selected.cameraShots} duration={selected.duration} onChange={(cameraShots) => { const first = cameraShots[0]; patchScene({ cameraShots, shot: first?.shot || selected.shot, angle: first?.angle || selected.angle, lens: first?.lens || selected.lens, movement: first?.movement || selected.movement, height: first?.height || selected.height }); }} />
           <div className={styles.field}><ChoiceField label="Emotion — อารมณ์หลัก" help="กำหนดอารมณ์หลักที่ตัวละครต้องสื่อใน Scene" value={selected.emotion} options={EMOTIONS} onChange={(value) => patchScene({ emotion:value })} /></div>
           <div className={styles.field}><div className={styles.fieldLabel}><b>Dialogue — บทพูด</b></div><textarea value={selected.dialogue} onChange={(e) => patchScene({ dialogue:e.target.value })} placeholder="Character 1: ..." /><small>พิมพ์ชื่อผู้พูดและบทพูดโดยตรง ระบบจะยึด Voice Profile ของตัวละครเป็นหลัก</small></div>
-          <details open className={styles.advanced}><summary>Sound Design — ออกแบบเสียงฉาก</summary><p className={styles.advancedIntro}>แยกเสียงเป็นชั้นเพื่อควบคุมง่าย: Ambience = เสียงบรรยากาศต่อเนื่อง, SFX = เสียงเหตุการณ์เฉพาะจังหวะ, Dialogue = บทพูด และ Music = ดนตรีประกอบ หาก Provider วิดีโอไม่สร้างเสียง ระบบยังเก็บข้อมูลชุดนี้ไว้ใช้กับ Audio Provider / Post-production ต่อได้</p><div className={styles.quick}><Link href="/libraries?tab=ambience">♫ เปิดคลัง Ambience / SFX</Link></div><div className={styles.cameraGrid}><ChoiceField label="Primary Ambience — บรรยากาศหลัก" help="เสียงพื้นหลักที่เล่นต่อเนื่องตลอด Scene" value={selected.sound} options={AMBIENCE_PRESETS} onChange={(value) => patchScene({ sound:value })} /><ChoiceField label="Secondary Ambience — บรรยากาศเสริม" help="เสียงชั้นที่สอง เช่น ลม ใบไม้ ฝูงชน หรือเครื่องปรับอากาศ" value={selected.secondarySound} options={AMBIENCE_PRESETS} onChange={(value) => patchScene({ secondarySound:value })} /><ChoiceField label="SFX Event — เสียงเหตุการณ์" help="เสียงเฉพาะจังหวะ เช่น รถผ่าน ประตู ฝีเท้า น้ำกระเซ็น หรือ Whoosh" value={selected.sfx} options={SFX_PRESETS} onChange={(value) => patchScene({ sfx:value })} /><ChoiceField label="Music — ดนตรีประกอบ" help="เลือก Mood ของดนตรีหรือปิดดนตรีได้" value={selected.music} options={MUSIC_PRESETS} onChange={(value) => patchScene({ music:value })} /></div><div className={styles.field}><div className={styles.fieldLabel}><b>SFX Timeline — กำหนดเวลาเสียงเหตุการณ์</b></div><textarea value={selected.sfxTimeline} onChange={(e) => patchScene({ sfxTimeline:e.target.value })} placeholder={'00:02.0 — Car Pass — รถวิ่งผ่านด้านหลัง\n00:04.5 — Door Close — ปิดประตู'} /><small>ระบุเวลาเป็นวินาทีเพื่อให้ Prompt / Render Plan รู้ว่าเสียงควรเกิดตรงไหน ตัวอย่าง 00:03.2 — Wave Crash — คลื่นซัดแรง</small></div><div className={styles.cameraGrid}><LevelField label="Ambience Level — ระดับบรรยากาศ" value={selected.ambienceLevel} onChange={(value) => patchScene({ ambienceLevel:value })} /><LevelField label="SFX Level — ระดับเอฟเฟกต์" value={selected.sfxLevel} onChange={(value) => patchScene({ sfxLevel:value })} /><LevelField label="Dialogue Level — ระดับบทพูด" value={selected.dialogueLevel} onChange={(value) => patchScene({ dialogueLevel:value })} /><LevelField label="Music Level — ระดับดนตรี" value={selected.musicLevel} onChange={(value) => patchScene({ musicLevel:value })} /></div></details>
-          <details open={mode === "pro"} className={styles.advanced}><summary>Director Pro Controls — เครื่องมือกำกับระดับมืออาชีพ</summary><p className={styles.advancedIntro}>ส่วนนี้ใช้ควบคุมรายละเอียดเชิงภาพและการแสดงระดับ Shot/Scene โดยตรง ทุกศัพท์เทคนิคมีคำอธิบายภาษาไทยด้านล่าง และค่า Lock ใช้บอกระบบว่าสิ่งใดต้องรักษาให้ต่อเนื่อง ห้ามเปลี่ยนโดยไม่ตั้งใจ</p><div className={styles.cameraGrid}><ChoiceField label="Focus — จุดโฟกัส" help="กำหนดว่าสิ่งใดต้องชัดที่สุด หรือให้จุดชัดย้ายจากวัตถุหนึ่งไปอีกวัตถุหนึ่ง" value={selected.focus} options={FOCUS_OPTIONS} onChange={(value) => patchScene({ focus:value })} /><ChoiceField label="Depth of Field (DOF) — ชัดตื้น/ชัดลึก" help="กำหนดระดับความเบลอของฉากหน้า/ฉากหลัง เพื่อแยกตัวละครออกจากฉากหรือให้ทั้งภาพชัด" value={selected.dof} options={DOF_OPTIONS} onChange={(value) => patchScene({ dof:value })} /><ChoiceField label="Composition — การจัดองค์ประกอบภาพ" help="กำหนดตำแหน่งตัวละคร วัตถุ และพื้นที่ว่างในเฟรม เพื่อควบคุมสายตาผู้ชม" value={selected.composition} options={COMPOSITION_OPTIONS} onChange={(value) => patchScene({ composition:value })} /><ChoiceField label="Camera Speed — ความเร็วกล้อง" help="กำหนดความเร็วของการเคลื่อนกล้อง เพื่อให้ภาพนิ่ง นุ่ม เร่ง หรือกดดันตามอารมณ์" value={selected.cameraSpeed} options={CAMERA_SPEEDS} onChange={(value) => patchScene({ cameraSpeed:value })} /><ChoiceField label="Performance — ระดับการแสดง" help="กำหนดความเข้มของสีหน้า ภาษากาย จังหวะ และพลังการแสดงของตัวละคร" value={selected.performance} options={PERFORMANCE_OPTIONS} onChange={(value) => patchScene({ performance:value })} /><ChoiceField label="Color Temperature — อุณหภูมิสีของแสง" help="กำหนดโทนแสงอุ่น กลาง หรือเย็น ซึ่งส่งผลต่อบรรยากาศและอารมณ์ของภาพ" value={selected.colorTemp} options={COLOR_TEMPERATURES} onChange={(value) => patchScene({ colorTemp:value })} /></div><div className={styles.field}><b>Character Blocking — ตำแหน่งและการเคลื่อนของตัวละคร</b><textarea value={selected.blocking} onChange={(e) => patchScene({ blocking:e.target.value })} /><small>กำหนดว่าตัวละครยืน/เดินตรงไหน หันหน้าไปทางใด, Eye Line (ทิศทางสายตา) และความสัมพันธ์กับตำแหน่ง Camera (กล้อง)</small></div><div className={styles.lockHeading}><b>Continuity Locks — ตัวล็อกความต่อเนื่อง</b><span>ติ๊กสิ่งที่ต้องการให้ระบบรักษาเหมือนเดิมเมื่อสร้าง Scene/Shot ถัดไป</span></div><div className={styles.lockGrid}>{PRO_LOCKS.map((lock) => <label key={lock.key}><input type="checkbox" checked={selected.locks.includes(lock.key)} onChange={(e) => patchScene({ locks:e.target.checked ? [...selected.locks,lock.key] : selected.locks.filter((item) => item !== lock.key) })} /><span><b>{lock.label}</b><small>{lock.help}</small></span></label>)}</div></details>
+          <details className={styles.advanced}><summary>Sound Design — ออกแบบเสียงฉาก <span className={styles.summaryHint}>กดเพื่อกำหนดเอง • ไม่เปิด = AI จัดให้</span></summary><p className={styles.advancedIntro}>แยกเสียงเป็นชั้นเพื่อควบคุมง่าย: Ambience = เสียงบรรยากาศต่อเนื่อง, SFX = เสียงเหตุการณ์เฉพาะจังหวะ, Dialogue = บทพูด และ Music = ดนตรีประกอบ หาก Provider วิดีโอไม่สร้างเสียง ระบบยังเก็บข้อมูลชุดนี้ไว้ใช้กับ Audio Provider / Post-production ต่อได้</p><div className={styles.quick}><Link href="/libraries?tab=ambience">♫ เปิดคลัง Ambience / SFX</Link></div><div className={styles.cameraGrid}><ChoiceField manual={selected.manual.sound === true} onManualChange={(manual) => setManual("sound", manual)} label="Primary Ambience — บรรยากาศหลัก" help="เสียงพื้นหลักที่เล่นต่อเนื่องตลอด Scene" value={selected.sound} options={AMBIENCE_PRESETS} onChange={(value) => patchScene({ sound:value })} /><ChoiceField manual={selected.manual.secondarySound === true} onManualChange={(manual) => setManual("secondarySound", manual)} label="Secondary Ambience — บรรยากาศเสริม" help="เสียงชั้นที่สอง เช่น ลม ใบไม้ ฝูงชน หรือเครื่องปรับอากาศ" value={selected.secondarySound} options={AMBIENCE_PRESETS} onChange={(value) => patchScene({ secondarySound:value })} /><ChoiceField manual={selected.manual.sfx === true} onManualChange={(manual) => setManual("sfx", manual)} label="SFX Event — เสียงเหตุการณ์" help="เสียงเฉพาะจังหวะ เช่น รถผ่าน ประตู ฝีเท้า น้ำกระเซ็น หรือ Whoosh" value={selected.sfx} options={SFX_PRESETS} onChange={(value) => patchScene({ sfx:value })} /><ChoiceField manual={selected.manual.music === true} onManualChange={(manual) => setManual("music", manual)} label="Music — ดนตรีประกอบ" help="เลือก Mood ของดนตรีหรือปิดดนตรีได้" value={selected.music} options={MUSIC_PRESETS} onChange={(value) => patchScene({ music:value })} /></div><div className={styles.field}><div className={styles.fieldLabel}><b>SFX Timeline — กำหนดเวลาเสียงเหตุการณ์</b><label className={styles.autoToggle}><input type="checkbox" checked={selected.manual.sfxTimeline === true} onChange={(event) => setManual("sfxTimeline", event.target.checked)} /><span>{selected.manual.sfxTimeline === true ? "กำหนดเอง" : "AI Auto"}</span></label></div><textarea disabled={selected.manual.sfxTimeline !== true} value={selected.manual.sfxTimeline === true ? selected.sfxTimeline : ""} onChange={(e) => patchScene({ sfxTimeline:e.target.value })} placeholder={'00:02.0 — Car Pass — รถวิ่งผ่านด้านหลัง\n00:04.5 — Door Close — ปิดประตู'} /><small>ระบุเวลาเป็นวินาทีเพื่อให้ Prompt / Render Plan รู้ว่าเสียงควรเกิดตรงไหน ตัวอย่าง 00:03.2 — Wave Crash — คลื่นซัดแรง</small></div><div className={styles.optionalGroup}><div className={styles.optionalGroupHead}><div><b>Sound Mix — ระดับเสียงแต่ละชั้น</b><small>ไม่ติ๊ก = ให้ AI จัดบาลานซ์ตามบทพูด เหตุการณ์ และอารมณ์ของฉาก</small></div><label className={styles.autoToggle}><input type="checkbox" checked={selected.manual.soundMix === true} onChange={(event) => setManual("soundMix", event.target.checked)} /><span>{selected.manual.soundMix === true ? "กำหนดเอง" : "AI Auto"}</span></label></div><fieldset className={styles.optionalFieldset} disabled={selected.manual.soundMix !== true}><div className={styles.cameraGrid}><LevelField label="Ambience Level — ระดับบรรยากาศ" value={selected.ambienceLevel} onChange={(value) => patchScene({ ambienceLevel:value })} /><LevelField label="SFX Level — ระดับเอฟเฟกต์" value={selected.sfxLevel} onChange={(value) => patchScene({ sfxLevel:value })} /><LevelField label="Dialogue Level — ระดับบทพูด" value={selected.dialogueLevel} onChange={(value) => patchScene({ dialogueLevel:value })} /><LevelField label="Music Level — ระดับดนตรี" value={selected.musicLevel} onChange={(value) => patchScene({ musicLevel:value })} /></div></fieldset></div></details>
+          <details open={mode === "pro"} className={styles.advanced}><summary>Director Pro Controls — เครื่องมือกำกับระดับมืออาชีพ</summary><p className={styles.advancedIntro}>ส่วนนี้ใช้ควบคุมรายละเอียดเชิงภาพและการแสดงระดับ Shot/Scene โดยตรง ทุกศัพท์เทคนิคมีคำอธิบายภาษาไทยด้านล่าง และค่า Lock ใช้บอกระบบว่าสิ่งใดต้องรักษาให้ต่อเนื่อง ห้ามเปลี่ยนโดยไม่ตั้งใจ</p><div className={styles.cameraGrid}><ChoiceField manual={selected.manual.focus === true} onManualChange={(manual) => setManual("focus", manual)} label="Focus — จุดโฟกัส" help="กำหนดว่าสิ่งใดต้องชัดที่สุด หรือให้จุดชัดย้ายจากวัตถุหนึ่งไปอีกวัตถุหนึ่ง" value={selected.focus} options={FOCUS_OPTIONS} onChange={(value) => patchScene({ focus:value })} /><ChoiceField manual={selected.manual.dof === true} onManualChange={(manual) => setManual("dof", manual)} label="Depth of Field (DOF) — ชัดตื้น/ชัดลึก" help="กำหนดระดับความเบลอของฉากหน้า/ฉากหลัง เพื่อแยกตัวละครออกจากฉากหรือให้ทั้งภาพชัด" value={selected.dof} options={DOF_OPTIONS} onChange={(value) => patchScene({ dof:value })} /><ChoiceField manual={selected.manual.composition === true} onManualChange={(manual) => setManual("composition", manual)} label="Composition — การจัดองค์ประกอบภาพ" help="กำหนดตำแหน่งตัวละคร วัตถุ และพื้นที่ว่างในเฟรม เพื่อควบคุมสายตาผู้ชม" value={selected.composition} options={COMPOSITION_OPTIONS} onChange={(value) => patchScene({ composition:value })} /><ChoiceField manual={selected.manual.cameraSpeed === true} onManualChange={(manual) => setManual("cameraSpeed", manual)} label="Camera Speed — ความเร็วกล้อง" help="กำหนดความเร็วของการเคลื่อนกล้อง เพื่อให้ภาพนิ่ง นุ่ม เร่ง หรือกดดันตามอารมณ์" value={selected.cameraSpeed} options={CAMERA_SPEEDS} onChange={(value) => patchScene({ cameraSpeed:value })} /><ChoiceField manual={selected.manual.performance === true} onManualChange={(manual) => setManual("performance", manual)} label="Performance — ระดับการแสดง" help="กำหนดความเข้มของสีหน้า ภาษากาย จังหวะ และพลังการแสดงของตัวละคร" value={selected.performance} options={PERFORMANCE_OPTIONS} onChange={(value) => patchScene({ performance:value })} /><ChoiceField manual={selected.manual.colorTemp === true} onManualChange={(manual) => setManual("colorTemp", manual)} label="Color Temperature — อุณหภูมิสีของแสง" help="กำหนดโทนแสงอุ่น กลาง หรือเย็น ซึ่งส่งผลต่อบรรยากาศและอารมณ์ของภาพ" value={selected.colorTemp} options={COLOR_TEMPERATURES} onChange={(value) => patchScene({ colorTemp:value })} /></div><div className={styles.field}><div className={styles.fieldLabel}><b>Character Blocking — ตำแหน่งและการเคลื่อนของตัวละคร</b><label className={styles.autoToggle}><input type="checkbox" checked={selected.manual.blocking === true} onChange={(event) => setManual("blocking", event.target.checked)} /><span>{selected.manual.blocking === true ? "กำหนดเอง" : "AI Auto"}</span></label></div><textarea disabled={selected.manual.blocking !== true} value={selected.manual.blocking === true ? selected.blocking : ""} onChange={(e) => patchScene({ blocking:e.target.value })} /><small>กำหนดว่าตัวละครยืน/เดินตรงไหน หันหน้าไปทางใด, Eye Line (ทิศทางสายตา) และความสัมพันธ์กับตำแหน่ง Camera (กล้อง)</small></div><div className={styles.lockHeading}><b>Continuity Locks — ตัวล็อกความต่อเนื่อง</b><span>ติ๊กสิ่งที่ต้องการให้ระบบรักษาเหมือนเดิมเมื่อสร้าง Scene/Shot ถัดไป</span></div><div className={styles.lockGrid}>{PRO_LOCKS.map((lock) => <label key={lock.key}><input type="checkbox" checked={selected.locks.includes(lock.key)} onChange={(e) => patchScene({ locks:e.target.checked ? [...selected.locks,lock.key] : selected.locks.filter((item) => item !== lock.key) })} /><span><b>{lock.label}</b><small>{lock.help}</small></span></label>)}</div></details>
         </div>
       </div>
     </section>
 
-    <section id="review" className={styles.card}><div className={styles.step}><b>4</b><div><strong>Prompt & Render Review</strong><span>ตรวจ Production Constraints ก่อนสร้าง Prompt หรือส่ง Render Queue</span></div></div><div className={styles.review}><div><b>Mode — โหมด</b><span>{modeInfo.name} — {modeInfo.nameTh}</span></div><div><b>Model — โมเดล</b><span>{model}</span></div><div><b>Style — สไตล์</b><span>{style}</span></div><div><b>Format — รูปแบบภาพ</b><span>{aspect}</span></div><div><b>Scenes — จำนวนฉาก</b><span>{scenes.length}</span></div><div><b>Duration — เวลารวม</b><span>{used}/{duration}s</span></div><div><b>Sound Design — เสียง</b><span>{scenes.filter((scene) => scene.sound !== "Silence" || scene.sfx !== "None").length}/{scenes.length} Scene มีแผนเสียง</span></div></div><div className={styles.finalActions}><Link href="/libraries">Asset Library</Link><Link href="/libraries?tab=ambience">Sound Library</Link><button>✦ Generate Production Prompt</button><button className={styles.primary}>▶ Prepare Render</button></div></section>
+    <section id="review" className={styles.card}><div className={styles.step}><b>4</b><div><strong>Prompt & Render Review</strong><span>ตรวจ Production Constraints ก่อนสร้าง Prompt หรือส่ง Render Queue</span></div></div><div className={styles.review}><div><b>Mode — โหมด</b><span>{modeInfo.name} — {modeInfo.nameTh}</span></div><div><b>Model — โมเดล</b><span>{model}</span></div><div><b>Style — สไตล์</b><span>{style}</span></div><div><b>Format — รูปแบบภาพ</b><span>{aspect}</span></div><div><b>Scenes — จำนวนฉาก</b><span>{scenes.length}</span></div><div><b>Camera Shots — จำนวนช็อต</b><span>{scenes.reduce((sum, scene) => sum + scene.cameraShots.length, 0)}</span></div><div><b>Duration — เวลารวม</b><span>{used}/{duration}s</span></div><div><b>Sound Design — เสียง</b><span>{scenes.filter((scene) => scene.sound !== "Silence" || scene.sfx !== "None").length}/{scenes.length} Scene มีแผนเสียง</span></div></div><div className={styles.finalActions}><Link href="/libraries">Asset Library</Link><Link href="/libraries?tab=ambience">Sound Library</Link><button>✦ Generate Production Prompt</button><button className={styles.primary}>▶ Prepare Render</button></div></section>
   </main>;
 }
