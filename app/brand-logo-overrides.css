@@ -1,0 +1,16 @@
+/* Brand mark normalization for legacy surfaces that still render the original gold-only inline SVG. */
+[class*="login_brandMark"] svg stop:first-child {
+  stop-color: #d99cff !important;
+}
+
+[class*="login_brandMark"] svg stop:nth-child(2) {
+  stop-color: #a25cff !important;
+}
+
+[class*="login_brandMark"] svg stop:last-child {
+  stop-color: #f4d56d !important;
+}
+
+[class*="login_brandMark"] svg {
+  filter: drop-shadow(0 0 16px rgba(162, 92, 255, 0.2)) drop-shadow(0 0 12px rgba(241, 202, 82, 0.1));
+}
