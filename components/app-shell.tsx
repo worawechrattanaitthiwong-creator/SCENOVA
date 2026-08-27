@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { getWorkspaceContext, getWorkspaceRail, WORKSPACE_NAV, type WorkspaceNavItem } from "@/lib/workspace-navigation";
+import { getWorkspaceContext, getWorkspaceRail, isWorkspaceNavActive, WORKSPACE_NAV, type WorkspaceNavItem } from "@/lib/workspace-navigation";
 import styles from "./app-shell.module.css";
 
 type Me = { authenticated: boolean; name?: string; email?: string; role?: "ADMIN" | "MEMBER"; twoFactorEnabled?: boolean };
@@ -116,7 +116,7 @@ function WorkspaceShell({ children, pathname }: { children: React.ReactNode; pat
   if (checking || !me.authenticated) return <LoadingWorkspace />;
 
   const navLink = (item: WorkspaceNavItem) => {
-    const active = item.href === "/portal" ? pathname === item.href : pathname === item.href || pathname.startsWith(item.href + "/");
+    const active = isWorkspaceNavActive(item, pathname);
     return <Link key={item.href} href={item.href} prefetch={false} className={active ? styles.active : ""} aria-current={active ? "page" : undefined} title={item.description}>
       <span className={styles.navIcon}>{item.icon}</span>
       <span className={styles.navText}><b>{item.label}</b><small>{item.description}</small></span>
