@@ -46,7 +46,7 @@ export default function PortalPage() {
     <section className={styles.hero} aria-label="SCENOVA Neo Noir Studio">
       <img
         className={styles.heroImage}
-        src="/media/scenova-portal-hero.jpg?v=20260827-2"
+        src="/media/scenova-portal-hero.png?v=20260827-1"
         alt="SCENOVA Neo Noir Studio — สร้างภาพยนตร์ด้วยพลังของ AI"
         fetchPriority="high"
         decoding="sync"
