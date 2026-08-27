@@ -1,0 +1,178 @@
+/* SCENOVA Brand System V2
+ * Gold belongs to the SCENOVA mark/wordmark only.
+ * Product interactions, readouts, focus states and status emphasis use purple.
+ */
+:root {
+  --sc-gold: #a25cff !important;
+  --sc-warning: #a25cff !important;
+}
+
+[data-workspace],
+.scenova-auth-shell {
+  --gold: #a25cff !important;
+  --warning: #a25cff !important;
+  --accent-gold: #a25cff !important;
+}
+
+/* Remove legacy yellow/gold from workspace UI while leaving the brand outside the page surface untouched. */
+[data-workspace] :is([class*="gold"], [class*="warning"], [class*="premium"], [class*="score"] b, [class*="durationBox"] strong, [class*="historyRail"] span) {
+  color: #c982ff !important;
+  border-color: rgba(190, 102, 255, .42) !important;
+}
+
+[data-workspace] :is([style*="#f1cf55"], [style*="#f1ca52"], [style*="#f3cc56"], [style*="#e1c95e"], [style*="#ead36a"], [style*="#e5cf67"], [style*="#e4cf69"], [style*="#d9c45f"]) {
+  color: #c982ff !important;
+  border-color: rgba(190, 102, 255, .42) !important;
+  background-color: rgba(96, 42, 151, .18) !important;
+}
+
+[data-workspace] input[type="checkbox"],
+[data-workspace] input[type="range"],
+[data-workspace] input[type="radio"] {
+  accent-color: #a25cff !important;
+}
+
+/* Exact SCENOVA visual language for shared surfaces. */
+[class*="app-shell_logo"],
+[class*="app-shell_loadingMark"],
+[class*="login_brandMark"],
+[class*="page_mark"] {
+  background: url('/scenova-mark.svg') center / contain no-repeat !important;
+  filter: drop-shadow(0 0 18px rgba(162, 92, 255, .22)) drop-shadow(0 0 10px rgba(225, 172, 63, .14)) !important;
+}
+
+[class*="app-shell_logo"] > svg,
+[class*="app-shell_loadingMark"] > svg,
+[class*="login_brandMark"] > svg,
+[class*="page_mark"] > svg {
+  opacity: 0 !important;
+}
+
+[class*="app-shell_brandName"],
+[class*="login_brandName"] {
+  color: transparent !important;
+  background: linear-gradient(180deg, #fff0b0 0%, #dca840 42%, #8f5c20 74%, #f0cf74 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  font-family: "Avenir Next", "Montserrat", "Segoe UI", sans-serif !important;
+  font-weight: 430 !important;
+  letter-spacing: .18em !important;
+  text-shadow: 0 0 15px rgba(226, 174, 64, .11) !important;
+}
+
+[class*="app-shell_brand"] > small,
+[class*="login_brandSub"] {
+  color: #bb78ef !important;
+  font-family: "Avenir Next", "Montserrat", "Segoe UI", sans-serif !important;
+  font-weight: 500 !important;
+  letter-spacing: .34em !important;
+  text-shadow: 0 0 12px rgba(164, 92, 232, .22) !important;
+}
+
+/* Opening-gate wordmark. */
+body > main[class*="opening"] h1 {
+  color: transparent !important;
+  background: linear-gradient(180deg, #fff0b0 0%, #dba73f 45%, #8f5c20 76%, #f2d37b 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  font-family: "Avenir Next", "Montserrat", "Segoe UI", sans-serif !important;
+  font-weight: 400 !important;
+  letter-spacing: .2em !important;
+}
+
+/* Admin user navigation uses the brand mark instead of a generic person glyph. */
+a[href="/admin/users"] [class*="app-shell_navIcon"] {
+  background: url('/scenova-mark.svg') center / 82% no-repeat !important;
+  border-color: rgba(190, 102, 255, .28) !important;
+}
+
+a[href="/admin/users"] [class*="app-shell_navIcon"] svg,
+a[href="/admin/users"] [class*="app-shell_navIcon"] b {
+  opacity: 0 !important;
+}
+
+.scenova-admin-avatar,
+.scenova-user-admin-mark {
+  background: url('/scenova-mark.svg') center / contain no-repeat !important;
+  color: transparent !important;
+  border-color: rgba(190, 102, 255, .32) !important;
+  box-shadow: 0 0 24px rgba(162, 92, 255, .16) !important;
+}
+
+/* Compact system-wide contextual help. Original help text remains accessible as tooltip/ARIA. */
+.sc-help-hint {
+  position: relative !important;
+  width: 22px !important;
+  min-width: 22px !important;
+  height: 22px !important;
+  min-height: 22px !important;
+  margin: 4px 0 0 !important;
+  padding: 0 !important;
+  display: inline-grid !important;
+  place-items: center !important;
+  overflow: visible !important;
+  border: 1px solid rgba(176, 104, 232, .32) !important;
+  border-radius: 50% !important;
+  color: transparent !important;
+  background: rgba(69, 28, 102, .2) !important;
+  font-size: 0 !important;
+  line-height: 1 !important;
+  cursor: help !important;
+  vertical-align: middle !important;
+  isolation: isolate;
+}
+
+.sc-help-hint::after {
+  content: "!";
+  color: #d69aff;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.sc-help-hint::before {
+  content: attr(data-sc-help);
+  position: absolute;
+  z-index: 1000;
+  left: 0;
+  bottom: calc(100% + 8px);
+  width: max-content;
+  max-width: min(360px, 78vw);
+  padding: 9px 11px;
+  border: 1px solid rgba(190, 102, 255, .34);
+  border-radius: 9px;
+  color: #eee7f6;
+  background: rgba(10, 7, 15, .98);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, .42), 0 0 22px rgba(162, 92, 255, .12);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.55;
+  white-space: normal;
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+  transition: opacity .14s ease, transform .14s ease;
+}
+
+.sc-help-hint:hover::before,
+.sc-help-hint:focus::before,
+.sc-help-hint:focus-visible::before {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.sc-help-hint:focus-visible {
+  outline: 2px solid #d575ff !important;
+  outline-offset: 2px !important;
+}
+
+@media (max-width: 820px) {
+  .sc-help-hint::before {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: 82px;
+    width: auto;
+    max-width: none;
+  }
+}
