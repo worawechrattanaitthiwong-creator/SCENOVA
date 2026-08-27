@@ -50,7 +50,7 @@ export default function PortalPage() {
     >
       <Image
         className={styles.heroImage}
-        src="/scenova-portal-hero-reference.webp"
+        src="/api/portal-hero-image"
         alt="SCENOVA Neo Noir Studio — สร้างภาพยนตร์ด้วยพลังของ AI"
         fill
         priority
