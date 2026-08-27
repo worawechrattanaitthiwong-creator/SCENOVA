@@ -15,12 +15,25 @@
 }
 
 /* Remove legacy yellow/gold from workspace UI while leaving the brand outside the page surface untouched. */
-[data-workspace] :is([class*="gold"], [class*="warning"], [class*="premium"], [class*="score"] b, [class*="durationBox"] strong, [class*="historyRail"] span) {
+[data-workspace] :is([class*="gold"], [class*="Gold"], [class*="warning"], [class*="Warning"], [class*="premium"], [class*="Premium"], [class*="score"] b, [class*="durationBox"] strong, [class*="historyRail"] span, [class*="heroCopy"] h1 em) {
   color: #c982ff !important;
   border-color: rgba(190, 102, 255, .42) !important;
 }
 
-[data-workspace] :is([style*="#f1cf55"], [style*="#f1ca52"], [style*="#f3cc56"], [style*="#e1c95e"], [style*="#ead36a"], [style*="#e5cf67"], [style*="#e4cf69"], [style*="#d9c45f"]) {
+[data-workspace] :is([class*="actionGold"], [class*="goldCard"], [class*="premiumCard"]) {
+  color: #eadcff !important;
+  border-color: rgba(190, 102, 255, .4) !important;
+  background: linear-gradient(135deg, rgba(79, 31, 124, .58), rgba(24, 12, 38, .94)) !important;
+  box-shadow: 0 0 24px rgba(162, 92, 255, .12) !important;
+}
+
+[data-workspace] :is([class*="actionGold"], [class*="goldCard"], [class*="premiumCard"]) :is(svg, [class*="Icon"], [class*="icon"]) {
+  color: #d28dff !important;
+  border-color: rgba(190, 102, 255, .28) !important;
+  background-color: rgba(93, 40, 142, .28) !important;
+}
+
+[data-workspace] :is([style*="#f1cf55"], [style*="#f1ca52"], [style*="#f3cc56"], [style*="#e1c95e"], [style*="#ead36a"], [style*="#e5cf67"], [style*="#e4cf69"], [style*="#d9c45f"], [style*="#d9ba62"], [style*="#f0cf5d"], [style*="#f1d66c"]) {
   color: #c982ff !important;
   border-color: rgba(190, 102, 255, .42) !important;
   background-color: rgba(96, 42, 151, .18) !important;
