@@ -115,7 +115,8 @@ function WorkspaceShell({ children, pathname }: { children: React.ReactNode; pat
     return () => { active = false; };
   }, [me.authenticated]);
 
-  const rail = useMemo(() => getWorkspaceRail(pathname), [pathname]);
+  const rawRail = useMemo(() => getWorkspaceRail(pathname), [pathname]);
+  const rail = useMemo(() => rawRail.filter((item) => !item.adminOnly || me.role === "ADMIN"), [rawRail, me.role]);
   const context = useMemo(() => getWorkspaceContext(pathname), [pathname]);
   const activeRailIndex = useMemo(() => {
     const exact = rail.findIndex((item) => targetMatchesCurrent(item.href, pathname, searchParams, hash));
@@ -131,7 +132,7 @@ function WorkspaceShell({ children, pathname }: { children: React.ReactNode; pat
     if (isAdminUsers && me.role !== "ADMIN") return null;
     const effectiveHref = isAdminUsers ? "/admin/users" : item.href;
     const effectiveLabel = isAdminUsers ? "จัดการผู้ใช้" : item.label;
-    const effectiveDescription = isAdminUsers ? "สมาชิก รหัสผ่าน เครดิต การบล็อก และ Log" : item.description;
+    const effectiveDescription = isAdminUsers ? "ค้นหา บัญชี รหัสผ่าน เครดิต การบล็อก และ Log" : item.description;
     let active = isAdminUsers ? pathname.startsWith("/admin/users") : isWorkspaceNavActive(item, pathname);
     if (item.href === "/profile" && pathname.startsWith("/admin/users")) active = false;
     return <Link key={item.href} href={effectiveHref} prefetch={false} className={active ? styles.active : ""} aria-current={active ? "page" : undefined} title={effectiveDescription}>
@@ -145,7 +146,7 @@ function WorkspaceShell({ children, pathname }: { children: React.ReactNode; pat
       <Link href="/portal" className={styles.brand} prefetch={false} aria-label="SCENOVA Studio — หน้าเริ่มต้น">
         <span className={styles.logo}><ScenovaMark /></span>
         <span className={styles.brandName}>SCENOVA</span>
-        <small>STUDIO</small>
+        <small data-keep-small>STUDIO</small>
       </Link>
 
       <nav className={styles.mainNav} aria-label="เมนูหลัก">{WORKSPACE_NAV.map(navLink)}</nav>
