@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import AppShell from "@/components/app-shell";
 import "./globals.css";
 import "./standards.css";
-import "./scenova-yellow-theme.css";
 import "./mobile-overrides.css";
 import "./mode-help-overrides.css";
 
