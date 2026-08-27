@@ -43,20 +43,13 @@ export default function PortalPage() {
       </div>
     </header>
 
-    <section
-      className={styles.hero}
-      aria-label="SCENOVA Neo Noir Studio"
-      style={{ minHeight: 0, aspectRatio: "2048 / 682", borderColor: "rgba(224, 194, 112, .62)" }}
-    >
-      <Image
+    <section className={styles.hero} aria-label="SCENOVA Neo Noir Studio">
+      <img
         className={styles.heroImage}
-        src="/api/portal-hero-image"
+        src="/media/scenova-portal-hero.jpg?v=20260827-2"
         alt="SCENOVA Neo Noir Studio — สร้างภาพยนตร์ด้วยพลังของ AI"
-        fill
-        priority
-        unoptimized
-        sizes="(max-width: 820px) 100vw, calc(100vw - 218px)"
-        style={{ objectFit: "cover", objectPosition: "center", opacity: 1, filter: "none" }}
+        fetchPriority="high"
+        decoding="sync"
       />
     </section>
 
