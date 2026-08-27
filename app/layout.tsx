@@ -3,6 +3,7 @@ import AppShell from "@/components/app-shell";
 import "./globals.css";
 import "./standards.css";
 import "./brand-logo-overrides.css";
+import "./legacy-theme-overrides.css";
 
 export const metadata: Metadata = {
   title: "SCENOVA — AI Movie & Series Studio",
