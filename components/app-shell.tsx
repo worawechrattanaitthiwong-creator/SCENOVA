@@ -8,6 +8,7 @@ import styles from "./app-shell.module.css";
 
 type Me = { authenticated: boolean; name?: string; email?: string; role?: "ADMIN" | "MEMBER"; twoFactorEnabled?: boolean };
 type Balance = { paid: number; bonus: number; reserved: number; available: number };
+type SearchState = { get(name: string): string | null; toString(): string };
 
 function ScenovaMark() {
   return <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">
@@ -34,7 +35,7 @@ function formatCredits(value: number | undefined) {
   return Number(value).toLocaleString("th-TH", { maximumFractionDigits: 2 });
 }
 
-function targetMatchesCurrent(href: string, pathname: string, search: URLSearchParams, hash: string) {
+function targetMatchesCurrent(href: string, pathname: string, search: SearchState, hash: string) {
   const target = new URL(href, "https://scenova.local");
   if (target.pathname !== pathname) return false;
 
