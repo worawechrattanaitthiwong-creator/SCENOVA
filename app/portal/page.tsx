@@ -43,23 +43,21 @@ export default function PortalPage() {
       </div>
     </header>
 
-    <section className={styles.hero} aria-labelledby="portal-title">
-      <Image className={styles.heroImage} src="/library/styles/dark-thriller.png" alt="เมืองกลางคืนโทน Neo Noir สำหรับ SCENOVA" fill priority quality={90} sizes="(max-width: 820px) 100vw, calc(100vw - 218px)" />
-      <div className={styles.heroShade} aria-hidden />
-      <div className={styles.heroGlow} aria-hidden />
-      <div className={styles.heroCopy}>
-        <span className={styles.eyebrow}>SCENOVA CINEMATIC STUDIO</span>
-        <h1 id="portal-title">สร้างภาพยนตร์<br />ด้วยพลังของ <em>AI</em></h1>
-        <p>ตั้งแต่แนวคิด บทภาพยนตร์ ตัวละคร ฉาก เสียง ไปจนถึงการสร้างวิดีโอ<br />ทุกส่วนทำงานต่อเนื่องใน SCENOVA Workspace เดียว</p>
-        <div className={styles.ctaRow}>
-          <Link href="/studio" className={styles.primaryCta}>เริ่มสร้างภาพยนตร์ <Arrow /></Link>
-          <Link href="/guide" className={styles.secondaryCta}><span>▶</span> ดูวิธีใช้งาน</Link>
-        </div>
-      </div>
-      <div className={styles.heroBrand} aria-hidden="true">
-        <span className={styles.heroMark} />
-        <span className={styles.heroWordmark} />
-      </div>
+    <section
+      className={styles.hero}
+      aria-label="SCENOVA Neo Noir Studio"
+      style={{ minHeight: 0, aspectRatio: "2048 / 682", borderColor: "rgba(224, 194, 112, .62)" }}
+    >
+      <Image
+        className={styles.heroImage}
+        src="/scenova-portal-hero-reference.webp"
+        alt="SCENOVA Neo Noir Studio — สร้างภาพยนตร์ด้วยพลังของ AI"
+        fill
+        priority
+        unoptimized
+        sizes="(max-width: 820px) 100vw, calc(100vw - 218px)"
+        style={{ objectFit: "cover", objectPosition: "center", opacity: 1, filter: "none" }}
+      />
     </section>
 
     <section className={styles.quickSection} aria-labelledby="quick-title">
