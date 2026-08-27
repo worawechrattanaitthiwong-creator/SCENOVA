@@ -28,7 +28,7 @@ export default function PortalPage() {
   return <main className={styles.dashboard}>
     <header className={styles.utilityBar}>
       <div className={styles.welcome}>
-        <small>ยินดีต้อนรับกลับ</small>
+        <small data-keep-small="true">ยินดีต้อนรับกลับ</small>
         <strong>SCENOVA Studio</strong>
       </div>
       <form className={styles.search} action="/libraries" method="get">
@@ -67,7 +67,7 @@ export default function PortalPage() {
       <div className={styles.quickGrid}>
         {QUICK_ACTIONS.map((item) => <Link href={item.href} prefetch={false} key={item.title} className={styles.quickCard}>
           <span className={styles.quickIcon}>{item.icon}</span>
-          <span className={styles.quickCopy}><b>{item.title}</b><small>{item.detail}</small></span>
+          <span className={styles.quickCopy}><b>{item.title}</b><small data-keep-small="true">{item.detail}</small></span>
           <span className={styles.quickArrow}><Arrow /></span>
         </Link>)}
       </div>
@@ -82,7 +82,7 @@ export default function PortalPage() {
         {TEMPLATES.map((template) => <Link href="/libraries?tab=images" prefetch={false} key={template.title} className={styles.templateCard}>
           <Image src={template.image} alt={"ตัวอย่างสไตล์ " + template.title} fill sizes="(max-width: 820px) 80vw, 16vw" />
           <span className={styles.templateShade} aria-hidden />
-          <span className={styles.templateCopy}><b>{template.title}</b><small>{template.detail}</small></span>
+          <span className={styles.templateCopy}><b>{template.title}</b><small data-keep-small="true">{template.detail}</small></span>
           <span className={styles.templateArrow}><Arrow /></span>
         </Link>)}
       </div>
