@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="SCENOVA">
+  <defs>
+    <linearGradient id="gold" x1="10" y1="8" x2="105" y2="115" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff0b0"/>
+      <stop offset=".18" stop-color="#e8b84b"/>
+      <stop offset=".56" stop-color="#9a6424"/>
+      <stop offset=".82" stop-color="#f5d371"/>
+      <stop offset="1" stop-color="#6f4318"/>
+    </linearGradient>
+    <linearGradient id="purple" x1="18" y1="104" x2="112" y2="17" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#241333"/>
+      <stop offset=".25" stop-color="#5a2a83"/>
+      <stop offset=".58" stop-color="#a45de8"/>
+      <stop offset=".82" stop-color="#6e37a8"/>
+      <stop offset="1" stop-color="#d8a3ff"/>
+    </linearGradient>
+    <radialGradient id="lens" cx="43%" cy="38%" r="68%">
+      <stop stop-color="#e6b8ff"/>
+      <stop offset=".17" stop-color="#a65cff"/>
+      <stop offset=".48" stop-color="#5a2298"/>
+      <stop offset=".78" stop-color="#1b0d32"/>
+      <stop offset="1" stop-color="#06040a"/>
+    </radialGradient>
+    <radialGradient id="flare" cx="50%" cy="50%" r="50%">
+      <stop stop-color="#fff5bf" stop-opacity=".95"/>
+      <stop offset=".18" stop-color="#f1c34d" stop-opacity=".72"/>
+      <stop offset="1" stop-color="#f1c34d" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="2.2" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <g stroke-linejoin="round">
+    <path d="M63 8C39 7 18 20 10 42c-2 6-3 13-2 20 10-13 21-22 34-28 13-6 29-8 48-4C82 17 73 10 63 8Z" fill="url(#gold)" stroke="#f7d879" stroke-opacity=".45"/>
+    <path d="M120 62c1-24-12-45-34-53-6-2-13-3-20-2 13 10 22 21 28 34 6 13 8 29 4 48 13-8 20-17 22-27Z" fill="url(#purple)" stroke="#c989ff" stroke-opacity=".4"/>
+    <path d="M65 120c24 1 45-12 53-34 2-6 3-13 2-20-10 13-21 22-34 28-13 6-29 8-48 4 8 13 17 20 27 22Z" fill="url(#gold)" stroke="#f7d879" stroke-opacity=".38"/>
+    <path d="M8 66c-1 24 12 45 34 53 6 2 13 3 20 2-13-10-22-21-28-34-6-13-8-29-4-48C17 47 10 56 8 66Z" fill="url(#purple)" stroke="#b56ff0" stroke-opacity=".38"/>
+  </g>
+
+  <circle cx="64" cy="64" r="28" fill="#08050d" stroke="url(#gold)" stroke-width="4"/>
+  <circle cx="64" cy="64" r="22" fill="url(#lens)" stroke="#6f3ba0" stroke-width="1.2"/>
+  <g fill="none" stroke="#b66aff" stroke-opacity=".34" stroke-width="1">
+    <path d="M64 43c8 7 11 14 9 22-2 8-7 14-16 18"/>
+    <path d="M83 58c-10 0-17 3-22 9-5 6-7 13-5 22"/>
+    <path d="M76 80c-4-9-10-14-18-16-8-2-15-1-22 4"/>
+    <path d="M48 78c5-8 12-12 20-12 8 0 15 3 21 10"/>
+  </g>
+  <circle cx="56" cy="54" r="8" fill="#c77cff" opacity=".16" filter="url(#glow)"/>
+  <circle cx="49" cy="91" r="12" fill="url(#flare)" filter="url(#glow)"/>
+  <circle cx="68" cy="58" r="3" fill="#f0d0ff" opacity=".8" filter="url(#glow)"/>
+</svg>
