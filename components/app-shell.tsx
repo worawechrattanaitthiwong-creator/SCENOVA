@@ -1,132 +1,180 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { getWorkspaceContext, getWorkspaceRail, isWorkspaceNavActive, WORKSPACE_NAV, type WorkspaceNavItem } from "@/lib/workspace-navigation";
 import styles from "./app-shell.module.css";
 
 type Me = { authenticated: boolean; name?: string; email?: string; role?: "ADMIN" | "MEMBER"; twoFactorEnabled?: boolean };
-type NavItem = readonly [href: string, icon: string, label: string, short: string];
+type Balance = { paid: number; bonus: number; reserved: number; available: number };
+type SearchState = { get(name: string): string | null; toString(): string };
+type IconName = WorkspaceNavItem["icon"] | "profile" | "arrow";
 
-const WORKSPACE_NAV: NavItem[] = [
-  ["/portal", "✦", "เริ่มต้น", "ภาพรวมสตูดิโอ"],
-  ["/series", "EP", "โปรเจกต์", "หนังและซีรีส์ของคุณ"],
-  ["/studio", "AI", "AI Studio", "สร้างหนังและวิดีโอ"],
-  ["/director", "▤", "สตอรี่บอร์ด", "ฉาก กล้อง และการกำกับ"],
-  ["/libraries", "▦", "คลังทรัพยากร", "ตัวละคร เสียง และสไตล์"],
-];
+function Icon({ name }: { name: IconName }) {
+  const common = {
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.7,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+  };
 
-const PRODUCTION_NAV: NavItem[] = [
-  ["/agent", "✧", "AI Agent", "อัตโนมัติและอนุมัติงาน"],
-  ["/models", "⬡", "Model Center", "โมเดล ราคา และความสามารถ"],
-  ["/render", "▶", "คิวสร้าง", "งานที่กำลังสร้าง"],
-];
-
-const studioSubNav = [
-  ["/studio#setup", "ตั้งค่างาน"],
-  ["/studio#characters", "ตัวละครและเสียง"],
-  ["/studio#scenes", "กำกับฉาก"],
-  ["/libraries?tab=characters", "คลังตัวละคร"],
-  ["/libraries?tab=voices", "คลังเสียง"],
-  ["/studio#review", "Prompt & Render"],
-] as const;
-
-const seriesSubNav = [
-  ["/series#history", "ลำดับตอน"],
-  ["/series#episode-editor", "พื้นที่ทำตอน"],
-  ["/series#continuity", "ความต่อเนื่อง"],
-  ["/libraries?tab=characters", "ตัวละคร"],
-  ["/libraries?tab=videos", "ตอนที่สร้างแล้ว"],
-] as const;
-
-function ScenovaMark() {
-  return <svg viewBox="0 0 48 48" width="34" height="34" aria-hidden="true" focusable="false">
-    <defs>
-      <linearGradient id="scenova-core" x1="9" y1="8" x2="39" y2="40" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#fff4b0" />
-        <stop offset=".46" stopColor="#f2c94c" />
-        <stop offset="1" stopColor="#9d7421" />
-      </linearGradient>
-      <radialGradient id="scenova-glow" cx="0" cy="0" r="1" gradientTransform="translate(24 24) rotate(90) scale(18)">
-        <stop stopColor="#f2c94c" stopOpacity=".18" />
-        <stop offset="1" stopColor="#f2c94c" stopOpacity="0" />
-      </radialGradient>
-    </defs>
-    <rect x="4.5" y="4.5" width="39" height="39" rx="13" fill="#0a0a09" stroke="#51441f" />
-    <circle cx="24" cy="24" r="16" fill="url(#scenova-glow)" />
-    <path d="M24 10.5c5.8 0 10.8 3.5 12.9 8.5l-8.8 1.1a7.2 7.2 0 0 0-6.2-3.5c-3.1 0-5.8 2-6.8 4.8l-4.7-7.5A16.8 16.8 0 0 1 24 10.5Z" fill="none" stroke="url(#scenova-core)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M37.5 24c0 5.8-3.5 10.8-8.5 12.9l-1.1-8.8a7.2 7.2 0 0 0 3.5-6.2c0-3.1-2-5.8-4.8-6.8l7.5-4.7A16.8 16.8 0 0 1 37.5 24Z" fill="none" stroke="url(#scenova-core)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" transform="rotate(120 24 24)" />
-    <path d="M37.5 24c0 5.8-3.5 10.8-8.5 12.9l-1.1-8.8a7.2 7.2 0 0 0 3.5-6.2c0-3.1-2-5.8-4.8-6.8l7.5-4.7A16.8 16.8 0 0 1 37.5 24Z" fill="none" stroke="url(#scenova-core)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" transform="rotate(240 24 24)" />
-    <path d="M24 18.6l1.55 3.85L29.4 24l-3.85 1.55L24 29.4l-1.55-3.85L18.6 24l3.85-1.55L24 18.6Z" fill="url(#scenova-core)" />
-    <circle cx="38" cy="10" r="1.45" fill="#fff1a0" />
+  return <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" {...common}>
+    {name === "home" ? <><path d="m12 3 1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Z" /><path d="m19 16 .7 2.3L22 19l-2.3.7L19 22l-.7-2.3L16 19l2.3-.7L19 16Z" /></> : null}
+    {name === "project" ? <><rect x="3.5" y="4.5" width="17" height="15" rx="2.5" /><path d="M7 2.8v3.5M17 2.8v3.5M3.5 9h17M7.2 13h4.2M7.2 16h7.6" /></> : null}
+    {name === "ai" ? <><path d="m12 3 1.7 5.3L19 10l-5.3 1.7L12 17l-1.7-5.3L5 10l5.3-1.7L12 3Z" /><path d="m18.8 15.8.7 2.2 2.2.7-2.2.8-.7 2.2-.8-2.2-2.2-.8 2.2-.7.8-2.2Z" /></> : null}
+    {name === "board" ? <><rect x="3" y="5" width="18" height="15" rx="2.3" /><path d="m4 9 16-4M7 4l2.2 4M12 3l2.2 4M17 2l2.2 4M7 13h10M7 16h6" /></> : null}
+    {name === "library" ? <><path d="M3.5 7.5h6l1.6 2H20a1.5 1.5 0 0 1 1.5 1.5v7A2.5 2.5 0 0 1 19 20.5H5A2.5 2.5 0 0 1 2.5 18V9a1.5 1.5 0 0 1 1-1.5Z" /><path d="M4 7.5V5.8A2.3 2.3 0 0 1 6.3 3.5h3.8l1.7 2H18A2 2 0 0 1 20 7v2.5" /></> : null}
+    {name === "settings" ? <><circle cx="12" cy="12" r="3.2" /><path d="M19 13.5v-3l-2-.7a7.7 7.7 0 0 0-.7-1.6l.9-1.9-2.1-2.1-1.9.9a7.7 7.7 0 0 0-1.7-.7l-.7-2h-3l-.7 2a7.7 7.7 0 0 0-1.6.7l-1.9-.9-2.1 2.1.9 1.9a7.7 7.7 0 0 0-.7 1.6l-2 .7v3l2 .7c.2.6.4 1.1.7 1.7l-.9 1.9 2.1 2.1 1.9-.9c.5.3 1 .5 1.6.7l.7 2h3l.7-2c.6-.2 1.2-.4 1.7-.7l1.9.9 2.1-2.1-.9-1.9c.3-.5.5-1.1.7-1.7l2-.7Z" /></> : null}
+    {name === "help" ? <><circle cx="12" cy="12" r="9" /><path d="M9.7 9a2.4 2.4 0 1 1 3.1 2.3c-.8.3-.8 1-.8 1.7M12 17h.01" /></> : null}
+    {name === "profile" ? <><circle cx="12" cy="8" r="4" /><path d="M4.5 21a7.5 7.5 0 0 1 15 0" /></> : null}
+    {name === "arrow" ? <><path d="M5 12h14M14 7l5 5-5 5" /></> : null}
   </svg>;
 }
 
-export default function AppShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
+function ScenovaMark() {
+  return <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+    <defs>
+      <linearGradient id="workspace-logo-gold" x1="10" y1="8" x2="54" y2="56" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#fff0a8" />
+        <stop offset=".45" stopColor="#e8b83d" />
+        <stop offset="1" stopColor="#80601e" />
+      </linearGradient>
+    </defs>
+    <path d="M32 7c9.5 0 17.7 5.7 21.2 13.8l-13.5 1.8a11.5 11.5 0 0 0-18.8 2.3L13 14.1A23.5 23.5 0 0 1 32 7Z" fill="none" stroke="url(#workspace-logo-gold)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M53.5 27c1.9 9.3-2 18.6-9.1 23.7l-5.3-12.5a11.5 11.5 0 0 0-1.5-18.8l9-8.5A23.5 23.5 0 0 1 53.5 27Z" fill="none" stroke="url(#workspace-logo-gold)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" transform="rotate(120 32 32)" />
+    <path d="M53.5 27c1.9 9.3-2 18.6-9.1 23.7l-5.3-12.5a11.5 11.5 0 0 0-1.5-18.8l9-8.5A23.5 23.5 0 0 1 53.5 27Z" fill="none" stroke="url(#workspace-logo-gold)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" transform="rotate(240 32 32)" />
+    <path d="M32 23.8 34.7 29l5.5 3-5.5 2.8L32 40l-2.7-5.2-5.5-2.8 5.5-3 2.7-5.2Z" fill="url(#workspace-logo-gold)" />
+  </svg>;
+}
+
+function LoadingWorkspace() {
+  return <div className={styles.loading}><span className={styles.loadingMark}><ScenovaMark /></span><b>SCENOVA STUDIO</b><small>กำลังเปิดพื้นที่ทำงาน…</small></div>;
+}
+
+function formatCredits(value: number | undefined) {
+  if (value === undefined) return "—";
+  return Number(value).toLocaleString("th-TH", { maximumFractionDigits: 2 });
+}
+
+function targetMatchesCurrent(href: string, pathname: string, search: SearchState, hash: string) {
+  const target = new URL(href, "https://scenova.local");
+  if (target.pathname !== pathname) return false;
+  for (const [key, value] of target.searchParams.entries()) if (search.get(key) !== value) return false;
+  if (target.hash && target.hash !== hash) return false;
+  if (!target.hash && hash && target.pathname === pathname) return false;
+  if (!target.search && target.pathname === pathname && search.toString()) return false;
+  return true;
+}
+
+function WorkspaceShell({ children, pathname }: { children: React.ReactNode; pathname: string }) {
+  const searchParams = useSearchParams();
   const router = useRouter();
-  const standalone = pathname === "/login" || pathname === "/portal";
   const [me, setMe] = useState<Me>({ authenticated: false });
-  const [checking, setChecking] = useState(!standalone);
+  const [balance, setBalance] = useState<Balance | null>(null);
+  const [checking, setChecking] = useState(true);
+  const [hash, setHash] = useState("");
   const authLoaded = useRef(false);
 
   useEffect(() => {
-    if (standalone) { setChecking(false); return; }
-    if (authLoaded.current) return;
+    const syncHash = () => setHash(window.location.hash || "");
+    syncHash();
+    window.addEventListener("hashchange", syncHash);
+    return () => window.removeEventListener("hashchange", syncHash);
+  }, [pathname, searchParams]);
+
+  useEffect(() => {
+    if (authLoaded.current) { setChecking(false); return; }
+    let active = true;
     setChecking(true);
-    fetch("/api/auth/me", { cache: "no-store" })
+    fetch("/api/auth/me", { cache: "no-store", credentials: "same-origin" })
       .then((response) => response.json())
       .then((data: Me) => {
+        if (!active) return;
         if (!data.authenticated) { setChecking(false); router.replace("/login"); return; }
         setMe(data); authLoaded.current = true; setChecking(false);
       })
-      .catch(() => { setChecking(false); router.replace("/login"); });
-  }, [standalone, router]);
+      .catch(() => { if (active) { setChecking(false); router.replace("/login"); } });
+    return () => { active = false; };
+  }, [router]);
 
-  const subNav = useMemo(() => {
-    if (pathname.startsWith("/series")) return seriesSubNav;
-    if (pathname.startsWith("/director") || pathname.startsWith("/camera") || pathname.startsWith("/dialogue") || pathname.startsWith("/reference")) return [["/director", "สตอรี่บอร์ด"], ["/camera", "กล้องและเลนส์"], ["/dialogue", "บทและเสียงพูด"], ["/reference", "ภาพอ้างอิง"], ["/studio#scenes", "กลับไปกำกับฉาก"]] as const;
-    if (pathname.startsWith("/agent")) return [["/agent#runs", "งาน AI"], ["/agent#approvals", "รออนุมัติ"], ["/studio", "เริ่มจาก Studio"], ["/wallet#activity", "เครดิตที่ใช้"], ["/render", "คิวสร้างวิดีโอ"]] as const;
-    if (pathname.startsWith("/libraries")) return [["/libraries?tab=images", "ภาพ & สไตล์"], ["/libraries?tab=characters", "ตัวละคร"], ["/libraries?tab=voices", "เสียง"], ["/libraries?tab=ambience", "บรรยากาศ / SFX"], ["/libraries?tab=videos", "วิดีโอ"]] as const;
-    if (pathname.startsWith("/render")) return [["/render", "คิวสร้างวิดีโอ"], ["/wallet#activity", "ค่าใช้เครดิต"], ["/libraries?tab=videos", "งานที่สร้างแล้ว"]] as const;
-    if (pathname.startsWith("/models")) return [["/models", "เปรียบเทียบโมเดล"], ["/wallet", "เครดิตและงบ"], ["/studio", "ใช้ใน Studio"]] as const;
-    if (pathname.startsWith("/wallet")) return [["/wallet", "ยอดเครดิต"], ["/wallet#activity", "ประวัติการใช้"], ["/models", "ราคาโมเดล"], ["/render", "งานที่ใช้เครดิต"]] as const;
-    if (pathname.startsWith("/admin")) return [["/admin", "สมาชิกและคลัง"], ["/admin/security", "ความปลอดภัย"], ["/admin/ai-costs", "ค่าใช้จ่าย AI"], ["/profile", "บัญชี"]] as const;
-    if (pathname.startsWith("/profile")) return [["/profile", "บัญชีและความปลอดภัย"], ["/studio", "กลับ Studio"]] as const;
-    return studioSubNav;
-  }, [pathname]);
+  useEffect(() => {
+    if (!me.authenticated) return;
+    let active = true;
+    fetch("/api/cost/activity?limit=1", { cache: "no-store", credentials: "same-origin" })
+      .then(async (response) => response.ok ? response.json() : null)
+      .then((data) => { if (active && data?.balance) setBalance(data.balance); })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, [me.authenticated]);
 
-  if (standalone) return <>{children}</>;
-  if (checking || !me.authenticated) return <div className={styles.loading}>กำลังเปิด SCENOVA...</div>;
+  const rail = useMemo(() => getWorkspaceRail(pathname), [pathname]);
+  const context = useMemo(() => getWorkspaceContext(pathname), [pathname]);
+  const activeRailIndex = useMemo(() => {
+    const exact = rail.findIndex((item) => targetMatchesCurrent(item.href, pathname, searchParams, hash));
+    if (exact >= 0) return exact;
+    if (pathname === "/portal") return 0;
+    return Math.max(0, rail.findIndex((item) => new URL(item.href, "https://scenova.local").pathname === pathname));
+  }, [rail, pathname, searchParams, hash]);
 
-  const context = pathname.startsWith("/series") ? "โปรเจกต์" : pathname.startsWith("/director") || pathname.startsWith("/camera") || pathname.startsWith("/dialogue") || pathname.startsWith("/reference") ? "การกำกับภาพยนตร์" : pathname.startsWith("/agent") ? "AI Agent" : pathname.startsWith("/libraries") ? "คลังทรัพยากร" : pathname.startsWith("/render") ? "คิวสร้างวิดีโอ" : pathname.startsWith("/models") ? "ศูนย์โมเดล" : pathname.startsWith("/wallet") ? "เครดิตและค่าใช้จ่าย" : pathname.startsWith("/admin") ? "จัดการระบบ" : pathname.startsWith("/profile") ? "บัญชีและความปลอดภัย" : "AI Studio";
-  const activeSubIndex = Math.max(0, subNav.findIndex(([href]) => href.split(/[?#]/, 1)[0] === pathname));
-  const navLink = ([href, icon, label, short]: NavItem) => {
-    const active = href === "/portal" ? pathname === href : pathname === href || pathname.startsWith(href + "/");
-    return <Link key={href} href={href} prefetch={false} className={active ? styles.active : ""} aria-current={active ? "page" : undefined}><span className={styles.navIcon}>{icon}</span><span className={styles.navText}><b>{label}</b><small>{short}</small></span></Link>;
+  if (checking || !me.authenticated) return <LoadingWorkspace />;
+
+  const navLink = (item: WorkspaceNavItem) => {
+    const isGuide = item.href === "/portal#guide";
+    const active = isGuide
+      ? pathname === "/portal" && hash === "#guide"
+      : item.href === "/portal"
+        ? pathname === "/portal" && hash !== "#guide"
+        : isWorkspaceNavActive(item, pathname);
+    return <Link key={item.href} href={item.href} prefetch={false} className={active ? styles.active : ""} aria-current={active ? "page" : undefined} title={item.description}>
+      <span className={styles.navIcon}>{item.badge ? <b>{item.badge}</b> : <Icon name={item.icon} />}</span>
+      <span className={styles.navText}>{item.label}</span>
+    </Link>;
   };
 
   return <div className={styles.shell}>
     <aside className={styles.sidebar}>
-      <Link href="/portal" className={styles.brand} prefetch={false}><span className={styles.logo}><ScenovaMark /></span><span><b>SCENOVA</b><small>PRODUCTION STUDIO</small></span></Link>
-      <nav className={styles.mainNav} aria-label="เมนูหลัก">
-        <span className={styles.navSection}>พื้นที่ทำงาน</span>
-        {WORKSPACE_NAV.map(navLink)}
-        <span className={styles.navSection}>เครื่องมือการผลิต</span>
-        {PRODUCTION_NAV.map(navLink)}
-        <Link href="/wallet" prefetch={false} className={`${styles.mobileOnly} ${styles.compactWallet} ${pathname.startsWith("/wallet") ? styles.active : ""}`}><span className={styles.navIcon}>●</span><span className={styles.navText}><b>เครดิต</b><small>ยอดเครดิตและค่าใช้จ่าย</small></span></Link>
-        {me.role === "ADMIN" ? <Link href="/admin" prefetch={false} className={`${styles.mobileOnly} ${pathname.startsWith("/admin") ? styles.active : ""}`}><span className={styles.navIcon}>⚙</span><span className={styles.navText}><b>ผู้ดูแลระบบ</b><small>จัดการระบบ</small></span></Link> : null}
-        <Link href="/profile" prefetch={false} className={`${styles.mobileOnly} ${pathname.startsWith("/profile") ? styles.active : ""}`}><span className={styles.navIcon}>◉</span><span className={styles.navText}><b>บัญชี</b><small>ความปลอดภัย</small></span></Link>
-      </nav>
+      <Link href="/portal" className={styles.brand} prefetch={false} aria-label="SCENOVA Studio — หน้าเริ่มต้น">
+        <span className={styles.logo}><ScenovaMark /></span>
+        <span className={styles.brandName}>SCENOVA</span>
+        <small>STUDIO</small>
+      </Link>
+
+      <nav className={styles.mainNav} aria-label="เมนูหลัก">{WORKSPACE_NAV.map(navLink)}</nav>
+
       <div className={styles.sidebarBottom}>
-        <Link href="/wallet" prefetch={false} className={styles.creditShortcut}><span><small>เครดิตและค่าใช้จ่าย</small><b>Credit Wallet</b></span><i>เติมเครดิต</i></Link>
-        {me.role === "ADMIN" ? <Link href="/admin" prefetch={false} className={pathname.startsWith("/admin") ? styles.active : ""}><span className={styles.navIcon}>⚙</span><span className={styles.navText}><b>Admin Console</b><small>ความปลอดภัย สมาชิก และค่าใช้จ่าย</small></span></Link> : null}
-        <Link href="/profile" prefetch={false} className={styles.profileCard}><span className={styles.profileAvatar}>{me.name?.slice(0, 1).toUpperCase() || "U"}</span><span><b>{me.name || "Profile"}</b><small>{me.twoFactorEnabled ? "2FA เปิดใช้งาน" : me.role === "ADMIN" ? "ตั้งค่าความปลอดภัย" : me.email}</small></span></Link>
+        <Link href="/wallet" prefetch={false} className={styles.creditShortcut}>
+          <small>เครดิตของคุณ</small>
+          <strong>{formatCredits(balance?.available)}</strong>
+          <span>เครดิต</span>
+          <b>เติมเครดิต</b>
+        </Link>
+        <Link href="/profile" prefetch={false} className={styles.profileCard}>
+          <span className={styles.profileAvatar}><Icon name="profile" /></span>
+          <span className={styles.profileCopy}><b>{me.name || "SCENOVA"}</b><small>{me.role === "ADMIN" ? "Administrator" : "สมาชิก SCENOVA"}</small></span>
+          <span className={styles.profileArrow}><Icon name="arrow" /></span>
+        </Link>
       </div>
     </aside>
+
     <div className={styles.workspace}>
-      <header className={styles.topbar}><div className={styles.context}><span>SCENOVA WORKSPACE</span><b>{context}</b></div><div className={styles.subNav}>{subNav.map(([href, label], index) => <Link key={href} href={href} prefetch={false} className={index === activeSubIndex ? styles.subActive : ""} aria-current={index === activeSubIndex ? "step" : undefined}><i>{String(index + 1).padStart(2, "0")}</i><span>{label}</span></Link>)}</div><Link className={styles.helpLink} href="/portal#guide" prefetch={false}><span>?</span><b>คู่มือ</b></Link></header>
-      <div className={styles.page}>{children}</div>
+      <header className={styles.topbar}>
+        <nav className={styles.subNav} aria-label={`ขั้นตอน ${context}`}>
+          {rail.map((item, index) => <Link key={item.href} href={item.href} prefetch={false} className={index === activeRailIndex ? styles.subActive : ""} aria-current={index === activeRailIndex ? "step" : undefined}>
+            <span className={styles.railIcon}>{item.icon}</span>
+            <span className={styles.railCopy}><b>{item.label}</b><small>{item.description}</small></span>
+          </Link>)}
+        </nav>
+        <Link className={styles.helpLink} href="/portal#guide" prefetch={false}><span>?</span><b>คู่มือการใช้งาน</b></Link>
+      </header>
+      <div className={styles.page} data-workspace={context}>{children}</div>
     </div>
   </div>;
+}
+
+export default function AppShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  if (pathname === "/" || pathname === "/login") return <>{children}</>;
+  return <Suspense fallback={<LoadingWorkspace />}><WorkspaceShell pathname={pathname}>{children}</WorkspaceShell></Suspense>;
 }

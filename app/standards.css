@@ -1,9 +1,119 @@
-/* Shared SCENOVA UI standards — readable defaults without overriding page identity. */
-:root{--sc-text-xs:12px;--sc-text-sm:13px;--sc-text-md:14px;--sc-text-lg:16px;--sc-focus:#f2c94c}
-html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
-body{font-size:var(--sc-text-md);line-height:1.5;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
-button,input,select,textarea{font:inherit}
-::placeholder{color:#777;opacity:1}
-:where(button,a,input,select,textarea,summary,[role="button"]):focus-visible{outline:2px solid var(--sc-focus);outline-offset:2px}
-@media(pointer:coarse){button,[role="button"],input:not([type="range"]),select{min-height:44px}}
-@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto!important}*,*::before,*::after{scroll-behavior:auto!important}}
+/* Shared SCENOVA workspace standards. Purple is the interaction color; gold is reserved for brand and premium emphasis. */
+:root {
+  --sc-bg: #07050b;
+  --sc-surface: #0e0a16;
+  --sc-surface-2: #151021;
+  --sc-surface-3: #1b142a;
+  --sc-border: rgba(171, 120, 255, 0.18);
+  --sc-border-strong: rgba(196, 105, 255, 0.5);
+  --sc-text: #f7f3ff;
+  --sc-muted: #aaa0bd;
+  --sc-muted-2: #746b86;
+  --sc-purple: #a25cff;
+  --sc-purple-strong: #743cff;
+  --sc-purple-soft: rgba(162, 92, 255, 0.12);
+  --sc-gold: #f1ca52;
+  --sc-danger: #ff7b9c;
+  --sc-success: #65e7b3;
+  --sc-text-xs: 12px;
+  --sc-text-sm: 13px;
+  --sc-text-md: 14px;
+  --sc-text-lg: 16px;
+  --sc-radius-sm: 9px;
+  --sc-radius-md: 13px;
+  --sc-radius-lg: 18px;
+  --sc-focus: #d575ff;
+}
+
+html {
+  max-width: 100%;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+  font-size: var(--sc-text-md);
+  line-height: 1.5;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+img,
+video,
+canvas,
+svg,
+table {
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+::placeholder {
+  color: #77707f;
+  opacity: 1;
+}
+
+:where(button, a, input, select, textarea, summary, [role="button"]):focus-visible {
+  outline: 2px solid var(--sc-focus);
+  outline-offset: 2px;
+}
+
+pre,
+code {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+@media (pointer: coarse) {
+  button,
+  [role="button"],
+  input:not([type="range"]),
+  select {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 640px) {
+  body {
+    width: 100%;
+    min-width: 0;
+  }
+
+  input,
+  select,
+  textarea {
+    max-width: 100%;
+    font-size: 16px;
+  }
+
+  textarea {
+    min-height: 84px;
+  }
+
+  table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+  }
+}

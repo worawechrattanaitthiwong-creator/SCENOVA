@@ -2,10 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import styles from "./wallet-console.module.css";
 
 const topups = [100, 300, 500, 1000, 3000, 5000, 10000];
 type Balance = { paid: number; bonus: number; reserved: number; available: number };
 type CostEvent = { phase: string; credits: number };
+type Metric = { label: string; value: number | undefined; help: string; featured?: boolean };
 
 function credits(value: number | undefined) {
   return Number(value || 0).toLocaleString("th-TH", { maximumFractionDigits: 4 });
@@ -36,46 +38,50 @@ export default function WalletConsole() {
 
   const charged = useMemo(() => events.filter((event) => event.phase === "CHARGE").reduce((sum, event) => sum + Number(event.credits || 0), 0), [events]);
 
-  return (
-    <div className="content" style={{ maxWidth: 1180 }}>
-      <div className="page-head" id="balance">
-        <div className="row" style={{ justifyContent: "space-between", gap: 18, alignItems: "flex-end" }}>
-          <div><span style={{ color: "#f2c94c", fontSize: 12, fontWeight: 900, letterSpacing: ".14em" }}>CREDIT WALLET</span><h1 style={{ marginTop: 7 }}>เครดิตและค่าใช้จ่าย</h1><p>ดูยอดพร้อมใช้ เครดิตที่ถูกพักไว้ และรายการใช้เครดิตจริงจากงาน AI / Preview / Video ได้จากหน้าเดียว ไม่มีแพ็กเกจรายเดือน</p></div>
-          <div className="row"><Link href="/models" className="btn">ดูราคาโมเดล</Link><Link href="/render" className="btn">ดูคิวสร้างวิดีโอ →</Link></div>
-        </div>
+  const metrics: Metric[] = [
+    { label: "พร้อมใช้", value: balance?.available, help: "ยอดที่ใช้เริ่มงานใหม่ได้ ณ ตอนนี้", featured: true },
+    { label: "เครดิตจากการเติม", value: balance?.paid, help: "เครดิตจากเงินจริงที่บันทึกใน Wallet" },
+    { label: "โบนัส", value: balance?.bonus, help: "เครดิตโปรโมชั่นหรือเครดิตที่ระบบมอบให้" },
+    { label: "พักไว้สำหรับงาน", value: balance?.reserved, help: "เครดิตที่ Reserve ไว้ก่อนงานเสร็จ แล้วจึง Charge / Release / Refund ตามผลจริง" },
+    { label: "ใช้ไปในรายการที่โหลด", value: charged, help: "ผลรวมรายการ CHARGE จากประวัติที่แสดงในหน้านี้" },
+  ];
+
+  return <main className={styles.page}>
+    <header className={styles.hero} id="balance">
+      <div>
+        <span className={styles.eyebrow}>CREDIT WALLET</span>
+        <h1>เครดิตและค่าใช้จ่าย</h1>
+        <p>ดูยอดพร้อมใช้ เครดิตที่ถูกพักไว้ และรายการใช้เครดิตจริงจากงาน AI / Preview / Video ได้จากหน้าเดียว ไม่มีแพ็กเกจรายเดือน</p>
       </div>
+      <div className={styles.heroActions}><Link href="/models">ดูราคาโมเดล</Link><Link href="/render">ดูคิวสร้างวิดีโอ →</Link></div>
+    </header>
 
-      <div className="grid-3">
-        <div className="card" style={{ borderColor: "#4a4120", background: "linear-gradient(145deg,#15140d,#0f0f0f)" }}><div className="muted">พร้อมใช้</div><div style={{ fontSize: 34, fontWeight: 900, marginTop: 6, color: "#f2c94c" }}>{loading ? "…" : credits(balance?.available)}</div><div className="help">ยอดที่ใช้เริ่มงานใหม่ได้ ณ ตอนนี้</div></div>
-        <div className="card"><div className="muted">เครดิตจากการเติม</div><div style={{ fontSize: 34, fontWeight: 900, marginTop: 6 }}>{loading ? "…" : credits(balance?.paid)}</div><div className="help">เครดิตจากเงินจริงที่บันทึกใน Wallet</div></div>
-        <div className="card"><div className="muted">โบนัส</div><div style={{ fontSize: 34, fontWeight: 900, marginTop: 6 }}>{loading ? "…" : credits(balance?.bonus)}</div><div className="help">เครดิตโปรโมชั่นหรือเครดิตที่ระบบมอบให้</div></div>
-        <div className="card"><div className="muted">พักไว้สำหรับงาน</div><div style={{ fontSize: 34, fontWeight: 900, marginTop: 6 }}>{loading ? "…" : credits(balance?.reserved)}</div><div className="help">เครดิตที่ Reserve ไว้ก่อนงานเสร็จ แล้วจึง Charge / Release / Refund ตามผลจริง</div></div>
-        <div className="card"><div className="muted">ใช้ไปในรายการที่โหลด</div><div style={{ fontSize: 34, fontWeight: 900, marginTop: 6 }}>{loading ? "…" : credits(charged)}</div><div className="help">ผลรวมรายการ CHARGE จากประวัติที่แสดงในหน้านี้</div></div>
-      </div>
+    <section className={styles.metrics} aria-label="สรุปเครดิต">
+      {metrics.map((metric) => <article key={metric.label} className={`${styles.metric} ${metric.featured ? styles.featuredMetric : ""}`}>
+        <span>{metric.label}</span>
+        <strong>{loading ? "…" : credits(metric.value)}</strong>
+        <small>{metric.help}</small>
+      </article>)}
+    </section>
 
-      <div className="grid-2" style={{ marginTop: 14 }}>
-        <div className="card">
-          <div className="card-title"><div><h2>เติมเครดิต</h2><p>เลือกยอดไว้ล่วงหน้าได้ เมื่อ Payment Gateway พร้อม ปุ่มชำระเงินจะใช้ยอดนี้สร้าง PromptPay / Checkout จาก Backend</p></div></div>
-          <div className="grid-3">{topups.map((amount) => <button className={`model-card ${selected === amount ? "selected" : ""}`} key={amount} onClick={() => setSelected(amount)}><h3>฿{amount.toLocaleString()}</h3><p>{amount.toLocaleString()} Credits ก่อนโปรโมชั่น</p></button>)}</div>
-          <div style={{ height: 14 }} />
-          <div className="row"><button className="btn btn-lg" type="button" disabled title="ยังไม่เปิด Payment Gateway จริง">PromptPay — ยังไม่เปิดชำระเงินจริง</button><span className="badge warn">ยอดที่เลือก ฿{selected.toLocaleString()}</span></div>
-          <div className="help">SCENOVA จะเพิ่มเครดิตต่อเมื่อ Backend ตรวจการชำระเงินจริงและ webhook ถูกต้องเท่านั้น จึงไม่สร้างยอดปลอมในระหว่างพัฒนา</div>
-        </div>
+    <div className={styles.grid}>
+      <section className={styles.card}>
+        <div className={styles.cardHead}><h2>เติมเครดิต</h2><p>เลือกยอดไว้ล่วงหน้าได้ เมื่อ Payment Gateway พร้อม ปุ่มชำระเงินจะใช้ยอดนี้สร้าง PromptPay / Checkout จาก Backend</p></div>
+        <div className={styles.topups}>{topups.map((amount) => <button className={`${styles.topup} ${selected === amount ? styles.selected : ""}`} key={amount} onClick={() => setSelected(amount)}><strong>฿{amount.toLocaleString()}</strong><span>{amount.toLocaleString()} Credits ก่อนโปรโมชั่น</span></button>)}</div>
+        <div className={styles.paymentRow}><button className={styles.paymentDisabled} type="button" disabled title="ยังไม่เปิด Payment Gateway จริง">PromptPay — ยังไม่เปิดชำระเงินจริง</button><span className={styles.selectedAmount}>ยอดที่เลือก ฿{selected.toLocaleString()}</span></div>
+        <p className={styles.help}>SCENOVA จะเพิ่มเครดิตต่อเมื่อ Backend ตรวจการชำระเงินจริงและ webhook ถูกต้องเท่านั้น จึงไม่สร้างยอดปลอมในระหว่างพัฒนา</p>
+      </section>
 
-        <div className="card">
-          <div className="card-title"><div><h2>ระบบใช้เครดิตอย่างไร</h2><p>ก่อนสร้างงาน ระบบคำนวณราคาและพักเครดิตไว้ เพื่อลดความเสี่ยงจากการคิดเงินซ้ำ</p></div></div>
-          <div className="stack">
-            <div className="notice">1. คำนวณราคาและแสดง Estimate</div>
-            <div className="notice">2. ยืนยันงาน → Reserve Credits</div>
-            <div className="notice">3. ส่งงานไป Render Queue / AI Agent</div>
-            <div className="notice success">4. สำเร็จ → Charge ตามผลจริง</div>
-            <div className="notice">5. งานล้มเหลวและไม่ถูกคิดเงิน → Release / Refund</div>
-          </div>
-          <div className="row" style={{ marginTop: 12 }}><Link href="/agent" className="btn">ดู AI Agent</Link><Link href="/models" className="btn">เทียบราคาโมเดล</Link></div>
-        </div>
-      </div>
-
-      <div className="card"><div className="card-title"><div><h2>สถานะระบบเครดิต</h2><p>ยอด Balance และ Credit Activity ใช้ข้อมูลจากระบบจริงแล้ว ส่วนการเติมเงินจริงจะเปิดเมื่อ Payment Gateway และ webhook พร้อมใช้งาน</p></div></div><div className="notice">{message}</div></div>
+      <section className={styles.card}>
+        <div className={styles.cardHead}><h2>ระบบใช้เครดิตอย่างไร</h2><p>ก่อนสร้างงาน ระบบคำนวณราคาและพักเครดิตไว้ เพื่อลดความเสี่ยงจากการคิดเงินซ้ำ</p></div>
+        <div className={styles.flow}><div>1. คำนวณราคาและแสดง Estimate</div><div>2. ยืนยันงาน → Reserve Credits</div><div>3. ส่งงานไป Render Queue / AI Agent</div><div className={styles.success}>4. สำเร็จ → Charge ตามผลจริง</div><div>5. งานล้มเหลวและไม่ถูกคิดเงิน → Release / Refund</div></div>
+        <div className={styles.links}><Link href="/agent">ดู AI Agent</Link><Link href="/models">เทียบราคาโมเดล</Link></div>
+      </section>
     </div>
-  );
+
+    <section className={styles.statusCard}>
+      <div className={styles.cardHead}><h2>สถานะระบบเครดิต</h2><p>ยอด Balance และ Credit Activity ใช้ข้อมูลจากระบบจริงแล้ว ส่วนการเติมเงินจริงจะเปิดเมื่อ Payment Gateway และ webhook พร้อมใช้งาน</p></div>
+      <div className={styles.notice}>{message}</div>
+    </section>
+  </main>;
 }
