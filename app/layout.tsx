@@ -5,15 +5,16 @@ import "./globals.css";
 import "./standards.css";
 import "./legacy-theme-overrides.css";
 import "./brand-system-v2.css";
+import "./brand-home-v3.css";
 
 export const metadata: Metadata = {
   title: "SCENOVA",
   description: "SCENOVA — AI cinematic production studio",
   applicationName: "SCENOVA",
   icons: {
-    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
-    shortcut: "/icon.svg",
-    apple: "/icon.svg",
+    icon: [{ url: "/brand/scenova-mark.webp", type: "image/webp" }],
+    shortcut: "/brand/scenova-mark.webp",
+    apple: "/brand/scenova-mark.webp",
   },
 };
 

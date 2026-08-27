@@ -1,1 +1,67 @@
-PLACEHOLDER
+/* Focused SCENOVA brand/home corrections. Loaded last so these rules win over legacy brand overrides. */
+
+/* Use the supplied metallic purple/gold lens mark across the shared shell and admin identity. */
+[class*="app-shell_logo"],
+[class*="app-shell_loadingMark"],
+.scenova-admin-avatar,
+.scenova-user-admin-mark {
+  background: url('/brand/scenova-mark.webp') center / contain no-repeat !important;
+  filter: none !important;
+}
+[class*="app-shell_logo"] > svg,
+[class*="app-shell_loadingMark"] > svg {
+  opacity: 0 !important;
+}
+
+/* Prevent the old wordmark background from showing as a broken image in the sidebar. */
+[class*="app-shell_brandName"] {
+  width: auto !important;
+  height: auto !important;
+  margin-top: 2px !important;
+  display: block !important;
+  background: none !important;
+  color: #ead79a !important;
+  font-size: 17px !important;
+  font-weight: 650 !important;
+  line-height: 1 !important;
+  letter-spacing: .11em !important;
+  text-shadow: none !important;
+}
+[class*="app-shell_brand"] > small {
+  display: block !important;
+  margin-top: 5px !important;
+  color: #b77cff !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  letter-spacing: .30em !important;
+}
+
+/* /portal hero: use the supplied noir city/person reference crop; hide the old unrelated thumbnail and duplicate logo overlay. */
+[data-workspace="Production Command Center"] section[aria-labelledby="portal-title"] {
+  background:
+    linear-gradient(90deg, rgba(3,2,6,.98) 0%, rgba(4,3,8,.91) 27%, rgba(4,3,8,.34) 58%, rgba(3,2,6,.16) 78%),
+    linear-gradient(180deg, rgba(4,3,8,.06), rgba(3,2,6,.34)),
+    url('/media/scenova-portal-hero.jpg') center / cover no-repeat !important;
+  border-color: rgba(210,178,92,.30) !important;
+  box-shadow: 0 26px 72px rgba(0,0,0,.34), inset 0 0 0 1px rgba(220,188,104,.05) !important;
+}
+[data-workspace="Production Command Center"] section[aria-labelledby="portal-title"] > img {
+  opacity: 0 !important;
+}
+[data-workspace="Production Command Center"] section[aria-labelledby="portal-title"] [class*="heroBrand"] {
+  display: none !important;
+}
+
+/* Gold primary CTA only for the requested “เริ่มสร้างภาพยนตร์” button. */
+[data-workspace="Production Command Center"] section[aria-labelledby="portal-title"] a[href="/studio"] {
+  color: #1b1407 !important;
+  border-color: #ead18a !important;
+  background: linear-gradient(135deg, #d5b65e 0%, #f0dda0 48%, #d6b65d 100%) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.55), 0 10px 28px rgba(197,154,54,.22) !important;
+}
+[data-workspace="Production Command Center"] section[aria-labelledby="portal-title"] a[href="/studio"]:hover {
+  color: #100c05 !important;
+  border-color: #f5e4ad !important;
+  background: linear-gradient(135deg, #e0c56e 0%, #f7e9b4 48%, #dfc26b 100%) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.62), 0 13px 34px rgba(205,164,62,.28) !important;
+}
