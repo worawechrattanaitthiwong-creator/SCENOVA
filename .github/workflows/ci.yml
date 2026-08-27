@@ -2,7 +2,7 @@ name: SCENOVA CI
 
 on:
   push:
-    branches: [main, "feat/**"]
+    branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -14,12 +14,13 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: node scripts/prepare-vps-runtime.mjs
       - run: npm run db:generate
       - run: npm run typecheck
       - run: npm run test
