@@ -61,9 +61,9 @@ export default function ProfilePage() {
 
   return <main className={styles.page}>
     <header className={styles.hero}>
-      <span className={styles.eyebrow}>PROFILE & SECURITY</span>
-      <h1>โปรไฟล์และความปลอดภัย</h1>
-      <p>จัดการบัญชีและ Authenticator ของ SCENOVA จากพื้นที่เดียวกัน บัญชี Admin บังคับใช้การยืนยันตัวตน 2 ชั้น</p>
+      <span className={styles.eyebrow}>SETTINGS</span>
+      <h1>การตั้งค่า</h1>
+      <p>บัญชี 2FA และการตั้งค่าความปลอดภัยของ SCENOVA รวมอยู่ในพื้นที่เดียวกัน</p>
     </header>
 
     {message ? <div className={styles.notice}>{message}</div> : null}
@@ -73,7 +73,7 @@ export default function ProfilePage() {
       <button onClick={() => router.push("/login")} className={styles.primary}>เข้าสู่ระบบ</button>
     </section> : <div className={styles.layout}>
       <aside className={styles.identityCard}>
-        <div className={styles.avatar}>{me.name?.slice(0, 1).toUpperCase()}</div>
+        <div className={`${styles.avatar} ${me.role === "ADMIN" ? "scenova-admin-avatar" : ""}`}>{me.role === "ADMIN" ? "" : me.name?.slice(0, 1).toUpperCase()}</div>
         <h2>{me.name}</h2>
         <span className={styles.role}>{me.role}</span>
         <div className={`${styles.securityBadge} ${me.twoFactorEnabled ? styles.enabledBadge : ""}`}>{me.twoFactorEnabled ? "✓ 2FA เปิดอยู่" : "! 2FA ยังไม่เปิด"}</div>
@@ -83,9 +83,23 @@ export default function ProfilePage() {
         <section className={styles.card}>
           <div className={styles.row}><b>ชื่อ</b><span>{me.name}</span></div>
           <div className={styles.row}><b>อีเมล</b><span>{me.email}</span></div>
-          <div className={styles.row}><b>สิทธิ์</b><span>{me.role === "ADMIN" ? "Administrator — จัดการสมาชิก เครดิต และคลัง" : "Member — ใช้งาน Studio"}</span></div>
+          <div className={styles.row}><b>สิทธิ์</b><span>{me.role === "ADMIN" ? "Administrator" : "Member"}</span></div>
           <button onClick={logout} className={styles.logout}>ออกจากระบบ</button>
         </section>
+
+        {me.role === "ADMIN" ? <section className={styles.card}>
+          <div className={styles.securityHead}>
+            <div>
+              <span className={styles.eyebrow}>ADMIN SETTINGS</span>
+              <h2>ความปลอดภัยและการควบคุมระบบ</h2>
+              <p className={styles.muted}>Security Center, Emergency Control และ AI Cost Control อยู่ในเมนูการตั้งค่า ไม่ปะปนกับหน้าจัดการผู้ใช้</p>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button type="button" onClick={() => router.push("/admin/security")} className={styles.primary}>Security Center</button>
+            <button type="button" onClick={() => router.push("/admin/ai-costs")} className={styles.secondary}>AI & Cost Control</button>
+          </div>
+        </section> : null}
 
         <section className={styles.card} id="security">
           <div className={styles.securityHead}>
