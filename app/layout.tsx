@@ -1,9 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import AppShell from "@/components/app-shell";
 import HelpHintNormalizer from "@/components/help-hint-normalizer";
 import "./globals.css";
 import "./standards.css";
-import "./brand-logo-overrides.css";
 import "./legacy-theme-overrides.css";
 import "./brand-system-v2.css";
 
@@ -16,6 +15,11 @@ export const metadata: Metadata = {
     shortcut: "/icon.svg",
     apple: "/icon.svg",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#07040d",
+  colorScheme: "dark",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
