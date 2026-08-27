@@ -113,14 +113,20 @@ function distributeScenes(current: StoryScene[], count: number, total: number): 
   });
 }
 
+function formatTime(seconds: number) {
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds % 60;
+  return `${minutes}:${String(rest).padStart(2, "0")}`;
+}
+
 function Counter({ label, value, min, max, onChange }: { label: string; value: number; min: number; max: number; onChange: (value: number) => void }) {
   return (
     <div className={styles.counter}>
       <span>{label}</span>
       <div>
-        <button type="button" onClick={() => onChange(Math.max(min, value - 1))} disabled={value <= min} aria-label={`ลด${label}`}>−</button>
+        <button type="button" onClick={() => onChange(Math.max(min, value - 1))} disabled={value <= min}>−</button>
         <strong>{value}</strong>
-        <button type="button" onClick={() => onChange(Math.min(max, value + 1))} disabled={value >= max} aria-label={`เพิ่ม${label}`}>＋</button>
+        <button type="button" onClick={() => onChange(Math.min(max, value + 1))} disabled={value >= max}>＋</button>
       </div>
     </div>
   );
@@ -137,7 +143,7 @@ export default function ScenovaStudioV3() {
   const [totalDuration, setTotalDuration] = useState(30);
   const [scenes, setScenes] = useState<StoryScene[]>(() => distributeScenes([], 3, 30));
   const [selectedSceneId, setSelectedSceneId] = useState("");
-  const [message, setMessage] = useState("พร้อมสร้างเรื่องของคุณ");
+  const [message, setMessage] = useState("พร้อมเริ่มสร้างเรื่อง");
 
   useEffect(() => {
     const raw = localStorage.getItem("scenova-selected-character-v1");
@@ -146,7 +152,12 @@ export default function ScenovaStudioV3() {
       const payload = JSON.parse(raw) as SelectedCharacterPayload;
       if (!payload.title) return;
       const meta = payload.metadata || {};
-      const detail = [meta.appearance, meta.personality && `บุคลิก: ${meta.personality}`, meta.costume && `ชุด: ${meta.costume}`, meta.promptHint].filter(Boolean).join("\n");
+      const detail = [
+        meta.appearance,
+        meta.personality && `บุคลิก: ${meta.personality}`,
+        meta.costume && `ชุด: ${meta.costume}`,
+        meta.promptHint,
+      ].filter(Boolean).join("\n");
       setCharacters((current) => {
         const imported: Character = {
           id: payload.id ? `library_${payload.id}` : makeId("library"),
@@ -253,91 +264,156 @@ export default function ScenovaStudioV3() {
 
   function toggleSceneCharacter(id: string) {
     if (!selectedScene) return;
-    patchScene({ characterIds: selectedScene.characterIds.includes(id) ? selectedScene.characterIds.filter((item) => item !== id) : [...selectedScene.characterIds, id] });
+    patchScene({
+      characterIds: selectedScene.characterIds.includes(id)
+        ? selectedScene.characterIds.filter((item) => item !== id)
+        : [...selectedScene.characterIds, id],
+    });
   }
 
   function toggleSceneAnimal(id: string) {
     if (!selectedScene) return;
-    patchScene({ animalIds: selectedScene.animalIds.includes(id) ? selectedScene.animalIds.filter((item) => item !== id) : [...selectedScene.animalIds, id] });
+    patchScene({
+      animalIds: selectedScene.animalIds.includes(id)
+        ? selectedScene.animalIds.filter((item) => item !== id)
+        : [...selectedScene.animalIds, id],
+    });
   }
 
   function saveDraft() {
-    localStorage.setItem("scenova-story-draft-v1", JSON.stringify({ model, aspect, visualStyle, story, characters, hasAnimals, animals: hasAnimals ? animals : [], totalDuration, scenes }));
-    setMessage("บันทึก Story Draft แล้ว");
+    localStorage.setItem("scenova-story-draft-v1", JSON.stringify({
+      model,
+      aspect,
+      visualStyle,
+      story,
+      characters,
+      hasAnimals,
+      animals: hasAnimals ? animals : [],
+      totalDuration,
+      scenes,
+    }));
+    setMessage("บันทึกร่างแล้ว");
   }
 
   return (
     <main className={styles.main}>
       <header className={styles.hero}>
         <div>
-          <span>SCENOVA STORY MODE</span>
-          <h1>สร้างเรื่องแบบเป็นลำดับ</h1>
-          <p>กำหนดเรื่อง ตัวละคร ฉาก และเวลาให้ครบก่อน แล้วค่อยส่งไปสร้าง Prompt หรือวิดีโอ</p>
+          <span className={styles.brand}>SCENOVA STORY MODE</span>
+          <h1>สร้างเรื่อง</h1>
+          <p>ใส่เรื่อง กำหนดตัวละคร แล้วแบ่งฉากตามเวลาที่ต้องการได้ในหน้าเดียว</p>
         </div>
-        <div className={styles.status}>{message}</div>
+        <div className={styles.heroActions}>
+          <span className={styles.status}>{message}</span>
+          <button type="button" className={styles.subtleButton} onClick={saveDraft}>บันทึกร่าง</button>
+          <Link className={styles.primaryButton} href="/render" onClick={saveDraft}>Prompt & Render</Link>
+        </div>
       </header>
 
-      <nav className={styles.workflowNav} aria-label="ลำดับการสร้างเรื่อง">
-        <a href="#story"><b>1</b><span>เรื่องและรูปแบบ</span></a>
-        <a href="#cast"><b>2</b><span>ตัวละคร / สัตว์</span></a>
-        <a href="#scenes"><b>3</b><span>ฉากและเวลา</span></a>
-        <a href="#review"><b>4</b><span>ตรวจและสร้าง</span></a>
-      </nav>
+      <section className={styles.panel}>
+        <div className={styles.panelHead}>
+          <div>
+            <h2>เรื่องและรูปแบบ</h2>
+            <p>เริ่มจากข้อมูลหลักของหนัง ไม่ต้องตั้งค่าทางเทคนิคที่ไม่จำเป็น</p>
+          </div>
+        </div>
 
-      <section id="story" className={styles.card}>
-        <div className={styles.sectionHead}>
-          <b>1</b>
-          <div><h2>เรื่องและรูปแบบ</h2><p>ใส่เฉพาะข้อมูลหลักที่จำเป็นต่อการสร้างเรื่อง</p></div>
-        </div>
-        <div className={styles.setupGrid}>
-          <label className={styles.field}><span>โมเดลวิดีโอ</span><select value={model} onChange={(event) => setModel(event.target.value)}>{MODELS.map((item) => <option key={item}>{item}</option>)}</select></label>
-          <label className={styles.field}><span>อัตราส่วนภาพ</span><select value={aspect} onChange={(event) => setAspect(event.target.value)}>{ASPECTS.map((item) => <option key={item}>{item}</option>)}</select></label>
-          <label className={styles.field}><span>สไตล์ภาพ</span><select value={visualStyle} onChange={(event) => setVisualStyle(event.target.value)}>{STYLES.map((item) => <option key={item}>{item}</option>)}</select></label>
-        </div>
-        <label className={styles.field}>
+        <label className={`${styles.field} ${styles.storyField}`}>
           <span>เรื่องที่ต้องการสร้าง</span>
-          <textarea value={story} onChange={(event) => setStory(event.target.value)} placeholder="ตัวอย่าง: เด็กหญิงหลงเข้าไปในป่าลึกลับและพบสุนัขที่พาเธอกลับบ้าน..." />
-          <small>เขียนใจความของเรื่องตรง ๆ ระบบจะใช้ข้อมูลนี้เป็นแกนกลางของทุกฉาก</small>
+          <textarea
+            value={story}
+            onChange={(event) => setStory(event.target.value)}
+            placeholder="เขียนเรื่องแบบตรง ๆ เช่น ใครเป็นตัวหลัก เกิดอะไรขึ้น ต้องการให้เรื่องไปทางไหน และจบอย่างไร"
+          />
         </label>
+
+        <div className={styles.setupGrid}>
+          <label className={styles.field}>
+            <span>โมเดลวิดีโอ</span>
+            <select value={model} onChange={(event) => setModel(event.target.value)}>{MODELS.map((item) => <option key={item}>{item}</option>)}</select>
+          </label>
+          <label className={styles.field}>
+            <span>อัตราส่วนภาพ</span>
+            <select value={aspect} onChange={(event) => setAspect(event.target.value)}>{ASPECTS.map((item) => <option key={item}>{item}</option>)}</select>
+          </label>
+          <label className={styles.field}>
+            <span>สไตล์ภาพ</span>
+            <select value={visualStyle} onChange={(event) => setVisualStyle(event.target.value)}>{STYLES.map((item) => <option key={item}>{item}</option>)}</select>
+          </label>
+          <div className={styles.durationControl}>
+            <div><span>เวลารวม</span><strong>{formatTime(totalDuration)}</strong></div>
+            <input type="range" min={10} max={180} step={5} value={totalDuration} onChange={(event) => changeTotalDuration(Number(event.target.value))} />
+            <small>10 วินาที – 3 นาที</small>
+          </div>
+        </div>
       </section>
 
-      <section id="cast" className={styles.card}>
-        <div className={styles.sectionHeadRow}>
-          <div className={styles.sectionHead}><b>2</b><div><h2>ตัวละครและสัตว์</h2><p>เปิดเฉพาะสิ่งที่มีอยู่ในเรื่อง</p></div></div>
-          <Link className={styles.secondaryLink} href="/libraries?tab=characters">เปิดคลังตัวละคร</Link>
+      <section className={styles.panel}>
+        <div className={styles.panelHead}>
+          <div>
+            <h2>ตัวละคร</h2>
+            <p>กำหนดเฉพาะตัวที่มีอยู่จริงในเรื่อง แล้วเลือกว่าจะให้ไปอยู่ในฉากไหนภายหลัง</p>
+          </div>
+          <div className={styles.panelTools}>
+            <Link className={styles.subtleButton} href="/libraries?tab=characters">คลังตัวละคร</Link>
+            <Counter label="จำนวน" value={characters.length} min={1} max={8} onChange={resizeCharacters} />
+          </div>
         </div>
 
-        <Counter label="จำนวนตัวละคร" value={characters.length} min={1} max={8} onChange={resizeCharacters} />
-        <div className={styles.castList}>
+        <div className={styles.castGrid}>
           {characters.map((character, index) => (
             <article className={styles.castCard} key={character.id}>
-              <div className={styles.castTitle}><b>{index + 1}</b><input value={character.name} onChange={(event) => patchCharacter(character.id, { name: event.target.value })} aria-label={`ชื่อตัวละคร ${index + 1}`} /></div>
-              <div className={styles.twoCol}>
-                <label className={styles.field}><span>บทบาท</span><select value={character.role} onChange={(event) => patchCharacter(character.id, { role: event.target.value })}>{ROLES.map((role) => <option key={role}>{role}</option>)}</select></label>
-                <label className={styles.field}><span>เสียง</span><select value={character.voice} onChange={(event) => patchCharacter(character.id, { voice: event.target.value })}>{VOICE_PROFILES.map((voice) => <option key={voice}>{voice}</option>)}</select></label>
+              <div className={styles.cardTitle}>
+                <b>{index + 1}</b>
+                <input value={character.name} onChange={(event) => patchCharacter(character.id, { name: event.target.value })} aria-label={`ชื่อตัวละคร ${index + 1}`} />
               </div>
-              <label className={styles.field}><span>รูปลักษณ์และบุคลิก</span><textarea value={character.appearance} onChange={(event) => patchCharacter(character.id, { appearance: event.target.value })} placeholder="หน้าตา เสื้อผ้า อายุโดยประมาณ บุคลิก จุดสังเกตสำคัญ" /></label>
+              <div className={styles.twoCol}>
+                <label className={styles.field}>
+                  <span>บทบาท</span>
+                  <select value={character.role} onChange={(event) => patchCharacter(character.id, { role: event.target.value })}>{ROLES.map((role) => <option key={role}>{role}</option>)}</select>
+                </label>
+                <label className={styles.field}>
+                  <span>เสียง</span>
+                  <select value={character.voice} onChange={(event) => patchCharacter(character.id, { voice: event.target.value })}>{VOICE_PROFILES.map((voice) => <option key={voice}>{voice}</option>)}</select>
+                </label>
+              </div>
+              <label className={styles.field}>
+                <span>รูปลักษณ์และบุคลิก</span>
+                <textarea value={character.appearance} onChange={(event) => patchCharacter(character.id, { appearance: event.target.value })} placeholder="หน้าตา อายุโดยประมาณ เสื้อผ้า บุคลิก และจุดสังเกตสำคัญ" />
+              </label>
             </article>
           ))}
         </div>
 
-        <div className={styles.animalSwitch}>
-          <div><b>มีสัตว์หรือสิ่งมีชีวิตในเรื่องหรือไม่?</b><span>ถ้าไม่มี ระบบจะซ่อนส่วนนี้ทั้งหมด</span></div>
-          <div><button type="button" className={!hasAnimals ? styles.primaryAction : ""} onClick={() => toggleAnimals(false)}>ไม่มี</button><button type="button" className={hasAnimals ? styles.primaryAction : ""} onClick={() => toggleAnimals(true)}>มี</button></div>
+        <div className={styles.animalToggle}>
+          <div>
+            <strong>มีสัตว์หรือสิ่งมีชีวิตในเรื่องไหม?</strong>
+            <span>ถ้าไม่มี ส่วนสัตว์จะไม่แสดงในหน้าสร้างฉาก</span>
+          </div>
+          <div className={styles.toggleGroup}>
+            <button type="button" className={!hasAnimals ? styles.toggleActive : ""} onClick={() => toggleAnimals(false)}>ไม่มี</button>
+            <button type="button" className={hasAnimals ? styles.toggleActive : ""} onClick={() => toggleAnimals(true)}>มี</button>
+          </div>
         </div>
 
         {hasAnimals ? (
           <div className={styles.animalArea}>
-            <Counter label="จำนวนสัตว์ / สิ่งมีชีวิต" value={animals.length} min={1} max={4} onChange={resizeAnimals} />
-            <div className={styles.castList}>
+            <div className={styles.animalAreaHead}>
+              <h3>สัตว์ / สิ่งมีชีวิต</h3>
+              <Counter label="จำนวน" value={animals.length} min={1} max={4} onChange={resizeAnimals} />
+            </div>
+            <div className={styles.castGrid}>
               {animals.map((animal, index) => (
                 <article className={styles.castCard} key={animal.id}>
-                  <div className={styles.castTitle}><b>{index + 1}</b><input value={animal.name} onChange={(event) => patchAnimal(animal.id, { name: event.target.value })} aria-label={`ชื่อสัตว์ ${index + 1}`} /></div>
-                  <div className={styles.twoCol}>
-                    <label className={styles.field}><span>ชนิด</span><input value={animal.species} onChange={(event) => patchAnimal(animal.id, { species: event.target.value })} placeholder="เช่น สุนัข, แมว, มังกร" /></label>
-                    <label className={styles.field}><span>พฤติกรรม</span><input value={animal.behavior} onChange={(event) => patchAnimal(animal.id, { behavior: event.target.value })} placeholder="เชื่อง, ระวังตัว, ดุ, ขี้เล่น..." /></label>
+                  <div className={styles.cardTitle}>
+                    <b>{index + 1}</b>
+                    <input value={animal.name} onChange={(event) => patchAnimal(animal.id, { name: event.target.value })} aria-label={`ชื่อสัตว์ ${index + 1}`} />
                   </div>
-                  <label className={styles.field}><span>รูปลักษณ์</span><textarea value={animal.appearance} onChange={(event) => patchAnimal(animal.id, { appearance: event.target.value })} placeholder="สี ขนาด ลักษณะเด่น เครื่องหมายเฉพาะ" /></label>
+                  <div className={styles.twoCol}>
+                    <label className={styles.field}><span>ชนิด</span><input value={animal.species} onChange={(event) => patchAnimal(animal.id, { species: event.target.value })} placeholder="เช่น สุนัข แมว มังกร" /></label>
+                    <label className={styles.field}><span>พฤติกรรม</span><input value={animal.behavior} onChange={(event) => patchAnimal(animal.id, { behavior: event.target.value })} placeholder="เชื่อง ขี้เล่น ระวังตัว..." /></label>
+                  </div>
+                  <label className={styles.field}><span>รูปลักษณ์</span><textarea value={animal.appearance} onChange={(event) => patchAnimal(animal.id, { appearance: event.target.value })} placeholder="สี ขนาด ลักษณะเด่น หรือเครื่องหมายเฉพาะ" /></label>
                 </article>
               ))}
             </div>
@@ -345,72 +421,109 @@ export default function ScenovaStudioV3() {
         ) : null}
       </section>
 
-      <section id="scenes" className={styles.card}>
-        <div className={styles.sectionHead}><b>3</b><div><h2>ฉากและเวลา</h2><p>กำหนดจำนวนฉากและเลื่อนเวลาแต่ละฉากได้โดยตรง</p></div></div>
-
-        <div className={styles.sceneControls}>
-          <Counter label="จำนวนฉาก" value={scenes.length} min={1} max={12} onChange={resizeScenes} />
-          <div className={styles.totalDuration}>
-            <div><span>เวลารวมของเรื่อง</span><strong>{totalDuration} วินาที</strong></div>
-            <input type="range" min={10} max={180} step={5} value={totalDuration} onChange={(event) => changeTotalDuration(Number(event.target.value))} />
-            <small>ใช้แล้ว {usedDuration} วินาที • เหลือ {remainingDuration} วินาที</small>
+      <section className={styles.panel}>
+        <div className={styles.sceneTop}>
+          <div>
+            <h2>ฉากและเวลา</h2>
+            <p>เลือกจำนวนฉาก แล้วลากเวลาแต่ละฉากได้ ระบบจะคุมเวลารวมให้</p>
+          </div>
+          <div className={styles.sceneTools}>
+            <Counter label="จำนวนฉาก" value={scenes.length} min={1} max={12} onChange={resizeScenes} />
+            <div className={styles.sceneStats}>
+              <span>ใช้ {formatTime(usedDuration)}</span>
+              <b>เหลือ {formatTime(remainingDuration)}</b>
+            </div>
           </div>
         </div>
 
         <div className={styles.timeline}>
           {scenes.map((scene, index) => {
             const time = sceneTimes.find((item) => item.id === scene.id);
-            return <button type="button" key={scene.id} className={scene.id === selectedScene?.id ? styles.timelineActive : ""} onClick={() => setSelectedSceneId(scene.id)} style={{ flexGrow: Math.max(1, scene.duration) }}><b>{index + 1}</b><span>{time?.start ?? 0}–{time?.end ?? scene.duration}s</span></button>;
+            return (
+              <button
+                type="button"
+                key={scene.id}
+                className={scene.id === selectedScene?.id ? styles.timelineActive : ""}
+                onClick={() => setSelectedSceneId(scene.id)}
+                style={{ flexGrow: Math.max(1, scene.duration) }}
+              >
+                <b>{index + 1}</b>
+                <span>{formatTime(time?.start ?? 0)}–{formatTime(time?.end ?? scene.duration)}</span>
+              </button>
+            );
           })}
         </div>
 
         {selectedScene ? (
-          <div className={styles.sceneEditor}>
-            <div className={styles.sceneEditorHead}>
-              <label className={styles.field}><span>ชื่อฉาก</span><input value={selectedScene.title} onChange={(event) => patchScene({ title: event.target.value })} /></label>
-              <div className={styles.timeSummary}><span>เวลาฉาก</span><strong>{selectedScene.duration} วินาที</strong></div>
-            </div>
+          <div className={styles.sceneWorkspace}>
+            <aside className={styles.sceneRail}>
+              {scenes.map((scene, index) => {
+                const time = sceneTimes.find((item) => item.id === scene.id);
+                return (
+                  <button type="button" key={scene.id} className={scene.id === selectedScene.id ? styles.sceneRailActive : ""} onClick={() => setSelectedSceneId(scene.id)}>
+                    <b>{index + 1}</b>
+                    <span><strong>{scene.title || `ฉาก ${index + 1}`}</strong><small>{formatTime(time?.start ?? 0)}–{formatTime(time?.end ?? scene.duration)} • {scene.duration}s</small></span>
+                  </button>
+                );
+              })}
+            </aside>
 
-            <div className={styles.sceneDuration}>
-              <input type="range" min={1} max={Math.max(1, selectedScene.duration + remainingDuration)} value={selectedScene.duration} onChange={(event) => changeSceneDuration(Number(event.target.value))} />
-              <small>ลากเพื่อกำหนดเวลาของฉากนี้ ระบบจะไม่ให้เวลารวมเกิน {totalDuration} วินาที</small>
-            </div>
-
-            <label className={styles.field}><span>สถานที่</span><input value={selectedScene.location} onChange={(event) => patchScene({ location: event.target.value })} placeholder="เช่น บ้าน, โรงเรียน, ป่า, ถนนกลางคืน" /></label>
-
-            <div className={styles.presenceBlock}>
-              <span>ตัวละครที่อยู่ในฉากนี้</span>
-              <div>{characters.map((character) => <label key={character.id}><input type="checkbox" checked={selectedScene.characterIds.includes(character.id)} onChange={() => toggleSceneCharacter(character.id)} />{character.name}</label>)}</div>
-            </div>
-
-            {hasAnimals ? (
-              <div className={styles.presenceBlock}>
-                <span>สัตว์ / สิ่งมีชีวิตที่อยู่ในฉากนี้</span>
-                <div>{animals.map((animal) => <label key={animal.id}><input type="checkbox" checked={selectedScene.animalIds.includes(animal.id)} onChange={() => toggleSceneAnimal(animal.id)} />{animal.name}</label>)}</div>
+            <div className={styles.sceneEditor}>
+              <div className={styles.sceneEditorHead}>
+                <label className={styles.field}>
+                  <span>ชื่อฉาก</span>
+                  <input value={selectedScene.title} onChange={(event) => patchScene({ title: event.target.value })} />
+                </label>
+                <div className={styles.sceneTime}><span>เวลา</span><strong>{selectedScene.duration} วินาที</strong></div>
               </div>
-            ) : null}
 
-            <label className={styles.field}><span>เกิดอะไรขึ้นในฉากนี้</span><textarea value={selectedScene.action} onChange={(event) => patchScene({ action: event.target.value })} placeholder="บอกตรง ๆ ว่าใครทำอะไร เริ่มอย่างไร และฉากจบอย่างไร" /></label>
-            <label className={styles.field}><span>บทพูด (ถ้ามี)</span><textarea value={selectedScene.dialogue} onChange={(event) => patchScene({ dialogue: event.target.value })} placeholder={'ตัวละคร 1: ...\nตัวละคร 2: ...'} /></label>
+              <div className={styles.durationControl}>
+                <div><span>เวลาของฉากนี้</span><strong>{selectedScene.duration}s</strong></div>
+                <input type="range" min={1} max={Math.max(1, selectedScene.duration + remainingDuration)} value={selectedScene.duration} onChange={(event) => changeSceneDuration(Number(event.target.value))} />
+                <small>ลากซ้าย–ขวาเพื่อกำหนดเวลา ระบบจะไม่ให้เกินเวลารวม</small>
+              </div>
+
+              <label className={styles.field}>
+                <span>สถานที่</span>
+                <input value={selectedScene.location} onChange={(event) => patchScene({ location: event.target.value })} placeholder="เช่น ห้องนอน ถนนกลางคืน ป่า โรงเรียน" />
+              </label>
+
+              <div className={styles.presence}>
+                <span>ตัวละครในฉากนี้</span>
+                <div>{characters.map((character) => <label key={character.id}><input type="checkbox" checked={selectedScene.characterIds.includes(character.id)} onChange={() => toggleSceneCharacter(character.id)} />{character.name}</label>)}</div>
+              </div>
+
+              {hasAnimals ? (
+                <div className={styles.presence}>
+                  <span>สัตว์ / สิ่งมีชีวิตในฉากนี้</span>
+                  <div>{animals.map((animal) => <label key={animal.id}><input type="checkbox" checked={selectedScene.animalIds.includes(animal.id)} onChange={() => toggleSceneAnimal(animal.id)} />{animal.name}</label>)}</div>
+                </div>
+              ) : null}
+
+              <label className={styles.field}>
+                <span>เกิดอะไรขึ้นในฉากนี้</span>
+                <textarea value={selectedScene.action} onChange={(event) => patchScene({ action: event.target.value })} placeholder="บอกตรง ๆ ว่าใครทำอะไร เหตุการณ์เริ่มอย่างไร และจบตรงไหน" />
+              </label>
+
+              <label className={styles.field}>
+                <span>บทพูด <small>(ถ้ามี)</small></span>
+                <textarea value={selectedScene.dialogue} onChange={(event) => patchScene({ dialogue: event.target.value })} placeholder={'ชื่อตัวละคร: บทพูด\nชื่อตัวละคร: บทพูด'} />
+              </label>
+            </div>
           </div>
         ) : null}
       </section>
 
-      <section id="review" className={styles.card}>
-        <div className={styles.sectionHead}><b>4</b><div><h2>ตรวจและสร้าง</h2><p>ดูข้อมูลสำคัญก่อนส่งไปขั้นตอนสร้าง</p></div></div>
-        <div className={styles.reviewGrid}>
-          <div><span>โมเดล</span><b>{model}</b></div>
-          <div><span>รูปแบบภาพ</span><b>{aspect}</b></div>
-          <div><span>ตัวละคร</span><b>{characters.length} ตัว</b></div>
-          <div><span>สัตว์ / สิ่งมีชีวิต</span><b>{hasAnimals ? `${animals.length} ตัว` : "ไม่มี"}</b></div>
-          <div><span>จำนวนฉาก</span><b>{scenes.length} ฉาก</b></div>
-          <div><span>เวลาที่กำหนด</span><b>{usedDuration} / {totalDuration} วินาที</b></div>
+      <footer className={styles.actionBar}>
+        <div className={styles.actionSummary}>
+          <strong>{scenes.length} ฉาก • {characters.length} ตัวละคร{hasAnimals ? ` • ${animals.length} สัตว์/สิ่งมีชีวิต` : ""}</strong>
+          <span>{model} • {aspect} • {formatTime(totalDuration)}</span>
         </div>
-        <div className={styles.finalBar}>
-          <button type="button" onClick={saveDraft}>บันทึกร่าง</button>
-          <Link className={styles.primaryAction} href="/render" onClick={saveDraft}>ไป Prompt & Render →</Link>
+        <div className={styles.actionButtons}>
+          <button type="button" className={styles.subtleButton} onClick={saveDraft}>บันทึกร่าง</button>
+          <Link className={styles.primaryButton} href="/render" onClick={saveDraft}>ไปสร้าง Prompt & Render →</Link>
         </div>
-      </section>
+      </footer>
     </main>
   );
 }
