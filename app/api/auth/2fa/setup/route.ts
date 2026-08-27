@@ -12,6 +12,13 @@ function challengeFromRequest(request: Request) {
   return verifyTwoFactorChallenge(token);
 }
 
+function requestMeta(request: Request) {
+  return {
+    userAgent: request.headers.get("user-agent") || "",
+    forwardedFor: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "",
+  };
+}
+
 export async function POST(request: Request) {
   try {
     const challenge = challengeFromRequest(request);
@@ -38,6 +45,9 @@ export async function POST(request: Request) {
 
     const secret = await decryptTwoFactorSecret(user.twoFactorSecret);
     if (!verifyTotp(secret, code)) {
+      await prisma.auditLog.create({
+        data: { userId: user.id, action: "ADMIN_2FA_SETUP_FAILED", resource: "auth", resourceId: user.id, metadata: requestMeta(request) },
+      }).catch(() => undefined);
       return setPrivateNoStore(NextResponse.json({ error: "รหัส Authenticator ไม่ถูกต้องหรือหมดอายุแล้ว" }, { status: 400 }));
     }
 
@@ -50,6 +60,13 @@ export async function POST(request: Request) {
         twoFactorRecoveryCodes: hashRecoveryCodes(recoveryCodes),
       },
     });
+
+    await prisma.auditLog.createMany({
+      data: [
+        { userId: user.id, action: "ADMIN_2FA_ENABLED", resource: "auth", resourceId: user.id, metadata: requestMeta(request) },
+        { userId: user.id, action: "LOGIN_SUCCESS_2FA_SETUP", resource: "auth", resourceId: user.id, metadata: requestMeta(request) },
+      ],
+    }).catch(() => undefined);
 
     const sessionUser = await completeLogin(user.id);
     const response = NextResponse.json({ ok: true, recoveryCodes });

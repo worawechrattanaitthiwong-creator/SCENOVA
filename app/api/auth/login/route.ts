@@ -2,10 +2,19 @@ import { NextResponse } from "next/server";
 import { authenticatePassword, completeLogin, signSession, signTwoFactorChallenge } from "@/lib/auth-core";
 import { attachSessionCookie, setPrivateNoStore } from "@/lib/auth-cookie";
 import { prisma } from "@/lib/db";
+import { releaseExpiredUserSuspension } from "@/lib/user-admin";
 import { buildOtpAuthUri, encryptTwoFactorSecret, generateTotpSecret } from "@/lib/two-factor";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+function requestMeta(request: Request, email: string) {
+  return {
+    email: email.trim().toLowerCase(),
+    userAgent: request.headers.get("user-agent") || "",
+    forwardedFor: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "",
+  };
+}
 
 export async function POST(request: Request) {
   try {
@@ -13,12 +22,19 @@ export async function POST(request: Request) {
     const email = typeof body.email === "string" ? body.email : "";
     const password = typeof body.password === "string" ? body.password : "";
 
+    await releaseExpiredUserSuspension(email);
     const user = await authenticatePassword(email, password);
     if (!user) {
-      return setPrivateNoStore(NextResponse.json({ ok: false, error: "อีเมลหรือรหัสผ่านไม่ถูกต้อง" }, { status: 401 }));
+      await prisma.auditLog.create({
+        data: { action: "LOGIN_FAILED", resource: "auth", metadata: requestMeta(request, email) },
+      }).catch(() => undefined);
+      return setPrivateNoStore(NextResponse.json({ ok: false, error: "อีเมลหรือรหัสผ่านไม่ถูกต้อง หรือบัญชีถูกระงับการใช้งาน" }, { status: 401 }));
     }
 
     if (user.twoFactorEnabled) {
+      await prisma.auditLog.create({
+        data: { userId: user.id, action: "LOGIN_PASSWORD_ACCEPTED_2FA", resource: "auth", resourceId: user.id, metadata: requestMeta(request, email) },
+      }).catch(() => undefined);
       return setPrivateNoStore(NextResponse.json({
         ok: true,
         twoFactorRequired: true,
@@ -41,6 +57,10 @@ export async function POST(request: Request) {
         },
       });
 
+      await prisma.auditLog.create({
+        data: { userId: user.id, action: "ADMIN_2FA_SETUP_REQUIRED", resource: "auth", resourceId: user.id, metadata: requestMeta(request, email) },
+      }).catch(() => undefined);
+
       return setPrivateNoStore(NextResponse.json({
         ok: true,
         twoFactorRequired: false,
@@ -56,6 +76,9 @@ export async function POST(request: Request) {
     }
 
     const sessionUser = await completeLogin(user.id);
+    await prisma.auditLog.create({
+      data: { userId: user.id, action: "LOGIN_SUCCESS", resource: "auth", resourceId: user.id, metadata: requestMeta(request, email) },
+    }).catch(() => undefined);
     const response = NextResponse.json({ ok: true, user: sessionUser });
     return attachSessionCookie(response, signSession(sessionUser), request);
   } catch (error) {

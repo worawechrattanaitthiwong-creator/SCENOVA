@@ -1,0 +1,163 @@
+/*
+ * Production-safe compatibility layer for legacy V3 CSS Modules.
+ * Next.js may rewrite module class names differently between dev/build, so
+ * selectors match both the module prefix and the local semantic class name.
+ */
+
+/* ---------- Studio V3 ---------- */
+[class*="scenova-studio-v3"][class*="main"] :is(input, select, textarea) {
+  border-color: rgba(171, 120, 255, 0.2) !important;
+  background: #09070d !important;
+  color: #f7f3ff !important;
+}
+
+[class*="scenova-studio-v3"][class*="main"] :is(input, select, textarea):focus {
+  border-color: #a25cff !important;
+  box-shadow: 0 0 0 3px rgba(162, 92, 255, 0.11) !important;
+}
+
+[class*="scenova-studio-v3"][class*="main"] :is(input[type="checkbox"], input[type="range"]) {
+  accent-color: #a25cff !important;
+}
+
+[class*="scenova-studio-v3"][class*="hero"] > div:first-child > span,
+[class*="scenova-studio-v3"][class*="modeGuideHead"] > span,
+[class*="scenova-studio-v3"][class*="lockHeading"] b,
+[class*="scenova-studio-v3"][class*="field"] a {
+  color: #c87bff !important;
+}
+
+[class*="scenova-studio-v3"][class*="heroActions"] > span,
+[class*="scenova-studio-v3"][class*="modeTitle"] span,
+[class*="scenova-studio-v3"][class*="modeThai"] {
+  color: #d9baff !important;
+  border-color: rgba(162, 92, 255, 0.28) !important;
+  background: rgba(162, 92, 255, 0.08) !important;
+}
+
+[class*="scenova-studio-v3"][class*="modeGrid"] > button,
+[class*="scenova-studio-v3"][class*="modeGuide"],
+[class*="scenova-studio-v3"][class*="budget"],
+[class*="scenova-studio-v3"][class*="durationBox"],
+[class*="scenova-studio-v3"][class*="advanced"] {
+  border-color: rgba(171, 120, 255, 0.2) !important;
+  background: linear-gradient(145deg, rgba(20, 14, 31, 0.97), rgba(9, 7, 14, 0.99)) !important;
+}
+
+[class*="scenova-studio-v3"][class*="modeGrid"] > button:hover,
+[class*="scenova-studio-v3"][class*="modeGrid"] > button[class*="modeActive"],
+[class*="scenova-studio-v3"][class*="sceneWorkspace"] aside button[class*="sceneActive"] {
+  border-color: rgba(196, 105, 255, 0.64) !important;
+  background: linear-gradient(110deg, rgba(96, 40, 157, 0.5), rgba(45, 20, 72, 0.52)) !important;
+  box-shadow: inset 0 1px rgba(255,255,255,.05), 0 0 24px rgba(162, 92, 255, 0.13) !important;
+}
+
+[class*="scenova-studio-v3"][class*="modeGrid"] i,
+[class*="scenova-studio-v3"][class*="sceneWorkspace"] aside button > b {
+  color: #d89aff !important;
+  border-color: rgba(162, 92, 255, 0.16) !important;
+  background: rgba(75, 32, 116, 0.4) !important;
+}
+
+[class*="scenova-studio-v3"][class*="step"] > b,
+[class*="scenova-studio-v3"][class*="budget"] button[class*="timelineActive"],
+[class*="scenova-studio-v3"][class*="primary"],
+[class*="scenova-studio-v3"][class*="aiAction"] {
+  color: #fff !important;
+  border-color: #b96cff !important;
+  background: linear-gradient(135deg, #743cff, #b45cff) !important;
+  box-shadow: 0 8px 26px rgba(139, 62, 246, 0.22) !important;
+}
+
+[class*="scenova-studio-v3"][class*="aiAction"]:hover {
+  filter: brightness(1.08) !important;
+  box-shadow: 0 10px 30px rgba(162, 92, 255, 0.32) !important;
+}
+
+[class*="scenova-studio-v3"][class*="durationBox"] strong,
+[class*="scenova-studio-v3"][class*="modeActive"] [class*="modeCardHint"],
+[class*="scenova-studio-v3"][class*="advanced"] summary,
+[class*="scenova-studio-v3"][class*="modeGuide"] summary::after {
+  color: #cd83ff !important;
+}
+
+[class*="scenova-studio-v3"][class*="advancedIntro"] {
+  border-left-color: #a25cff !important;
+}
+
+[class*="scenova-studio-v3"][class*="fieldLabel"] button,
+[class*="scenova-studio-v3"][class*="quick"] button,
+[class*="scenova-studio-v3"][class*="sceneToolbar"] button,
+[class*="scenova-studio-v3"][class*="heroActions"] button:not([class*="primary"]) {
+  border-color: rgba(171, 120, 255, 0.24) !important;
+  background: #100b18 !important;
+  color: #d9baff !important;
+}
+
+/* ---------- Series V3 ---------- */
+[class*="series-manager-v3"][class*="main"] :is(input, select, textarea) {
+  border-color: rgba(171, 120, 255, 0.2) !important;
+  background: #09070d !important;
+  color: #f7f3ff !important;
+}
+
+[class*="series-manager-v3"][class*="main"] :is(input, select, textarea):focus {
+  border-color: #a25cff !important;
+  box-shadow: 0 0 0 3px rgba(162, 92, 255, 0.11) !important;
+}
+
+[class*="series-manager-v3"][class*="main"] :is(input[type="checkbox"], input[type="range"]) {
+  accent-color: #a25cff !important;
+}
+
+[class*="series-manager-v3"][class*="hero"] > div:first-child > span,
+[class*="series-manager-v3"][class*="sectionTitle"] > div > span,
+[class*="series-manager-v3"][class*="cardHead"] > div > span,
+[class*="series-manager-v3"][class*="rule"] > b {
+  color: #c87bff !important;
+}
+
+[class*="series-manager-v3"][class*="heroActions"] a,
+[class*="series-manager-v3"][class*="heroActions"] button,
+[class*="series-manager-v3"][class*="actions"] button,
+[class*="series-manager-v3"][class*="sceneTools"] button,
+[class*="series-manager-v3"][class*="cardHead"] button {
+  border-color: rgba(171, 120, 255, 0.25) !important;
+  background: #100b18 !important;
+  color: #dabaff !important;
+}
+
+[class*="series-manager-v3"][class*="guideGrid"] article,
+[class*="series-manager-v3"][class*="score"],
+[class*="series-manager-v3"][class*="previous"],
+[class*="series-manager-v3"][class*="durationBox"],
+[class*="series-manager-v3"][class*="sceneEditor"] details {
+  border-color: rgba(171, 120, 255, 0.18) !important;
+  background: rgba(17, 11, 25, 0.95) !important;
+}
+
+[class*="series-manager-v3"][class*="guideGrid"] article > b,
+[class*="series-manager-v3"][class*="actions"] [class*="primary"],
+[class*="series-manager-v3"][class*="timeline"] button[class*="activeScene"] {
+  color: #fff !important;
+  border-color: #b96cff !important;
+  background: linear-gradient(135deg, #743cff, #a95cff) !important;
+}
+
+[class*="series-manager-v3"][class*="historyRail"] button[class*="activeEpisode"],
+[class*="series-manager-v3"][class*="sceneWorkspace"] aside button[class*="activeList"] {
+  border-color: rgba(196, 105, 255, 0.6) !important;
+  background: linear-gradient(110deg, rgba(92, 39, 149, 0.46), rgba(42, 19, 67, 0.48)) !important;
+}
+
+[class*="series-manager-v3"][class*="sceneWorkspace"] aside button > b,
+[class*="series-manager-v3"][class*="historyRail"] span,
+[class*="series-manager-v3"][class*="sceneEditor"] summary {
+  color: #ca80ff !important;
+}
+
+/* Gold is retained only for premium/readout emphasis, not interaction state. */
+[class*="series-manager-v3"][class*="score"] b,
+[class*="series-manager-v3"][class*="durationBox"] strong {
+  color: #f1ca52 !important;
+}
