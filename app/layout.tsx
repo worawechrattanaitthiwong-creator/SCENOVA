@@ -8,13 +8,28 @@ import "./brand-system-v2.css";
 import "./brand-home-v3.css";
 
 export const metadata: Metadata = {
-  title: "SCENOVA",
-  description: "SCENOVA — AI cinematic production studio",
+  metadataBase: new URL("https://scnva.com"),
+  title: "SCENOVA — AI Cinematic Studio",
+  description: "เปลี่ยนทุกไอเดียให้กลายเป็นภาพยนตร์ ด้วยพื้นที่สร้างสรรค์ที่ขับเคลื่อนด้วย AI",
   applicationName: "SCENOVA",
   icons: {
     icon: [{ url: "/brand/scenova-mark.png", type: "image/png" }],
     shortcut: "/brand/scenova-mark.png",
     apple: "/brand/scenova-mark.png",
+  },
+  openGraph: {
+    type: "website",
+    url: "/",
+    siteName: "SCENOVA",
+    title: "SCENOVA — AI Cinematic Studio",
+    description: "MAKE IT CINEMATIC. เปลี่ยนทุกไอเดียให้กลายเป็นภาพยนตร์ด้วย AI",
+    images: [{ url: "/og.png", width: 1536, height: 1024, alt: "SCENOVA AI Cinematic Studio" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "SCENOVA — AI Cinematic Studio",
+    description: "MAKE IT CINEMATIC. เปลี่ยนทุกไอเดียให้กลายเป็นภาพยนตร์ด้วย AI",
+    images: ["/og.png"],
   },
 };
 
