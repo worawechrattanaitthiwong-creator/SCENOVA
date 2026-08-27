@@ -14,8 +14,8 @@ export type WorkspaceRailItem = {
   description: string;
 };
 
-// Sidebar master: keep this identical to the original Start/Portal navigation.
-// Every authenticated route renders this same list through AppShell.
+// Sidebar master: keep this identical to the Start/Portal navigation shape.
+// AppShell may expose the final Admin-only slot as User Management by role.
 export const WORKSPACE_NAV: readonly WorkspaceNavItem[] = [
   { href: "/portal", icon: "home", label: "เริ่มต้น", description: "ภาพรวมสตูดิโอ" },
   { href: "/series", icon: "project", label: "โปรเจกต์", description: "หนังและซีรีส์ของคุณ", badge: "EP" },
@@ -23,7 +23,7 @@ export const WORKSPACE_NAV: readonly WorkspaceNavItem[] = [
   { href: "/director", icon: "board", label: "สตอรี่บอร์ด", description: "ฉาก กล้อง และไทม์ไลน์", activePaths: ["/director", "/camera", "/dialogue", "/reference"] },
   { href: "/libraries", icon: "library", label: "คลังทรัพยากร", description: "ตัวละคร เสียง และสไตล์" },
   { href: "/profile", icon: "settings", label: "การตั้งค่า", description: "บัญชี ความปลอดภัย และผู้ดูแล", activePaths: ["/profile", "/admin"] },
-  { href: "/portal#guide", icon: "help", label: "ช่วยเหลือ", description: "คู่มือการใช้งาน", activePaths: [] },
+  { href: "/portal#guide", icon: "help", label: "ช่วยเหลือ", description: "เมนูผู้ดูแลระบบ", activePaths: [] },
 ] as const;
 
 const portalRail: readonly WorkspaceRailItem[] = [
@@ -90,13 +90,18 @@ const walletRail: readonly WorkspaceRailItem[] = [
 const profileRail: readonly WorkspaceRailItem[] = [
   { href: "/profile", icon: "◉", label: "บัญชี", description: "ข้อมูลผู้ใช้" },
   { href: "/profile#security", icon: "◇", label: "ความปลอดภัย", description: "2FA และการเข้าสู่ระบบ" },
-  { href: "/portal#guide", icon: "?", label: "คู่มือ", description: "กลับไปดูแนวทางใช้งาน" },
+  { href: "/guide", icon: "?", label: "คู่มือ", description: "คู่มือระบบตามสิทธิ์บัญชี" },
 ] as const;
 
 const adminRail: readonly WorkspaceRailItem[] = [
-  { href: "/admin", icon: "⚙", label: "สมาชิกและคลัง", description: "จัดการระบบหลัก" },
+  { href: "/admin/users", icon: "◉", label: "จัดการผู้ใช้", description: "บัญชี เครดิต การระงับ และ Log" },
+  { href: "/admin", icon: "▦", label: "สมาชิกและคลัง", description: "จัดการระบบหลักและ Asset" },
   { href: "/admin/security", icon: "◇", label: "ความปลอดภัย", description: "มาตรการและ Emergency Control" },
   { href: "/admin/ai-costs", icon: "●", label: "ค่าใช้จ่าย AI", description: "ต้นทุนและการใช้งาน" },
+] as const;
+
+const guideRail: readonly WorkspaceRailItem[] = [
+  { href: "/guide", icon: "?", label: "คู่มือระบบ", description: "ฟังก์ชันทั้งหมดตามสิทธิ์บัญชี" },
 ] as const;
 
 export function isWorkspaceNavActive(item: WorkspaceNavItem, pathname: string) {
@@ -114,6 +119,7 @@ export function getWorkspaceRail(pathname: string): readonly WorkspaceRailItem[]
   if (pathname.startsWith("/models")) return modelsRail;
   if (pathname.startsWith("/render")) return renderRail;
   if (pathname.startsWith("/wallet")) return walletRail;
+  if (pathname.startsWith("/guide")) return guideRail;
   if (pathname.startsWith("/admin")) return adminRail;
   if (pathname.startsWith("/profile")) return profileRail;
   return studioRail;
@@ -129,6 +135,8 @@ export function getWorkspaceContext(pathname: string): string {
   if (pathname.startsWith("/models")) return "Model Center";
   if (pathname.startsWith("/render")) return "คิวสร้างวิดีโอ";
   if (pathname.startsWith("/wallet")) return "เครดิตและค่าใช้จ่าย";
+  if (pathname.startsWith("/guide")) return "คู่มือระบบ";
+  if (pathname.startsWith("/admin/users")) return "User Control Center";
   if (pathname.startsWith("/admin")) return "Admin Console";
   if (pathname.startsWith("/profile")) return "บัญชีและความปลอดภัย";
   return "SCENOVA Studio";
