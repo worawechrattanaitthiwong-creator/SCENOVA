@@ -1,7 +1,6 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import polish from "./studio-polish.module.css";
 
 const ScenovaStudioV3 = dynamic(
   () => import("@/components/scenova-studio-v3"),
@@ -16,5 +15,5 @@ const ScenovaStudioV3 = dynamic(
 );
 
 export default function StudioPage() {
-  return <div className={polish.root}><ScenovaStudioV3 /></div>;
+  return <ScenovaStudioV3 />;
 }
