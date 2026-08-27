@@ -1,14 +1,14 @@
 .shell {
   --shell-bg: #040308;
   --shell-panel: #090711;
-  --shell-panel-soft: rgba(14, 10, 23, 0.94);
-  --shell-line: rgba(174, 111, 255, 0.18);
-  --shell-line-strong: rgba(200, 105, 255, 0.58);
+  --shell-line: rgba(174, 111, 255, 0.2);
+  --shell-line-strong: rgba(190, 105, 255, 0.62);
   --shell-purple: #b45cff;
   --shell-purple-bright: #d87aff;
-  --shell-gold: #f1ca52;
+  --shell-gold: #f3cc56;
   --shell-text: #f8f5fb;
-  --shell-muted: #8e8698;
+  --shell-muted: #948c9e;
+  width: 100%;
   height: 100vh;
   height: 100dvh;
   min-height: 0;
@@ -17,14 +17,18 @@
   overflow: hidden;
   color: var(--shell-text);
   background:
-    radial-gradient(circle at 84% -8%, rgba(117, 39, 194, 0.13), transparent 31%),
-    linear-gradient(180deg, #06040a, #020204);
+    radial-gradient(circle at 82% -8%, rgba(116, 31, 203, 0.15), transparent 30%),
+    linear-gradient(180deg, #05040a, #020204);
   font-size: 14px;
 }
 
 .shell a {
   color: inherit;
   text-decoration: none;
+}
+
+.shell svg {
+  display: block;
 }
 
 .sidebar {
@@ -36,49 +40,49 @@
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   overflow: hidden;
-  border-right: 1px solid rgba(205, 98, 255, 0.22);
+  border-right: 1px solid rgba(205, 98, 255, 0.24);
   background:
-    radial-gradient(circle at 112% 18%, rgba(139, 49, 236, 0.11), transparent 30%),
-    linear-gradient(180deg, rgba(4, 3, 8, 0.995), rgba(7, 4, 13, 0.995));
+    radial-gradient(circle at 112% 20%, rgba(139, 49, 236, 0.11), transparent 30%),
+    linear-gradient(180deg, rgba(4, 3, 8, 0.99), rgba(7, 4, 13, 0.99));
   box-shadow: 24px 0 55px rgba(0, 0, 0, 0.28);
 }
 
 .brand {
-  min-height: 128px;
+  height: 138px;
+  min-height: 138px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.025);
 }
 
 .logo {
-  width: 56px;
-  height: 56px;
-  filter: drop-shadow(0 0 18px rgba(236, 187, 59, 0.13));
+  width: 58px;
+  height: 58px;
+  filter: drop-shadow(0 0 18px rgba(236, 187, 59, 0.15));
 }
 
 .logo svg {
-  display: block;
   width: 100%;
   height: 100%;
 }
 
 .brandName {
-  margin-top: 2px;
-  color: #ece7ed;
-  font-size: 17px;
-  font-weight: 700;
+  margin-top: 1px;
+  color: #e9e4e9;
+  font-size: 18px;
+  font-weight: 650;
   line-height: 1;
   letter-spacing: 0.09em;
 }
 
 .brand > small {
-  margin-top: 6px;
-  color: #958e98;
-  font-size: 9px;
-  font-weight: 750;
-  letter-spacing: 0.29em;
+  margin-top: 5px;
+  color: #9d969d;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.28em;
 }
 
 .mainNav {
@@ -92,38 +96,37 @@
   scrollbar-color: rgba(172, 75, 224, 0.24) transparent;
 }
 
-.mainNav > a,
-.adminShortcut {
+.mainNav > a {
   position: relative;
-  min-height: 52px;
-  padding: 8px 12px;
+  min-height: 54px;
+  padding: 8px 13px;
   display: flex;
   align-items: center;
   gap: 11px;
   border: 1px solid transparent;
   border-radius: 14px;
-  color: #b8b1be;
+  color: #b7b1bd;
+  font-size: 14px;
+  font-weight: 650;
   transition: color 160ms ease, border-color 160ms ease, background 160ms ease, transform 160ms ease, box-shadow 160ms ease;
 }
 
-.mainNav > a:hover,
-.adminShortcut:hover {
+.mainNav > a:hover {
   color: #fff;
   background: rgba(138, 57, 226, 0.09);
   transform: translateX(2px);
 }
 
-.mainNav > a.active,
-.adminShortcut.active {
+.mainNav > a.active {
   color: #fff;
-  border-color: rgba(208, 111, 255, 0.7);
+  border-color: rgba(208, 111, 255, 0.76);
   background:
-    radial-gradient(circle at 95% 20%, rgba(206, 81, 255, 0.2), transparent 42%),
+    radial-gradient(circle at 95% 20%, rgba(206, 81, 255, 0.22), transparent 42%),
     linear-gradient(100deg, rgba(98, 39, 161, 0.58), rgba(84, 28, 134, 0.28));
   box-shadow:
     inset 0 1px rgba(255, 255, 255, 0.07),
-    0 0 0 1px rgba(144, 61, 229, 0.1),
-    0 0 25px rgba(180, 66, 255, 0.2);
+    0 0 0 1px rgba(144, 61, 229, 0.12),
+    0 0 28px rgba(180, 66, 255, 0.28);
 }
 
 .navIcon {
@@ -134,127 +137,118 @@
   place-items: center;
   border: 1px solid rgba(182, 120, 241, 0.12);
   border-radius: 9px;
-  color: #dc9aff;
+  color: #ece7f1;
   background: linear-gradient(145deg, rgba(83, 37, 131, 0.44), rgba(33, 20, 52, 0.74));
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.01em;
+}
+
+.navIcon svg {
+  width: 21px;
+  height: 21px;
+}
+
+.navIcon b {
+  color: #d984ff;
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: 0.02em;
 }
 
 .active .navIcon {
   color: #f5dfff;
-  border-color: rgba(204, 120, 255, 0.22);
+  border-color: rgba(204, 120, 255, 0.2);
   box-shadow: 0 0 16px rgba(181, 72, 255, 0.18);
 }
 
 .navText {
   min-width: 0;
-}
-
-.navText b {
-  display: block;
   overflow: hidden;
   color: inherit;
-  font-size: 13px;
-  line-height: 1.2;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.navText small {
-  display: none;
-}
-
 .sidebarBottom {
-  padding: 10px 14px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  border-top: 1px solid rgba(255, 255, 255, 0.045);
-  background: rgba(6, 4, 10, 0.96);
+  padding: 0 14px 17px;
 }
 
 .creditShortcut {
-  min-height: 101px;
-  padding: 12px 13px 11px;
+  min-height: 120px;
+  padding: 15px 16px 12px;
   display: grid;
   grid-template-columns: 1fr auto;
   align-content: start;
-  border: 1px solid rgba(168, 89, 221, 0.24);
-  border-radius: 14px;
+  border: 1px solid rgba(166, 92, 234, 0.2);
+  border-radius: 16px;
   background:
-    radial-gradient(circle at 85% 15%, rgba(122, 46, 181, 0.26), transparent 52%),
-    linear-gradient(145deg, rgba(20, 13, 31, 0.97), rgba(10, 7, 16, 0.98));
+    radial-gradient(circle at 82% 20%, rgba(109, 49, 183, 0.26), transparent 50%),
+    linear-gradient(145deg, rgba(19, 12, 33, 0.96), rgba(11, 8, 20, 0.96));
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.025);
 }
 
 .creditShortcut small {
   grid-column: 1 / -1;
-  color: #817887;
-  font-size: 9px;
+  color: #847c8e;
+  font-size: 11px;
 }
 
 .creditShortcut strong {
-  margin-top: 2px;
+  margin-top: 3px;
   color: #cf7dff;
-  font-size: 22px;
-  line-height: 1.15;
+  font-size: 24px;
+  line-height: 1.2;
+  letter-spacing: 0.015em;
 }
 
 .creditShortcut span {
   align-self: end;
-  padding-bottom: 2px;
+  padding-bottom: 3px;
   color: #837a8d;
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .creditShortcut b {
   grid-column: 1 / -1;
-  min-height: 29px;
-  margin-top: 8px;
+  min-height: 33px;
+  margin-top: 10px;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(196, 92, 255, 0.44);
+  border: 1px solid rgba(196, 92, 255, 0.46);
   border-radius: 8px;
   color: #ead8f4;
-  background: linear-gradient(180deg, rgba(111, 37, 181, 0.78), rgba(65, 20, 110, 0.9));
-  font-size: 10px;
-}
-
-.adminShortcut {
-  min-height: 44px;
-  padding-block: 5px;
-}
-
-.adminShortcut .navIcon {
-  width: 31px;
-  height: 31px;
-  flex-basis: 31px;
+  background: linear-gradient(180deg, rgba(111, 37, 181, 0.8), rgba(65, 20, 110, 0.9));
+  font-size: 12px;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
 }
 
 .profileCard {
-  min-height: 58px;
-  margin-inline: -14px;
-  margin-bottom: -14px;
-  padding: 9px 15px 11px;
+  min-height: 74px;
+  margin: 14px -14px -17px;
+  padding: 13px 18px;
   display: flex;
   align-items: center;
-  gap: 9px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  background: rgba(8, 5, 14, 0.88);
+  gap: 11px;
+  border-top: 1px solid rgba(255, 255, 255, 0.055);
+  background: rgba(8, 5, 14, 0.8);
 }
 
 .profileAvatar {
-  width: 37px;
-  height: 37px;
-  flex: 0 0 37px;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(197, 112, 240, 0.24);
+  border: 1px solid rgba(176, 114, 232, 0.18);
   border-radius: 50%;
-  color: #f2dcff;
-  background: linear-gradient(145deg, #482365, #20112e);
-  font-size: 13px;
-  font-weight: 850;
+  color: #ded5e8;
+  background: linear-gradient(145deg, #2b1b3d, #160e23);
+}
+
+.profileAvatar svg {
+  width: 22px;
+  height: 22px;
 }
 
 .profileCopy {
@@ -272,19 +266,26 @@
 
 .profileCopy b {
   color: #eee9f1;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .profileCopy small {
-  margin-top: 3px;
+  margin-top: 4px;
   color: #837a8d;
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .profileArrow {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
   color: #c068ff;
-  font-size: 22px;
-  font-weight: 300;
+}
+
+.profileArrow svg {
+  width: 22px;
+  height: 22px;
 }
 
 .workspace {
@@ -510,40 +511,13 @@
   font-size: 10px;
 }
 
-@media (max-height: 820px) and (min-width: 1181px) {
-  .brand {
-    min-height: 104px;
-  }
-
-  .logo {
-    width: 46px;
-    height: 46px;
-  }
-
-  .mainNav {
-    padding-top: 10px;
-    gap: 3px;
-  }
-
-  .mainNav > a {
-    min-height: 45px;
-  }
-
-  .creditShortcut {
-    min-height: 84px;
-  }
-
-  .creditShortcut b {
-    display: none;
-  }
-}
-
 @media (max-width: 1180px) {
   .shell {
     grid-template-columns: 82px minmax(0, 1fr);
   }
 
   .brand {
+    height: 104px;
     min-height: 104px;
   }
 
@@ -566,8 +540,7 @@
     align-items: center;
   }
 
-  .mainNav > a,
-  .adminShortcut {
+  .mainNav > a {
     width: 58px;
     justify-content: center;
     padding-inline: 6px;
@@ -578,12 +551,9 @@
   }
 
   .profileCard {
-    margin-inline: -11px;
+    margin: 14px -11px -17px;
     justify-content: center;
-  }
-
-  .adminShortcut {
-    display: flex;
+    padding-inline: 0;
   }
 }
 
@@ -646,11 +616,13 @@
   .mainNav .navText {
     display: block;
     width: 100%;
+    max-width: 64px;
+    overflow: hidden;
     text-align: center;
-  }
-
-  .navText b {
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font-size: 9px;
+    line-height: 1.15;
   }
 
   .navIcon {
@@ -658,7 +630,15 @@
     height: 27px;
     flex-basis: 27px;
     border-radius: 7px;
-    font-size: 8px;
+  }
+
+  .navIcon svg {
+    width: 17px;
+    height: 17px;
+  }
+
+  .navIcon b {
+    font-size: 9px;
   }
 
   .workspace {
@@ -735,7 +715,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .mainNav > a,
-  .adminShortcut,
   .subNav a {
     transition: none;
   }
