@@ -3,6 +3,7 @@ export type WorkspaceNavItem = {
   icon: string;
   label: string;
   description: string;
+  activePaths?: readonly string[];
 };
 
 export type WorkspaceRailItem = {
@@ -16,7 +17,7 @@ export const WORKSPACE_NAV: readonly WorkspaceNavItem[] = [
   { href: "/portal", icon: "✦", label: "เริ่มต้น", description: "ภาพรวมสตูดิโอ" },
   { href: "/series", icon: "EP", label: "โปรเจกต์", description: "หนังและซีรีส์ของคุณ" },
   { href: "/studio", icon: "AI", label: "AI Studio", description: "สร้างและกำกับงาน" },
-  { href: "/director", icon: "▤", label: "สตอรี่บอร์ด", description: "ฉาก กล้อง และไทม์ไลน์" },
+  { href: "/director", icon: "▤", label: "สตอรี่บอร์ด", description: "ฉาก กล้อง และไทม์ไลน์", activePaths: ["/director", "/camera", "/dialogue", "/reference"] },
   { href: "/libraries", icon: "▦", label: "คลังทรัพยากร", description: "ตัวละคร เสียง และสไตล์" },
   { href: "/agent", icon: "✧", label: "AI Agent", description: "งานอัตโนมัติและการอนุมัติ" },
   { href: "/models", icon: "⬡", label: "Model Center", description: "โมเดล ราคา และความสามารถ" },
@@ -95,6 +96,11 @@ const adminRail: readonly WorkspaceRailItem[] = [
   { href: "/admin/security", icon: "◇", label: "ความปลอดภัย", description: "มาตรการและ Emergency Control" },
   { href: "/admin/ai-costs", icon: "●", label: "ค่าใช้จ่าย AI", description: "ต้นทุนและการใช้งาน" },
 ] as const;
+
+export function isWorkspaceNavActive(item: WorkspaceNavItem, pathname: string) {
+  const paths = item.activePaths || [item.href];
+  return paths.some((path) => pathname === path || pathname.startsWith(path + "/"));
+}
 
 export function getWorkspaceRail(pathname: string): readonly WorkspaceRailItem[] {
   if (pathname === "/portal") return portalRail;
