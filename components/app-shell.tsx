@@ -8,16 +8,18 @@ import styles from "./app-shell.module.css";
 type Me = { authenticated: boolean; name?: string; email?: string; role?: "ADMIN" | "MEMBER"; twoFactorEnabled?: boolean };
 type NavItem = readonly [href: string, icon: string, label: string, short: string];
 
-const MAIN_NAV: NavItem[] = [
+const WORKSPACE_NAV: NavItem[] = [
   ["/portal", "✦", "เริ่มต้น", "ภาพรวมสตูดิโอ"],
   ["/series", "EP", "โปรเจกต์", "หนังและซีรีส์ของคุณ"],
   ["/studio", "AI", "AI Studio", "สร้างหนังและวิดีโอ"],
   ["/director", "▤", "สตอรี่บอร์ด", "ฉาก กล้อง และการกำกับ"],
   ["/libraries", "▦", "คลังทรัพยากร", "ตัวละคร เสียง และสไตล์"],
+];
+
+const PRODUCTION_NAV: NavItem[] = [
   ["/agent", "✧", "AI Agent", "อัตโนมัติและอนุมัติงาน"],
   ["/models", "⬡", "Model Center", "โมเดล ราคา และความสามารถ"],
   ["/render", "▶", "คิวสร้าง", "งานที่กำลังสร้าง"],
-  ["/wallet", "●", "เครดิต", "ยอดเครดิตและค่าใช้จ่าย"],
 ];
 
 const studioSubNav = [
@@ -97,17 +99,24 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   if (standalone) return <>{children}</>;
   if (checking || !me.authenticated) return <div className={styles.loading}>กำลังเปิด SCENOVA...</div>;
 
-  const context = pathname.startsWith("/series") ? "Projects" : pathname.startsWith("/director") || pathname.startsWith("/camera") || pathname.startsWith("/dialogue") || pathname.startsWith("/reference") ? "Cinematic Direction" : pathname.startsWith("/agent") ? "AI Agent" : pathname.startsWith("/libraries") ? "Asset Library" : pathname.startsWith("/render") ? "Render Queue" : pathname.startsWith("/models") ? "Model Center" : pathname.startsWith("/wallet") ? "Credit Wallet" : pathname.startsWith("/admin") ? "Admin Console" : pathname.startsWith("/profile") ? "Profile" : "AI Studio";
+  const context = pathname.startsWith("/series") ? "โปรเจกต์" : pathname.startsWith("/director") || pathname.startsWith("/camera") || pathname.startsWith("/dialogue") || pathname.startsWith("/reference") ? "การกำกับภาพยนตร์" : pathname.startsWith("/agent") ? "AI Agent" : pathname.startsWith("/libraries") ? "คลังทรัพยากร" : pathname.startsWith("/render") ? "คิวสร้างวิดีโอ" : pathname.startsWith("/models") ? "ศูนย์โมเดล" : pathname.startsWith("/wallet") ? "เครดิตและค่าใช้จ่าย" : pathname.startsWith("/admin") ? "จัดการระบบ" : pathname.startsWith("/profile") ? "บัญชีและความปลอดภัย" : "AI Studio";
+  const activeSubIndex = Math.max(0, subNav.findIndex(([href]) => href.split(/[?#]/, 1)[0] === pathname));
+  const navLink = ([href, icon, label, short]: NavItem) => {
+    const active = href === "/portal" ? pathname === href : pathname === href || pathname.startsWith(href + "/");
+    return <Link key={href} href={href} prefetch={false} className={active ? styles.active : ""} aria-current={active ? "page" : undefined}><span className={styles.navIcon}>{icon}</span><span className={styles.navText}><b>{label}</b><small>{short}</small></span></Link>;
+  };
 
   return <div className={styles.shell}>
     <aside className={styles.sidebar}>
       <Link href="/portal" className={styles.brand} prefetch={false}><span className={styles.logo}><ScenovaMark /></span><span><b>SCENOVA</b><small>PRODUCTION STUDIO</small></span></Link>
-      <nav className={styles.mainNav} aria-label="Primary navigation">{MAIN_NAV.map(([href, icon, label, short]) => {
-        const active = pathname.startsWith(href);
-        return <Link key={href} href={href} prefetch={false} className={active ? styles.active : ""}><span className={styles.navIcon}>{icon}</span><span className={styles.navText}><b>{label}</b><small>{short}</small></span></Link>;
-      })}
-        {me.role === "ADMIN" ? <Link href="/admin" prefetch={false} className={`${styles.mobileOnly} ${pathname.startsWith("/admin") ? styles.active : ""}`}><span className={styles.navIcon}>⚙</span><span className={styles.navText}><b>Admin</b><small>จัดการระบบ</small></span></Link> : null}
-        <Link href="/profile" prefetch={false} className={`${styles.mobileOnly} ${pathname.startsWith("/profile") ? styles.active : ""}`}><span className={styles.navIcon}>◉</span><span className={styles.navText}><b>Profile</b><small>บัญชี</small></span></Link>
+      <nav className={styles.mainNav} aria-label="เมนูหลัก">
+        <span className={styles.navSection}>พื้นที่ทำงาน</span>
+        {WORKSPACE_NAV.map(navLink)}
+        <span className={styles.navSection}>เครื่องมือการผลิต</span>
+        {PRODUCTION_NAV.map(navLink)}
+        <Link href="/wallet" prefetch={false} className={`${styles.mobileOnly} ${styles.compactWallet} ${pathname.startsWith("/wallet") ? styles.active : ""}`}><span className={styles.navIcon}>●</span><span className={styles.navText}><b>เครดิต</b><small>ยอดเครดิตและค่าใช้จ่าย</small></span></Link>
+        {me.role === "ADMIN" ? <Link href="/admin" prefetch={false} className={`${styles.mobileOnly} ${pathname.startsWith("/admin") ? styles.active : ""}`}><span className={styles.navIcon}>⚙</span><span className={styles.navText}><b>ผู้ดูแลระบบ</b><small>จัดการระบบ</small></span></Link> : null}
+        <Link href="/profile" prefetch={false} className={`${styles.mobileOnly} ${pathname.startsWith("/profile") ? styles.active : ""}`}><span className={styles.navIcon}>◉</span><span className={styles.navText}><b>บัญชี</b><small>ความปลอดภัย</small></span></Link>
       </nav>
       <div className={styles.sidebarBottom}>
         <Link href="/wallet" prefetch={false} className={styles.creditShortcut}><span><small>เครดิตและค่าใช้จ่าย</small><b>Credit Wallet</b></span><i>เติมเครดิต</i></Link>
@@ -116,7 +125,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </div>
     </aside>
     <div className={styles.workspace}>
-      <header className={styles.topbar}><div className={styles.context}><span>SCENOVA WORKSPACE</span><b>{context}</b></div><div className={styles.subNav}>{subNav.map(([href, label], index) => <Link key={href} href={href} prefetch={false} className={index === 0 ? styles.subActive : ""}><i>{String(index + 1).padStart(2, "0")}</i><span>{label}</span></Link>)}</div><Link className={styles.helpLink} href="/portal#guide" prefetch={false}><span>?</span><b>คู่มือ</b></Link><Link className={styles.account} href="/profile" prefetch={false}><span>{me.name || "Profile"}</span><i>{me.role === "ADMIN" ? "ADMIN" : "USER"}</i></Link></header>
+      <header className={styles.topbar}><div className={styles.context}><span>SCENOVA WORKSPACE</span><b>{context}</b></div><div className={styles.subNav}>{subNav.map(([href, label], index) => <Link key={href} href={href} prefetch={false} className={index === activeSubIndex ? styles.subActive : ""} aria-current={index === activeSubIndex ? "step" : undefined}><i>{String(index + 1).padStart(2, "0")}</i><span>{label}</span></Link>)}</div><Link className={styles.helpLink} href="/portal#guide" prefetch={false}><span>?</span><b>คู่มือ</b></Link></header>
       <div className={styles.page}>{children}</div>
     </div>
   </div>;

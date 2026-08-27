@@ -3,7 +3,7 @@
   height: 100dvh;
   min-height: 0;
   display: grid;
-  grid-template-columns: 232px minmax(0, 1fr);
+  grid-template-columns: 218px minmax(0, 1fr);
   overflow: hidden;
   color: #f7f4f9;
   background: #050408;
@@ -83,6 +83,15 @@
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: rgba(172, 75, 224, 0.25) transparent;
+}
+
+.navSection {
+  margin: 7px 10px 2px;
+  color: #776c7f;
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
 .mainNav a,
@@ -249,21 +258,24 @@
   grid-template-rows: auto minmax(0, 1fr);
   overflow: hidden;
   background:
-    radial-gradient(circle at 75% 0%, rgba(106, 35, 156, 0.08), transparent 28%),
-    linear-gradient(180deg, #08060c, #050408);
+    radial-gradient(circle at 78% -8%, rgba(133, 39, 210, 0.13), transparent 31%),
+    radial-gradient(circle at 18% 28%, rgba(87, 28, 139, 0.07), transparent 28%),
+    linear-gradient(180deg, #07050b, #040307);
 }
 
 .topbar {
   position: relative;
   z-index: 45;
-  min-height: 96px;
-  padding: 13px 18px;
+  min-height: 104px;
+  padding: 15px 18px;
   display: grid;
-  grid-template-columns: 132px minmax(0, 1fr) auto auto;
+  grid-template-columns: 138px minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
-  border-bottom: 1px solid rgba(175, 81, 222, 0.17);
-  background: rgba(6, 4, 10, 0.92);
+  border-bottom: 1px solid rgba(185, 82, 233, 0.2);
+  background:
+    radial-gradient(circle at 22% -20%, rgba(117, 43, 173, 0.12), transparent 32%),
+    rgba(5, 3, 9, 0.94);
   backdrop-filter: blur(18px);
 }
 
@@ -273,8 +285,8 @@
 
 .context span {
   display: block;
-  color: #a153c9;
-  font-size: 8px;
+  color: #b75ddb;
+  font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.16em;
 }
@@ -284,7 +296,7 @@
   margin-top: 4px;
   overflow: hidden;
   color: #eee9f0;
-  font-size: 13px;
+  font-size: 14px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -300,13 +312,13 @@
 
 .subNav a {
   min-width: 126px;
-  min-height: 66px;
-  padding: 9px 12px;
+  min-height: 70px;
+  padding: 10px 13px;
   display: flex;
   flex-direction: column;
   justify-content: center;
   border: 1px solid rgba(143, 87, 180, 0.2);
-  border-radius: 11px;
+  border-radius: 12px;
   color: #b8b0be;
   background: linear-gradient(145deg, rgba(13, 10, 19, 0.96), rgba(8, 6, 12, 0.96));
   transition: color 150ms ease, border-color 150ms ease, background 150ms ease, transform 150ms ease;
@@ -339,7 +351,7 @@
 .subNav span {
   margin-top: 5px;
   overflow: hidden;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 650;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -374,36 +386,6 @@
   font-size: 10px;
 }
 
-.account {
-  min-width: 86px;
-  height: 50px;
-  padding: 0 11px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  border: 1px solid rgba(157, 91, 198, 0.2);
-  border-radius: 11px;
-  color: #ebe6ee;
-  background: rgba(12, 9, 17, 0.96);
-}
-
-.account span {
-  max-width: 95px;
-  overflow: hidden;
-  font-size: 10px;
-  font-weight: 720;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.account i {
-  color: #c964f3;
-  font-size: 8px;
-  font-style: normal;
-  font-weight: 900;
-}
-
 .page {
   min-width: 0;
   min-height: 0;
@@ -415,6 +397,47 @@
   scrollbar-gutter: stable;
   scrollbar-color: rgba(171, 75, 224, 0.32) transparent;
   -webkit-overflow-scrolling: touch;
+  background:
+    radial-gradient(circle at 82% 0%, rgba(124, 38, 194, 0.07), transparent 31%),
+    linear-gradient(180deg, rgba(8, 6, 12, 0.58), rgba(4, 3, 7, 0.88));
+}
+
+/* One visual rhythm for every authenticated workspace page. Page-specific
+   controls keep their own behavior; only width, alignment and type scale are
+   normalized here. */
+.page :global(main) {
+  width: 100%;
+  max-width: 1440px !important;
+  padding-left: clamp(18px, 2vw, 30px) !important;
+  padding-right: clamp(18px, 2vw, 30px) !important;
+}
+
+.page :global(main > header) {
+  margin-bottom: 18px !important;
+}
+
+.page :global(main > header > div:first-child > span:first-child) {
+  color: #f1ca52 !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.14em !important;
+}
+
+.page :global(main > header h1) {
+  margin-top: 7px !important;
+  margin-bottom: 6px !important;
+  color: #f8f5fa !important;
+  font-size: clamp(30px, 2.5vw, 36px) !important;
+  line-height: 1.2 !important;
+  letter-spacing: -0.028em !important;
+  text-wrap: balance;
+}
+
+.page :global(main > header p) {
+  max-width: 900px !important;
+  color: #9a929f !important;
+  font-size: 14px !important;
+  line-height: 1.7 !important;
 }
 
 .loading {
@@ -453,6 +476,7 @@
 
   .brand > span:last-child,
   .navText,
+  .navSection,
   .creditShortcut,
   .profileCard > span:last-child,
   .sidebarBottom > a:not(.creditShortcut, .profileCard) .navText {
@@ -478,8 +502,12 @@
     justify-content: center;
   }
 
+  .compactWallet {
+    display: flex !important;
+  }
+
   .topbar {
-    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 
   .context {
@@ -508,15 +536,6 @@
     display: none;
   }
 
-  .account {
-    min-width: 46px;
-    width: 46px;
-    padding: 0;
-  }
-
-  .account span {
-    display: none;
-  }
 }
 
 @media (max-width: 640px) {
@@ -656,14 +675,15 @@
     height: 42px;
   }
 
-  .account {
-    display: none;
-  }
-
   .page {
     min-height: 0;
     scrollbar-gutter: auto;
     scroll-padding-top: 14px;
+  }
+
+  .page :global(main) {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
   }
 }
 

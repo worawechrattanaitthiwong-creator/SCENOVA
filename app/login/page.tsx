@@ -51,6 +51,22 @@ function sessionError(reason: string) {
   return `ยืนยันตัวตนสำเร็จ แต่ Session ยังไม่พร้อม${reason ? ` (${reason})` : ""}`;
 }
 
+function ScenovaMark() {
+  return <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+    <defs>
+      <linearGradient id="login-logo-gold" x1="10" y1="8" x2="54" y2="56" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#fff0a8" />
+        <stop offset=".45" stopColor="#e8b83d" />
+        <stop offset="1" stopColor="#80601e" />
+      </linearGradient>
+    </defs>
+    <path d="M32 7c9.5 0 17.7 5.7 21.2 13.8l-13.5 1.8a11.5 11.5 0 0 0-18.8 2.3L13 14.1A23.5 23.5 0 0 1 32 7Z" fill="none" stroke="url(#login-logo-gold)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M53.5 27c1.9 9.3-2 18.6-9.1 23.7l-5.3-12.5a11.5 11.5 0 0 0-1.5-18.8l9-8.5A23.5 23.5 0 0 1 53.5 27Z" fill="none" stroke="url(#login-logo-gold)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" transform="rotate(120 32 32)" />
+    <path d="M53.5 27c1.9 9.3-2 18.6-9.1 23.7l-5.3-12.5a11.5 11.5 0 0 0-1.5-18.8l9-8.5A23.5 23.5 0 0 1 53.5 27Z" fill="none" stroke="url(#login-logo-gold)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" transform="rotate(240 32 32)" />
+    <path d="M32 23.8 34.7 29l5.5 3-5.5 2.8L32 40l-2.7-5.2-5.5-2.8 5.5-3 2.7-5.2Z" fill="url(#login-logo-gold)" />
+  </svg>;
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -256,24 +272,21 @@ export default function LoginPage() {
     <main className={`scenova-auth-shell ${styles.shell}`}>
       <section className={styles.hero}>
         <div className={styles.cinematicBackdrop} aria-hidden="true">
-          <div className={styles.cinematicFallback}><span className={styles.neonOrbA} /><span className={styles.neonOrbB} /><span className={styles.energySlash} /><span className={styles.cityGrid} /></div>
-          <video className={styles.cinematicVideo} autoPlay muted loop playsInline preload="metadata" poster="/media/scenova-login-cinematic-poster.svg">
-            <source media="(min-width: 901px)" src="/media/scenova-login-cinematic-4k.mp4" type="video/mp4" />
-          </video>
           <div className={styles.cinematicOverlay} />
         </div>
         <div className={styles.brand}>
-          <span className={styles.brandMark}>S</span>
+          <span className={styles.brandMark}><ScenovaMark /></span>
           <div>
             <b className={styles.brandName}>SCENOVA</b>
-            <small className={styles.brandSub}>AI Cinematic Production Studio</small>
+            <small className={styles.brandSub}>PRODUCTION STUDIO</small>
           </div>
         </div>
 
         <div className={styles.heroCopy}>
-          <span className={styles.eyebrow}>SECURE PRODUCTION WORKSPACE</span>
-          <h1 className={styles.heroTitle}>Professional AI Production<br />from a Single Workspace</h1>
-          <p className={styles.heroText}>Studio สำหรับ Story Development, Scene Direction, Camera Design, Series Continuity, Prompt Engineering และ Multi-model Rendering พร้อมระบบความปลอดภัยสำหรับ Admin และสมาชิก</p>
+          <span className={styles.eyebrow}>SCENOVA PRODUCTION STUDIO</span>
+          <h1 className={styles.heroTitle}>สร้างโลกภาพยนตร์<br /><em>ให้ต่อเนื่องในทุกฉาก</em></h1>
+          <p className={styles.heroText}>พื้นที่เดียวสำหรับวางเรื่อง ล็อกตัวละครและเสียง กำกับกล้อง แสง และอารมณ์ ก่อนส่งสร้างด้วยโมเดลวิดีโอที่คุณเลือก</p>
+          <div className={styles.heroFeatures}><span>Model Lock</span><span>Character Consistency</span><span>Secure 2FA</span></div>
         </div>
 
         <small className={styles.heroFooter}>SCENOVA • SECURE CINEMATIC WORKSPACE</small>
@@ -283,12 +296,12 @@ export default function LoginPage() {
         <div className={styles.card}>
           {stage === "password" ? (
             <form onSubmit={login}>
-              <span className={styles.eyebrow}>MEMBER ACCESS</span>
-              <h2 className={styles.title}>Sign in to SCENOVA</h2>
-              <p className={styles.muted}>ไม่มี Public Sign-up บัญชีสมาชิกถูกสร้างและจัดการโดย Admin Console เท่านั้น</p>
+              <span className={styles.eyebrow}>SECURE MEMBER ACCESS</span>
+              <h2 className={styles.title}>เข้าสู่ระบบ SCENOVA</h2>
+              <p className={styles.muted}>เข้าสู่ Production Workspace ด้วยบัญชีที่ได้รับจากผู้ดูแลระบบ ไม่มีการเปิดสมัครสมาชิกสาธารณะ</p>
 
               <label className={styles.label}>
-                Email
+                อีเมล <small>Email address</small>
                 <input
                   className={styles.input}
                   value={email}
@@ -302,7 +315,7 @@ export default function LoginPage() {
               </label>
 
               <label className={styles.label}>
-                Password
+                รหัสผ่าน <small>Password</small>
                 <input
                   className={styles.input}
                   value={password}
@@ -314,18 +327,18 @@ export default function LoginPage() {
               </label>
 
               {error ? <ErrorBox text={error} /> : null}
-              <button disabled={loading} className={styles.primary}>{loading ? "Authenticating..." : "Continue"}</button>
+              <button disabled={loading} className={styles.primary}>{loading ? "กำลังตรวจสอบ..." : "เข้าสู่ Production Studio"}</button>
             </form>
           ) : null}
 
           {stage === "otp" ? (
             <form onSubmit={verifyOtp}>
               <span className={styles.eyebrow}>2-STEP VERIFICATION</span>
-              <h2 className={styles.title}>Authenticator Verification</h2>
+              <h2 className={styles.title}>ยืนยันตัวตน 2 ขั้นตอน</h2>
               <p className={styles.muted}>เปิด Authenticator แล้วกรอกรหัส 6 หลักปัจจุบัน หรือใช้ Recovery Code เมื่อไม่มีอุปกรณ์หลัก</p>
 
               <label className={styles.label}>
-                Verification Code
+                รหัสยืนยัน <small>Verification code</small>
                 <input
                   className={`${styles.input} ${styles.codeInput}`}
                   value={code}
@@ -338,15 +351,15 @@ export default function LoginPage() {
               </label>
 
               {error ? <ErrorBox text={error} /> : null}
-              <button disabled={loading} className={styles.primary}>{loading ? "Verifying session..." : "Verify & Continue"}</button>
-              <button type="button" disabled={loading} onClick={backToPassword} className={styles.secondary}>Back to Password</button>
+              <button disabled={loading} className={styles.primary}>{loading ? "กำลังยืนยัน Session..." : "ยืนยันและเข้าสู่ระบบ"}</button>
+              <button type="button" disabled={loading} onClick={backToPassword} className={styles.secondary}>กลับไปใช้รหัสผ่าน</button>
             </form>
           ) : null}
 
           {stage === "setup" ? (
             <form onSubmit={confirmSetup}>
               <span className={styles.eyebrow}>ADMIN SECURITY REQUIRED</span>
-              <h2 className={styles.title}>Authenticator Setup</h2>
+              <h2 className={styles.title}>ตั้งค่า Authenticator</h2>
               <p className={styles.muted}>ใน Google/Microsoft Authenticator กด ＋ → เลือก “Enter setup key” แล้วใช้ข้อมูลด้านล่าง</p>
 
               <div className={styles.setupBox}>
@@ -358,10 +371,10 @@ export default function LoginPage() {
                 <b>Time based (TOTP) • 6 digits • 30 seconds</b>
               </div>
 
-              <button type="button" disabled={loading} onClick={() => setup?.secret && navigator.clipboard.writeText(setup.secret)} className={styles.secondary}>Copy Setup Key</button>
+              <button type="button" disabled={loading} onClick={() => setup?.secret && navigator.clipboard.writeText(setup.secret)} className={styles.secondary}>คัดลอก Setup Key</button>
 
               <label className={styles.label}>
-                Authenticator Code
+                รหัสจาก Authenticator
                 <input
                   className={`${styles.input} ${styles.codeInput}`}
                   value={code}
@@ -375,22 +388,22 @@ export default function LoginPage() {
               </label>
 
               {error ? <ErrorBox text={error} /> : null}
-              <button disabled={loading} className={styles.primary}>{loading ? "Enabling 2FA..." : "Verify & Enable 2FA"}</button>
-              <button type="button" disabled={loading} onClick={backToPassword} className={styles.secondary}>Start Over</button>
+              <button disabled={loading} className={styles.primary}>{loading ? "กำลังเปิด 2FA..." : "ยืนยันและเปิด 2FA"}</button>
+              <button type="button" disabled={loading} onClick={backToPassword} className={styles.secondary}>เริ่มใหม่</button>
             </form>
           ) : null}
 
           {stage === "recovery" ? (
             <div>
               <span className={styles.eyebrow}>RECOVERY CODES</span>
-              <h2 className={styles.title}>Store Recovery Codes</h2>
+              <h2 className={styles.title}>เก็บรหัสกู้คืน</h2>
               <p className={styles.muted}>แต่ละรหัสใช้ได้ครั้งเดียวสำหรับกรณี Authenticator ใช้งานไม่ได้ ระบบจะแสดงชุดจริงเพียงครั้งเดียว</p>
               <div className={styles.recoveryGrid}>
                 {recoveryCodes.map((item) => <code key={item} className={styles.recoveryCode}>{item}</code>)}
               </div>
               {error ? <ErrorBox text={error} /> : null}
-              <button onClick={() => navigator.clipboard.writeText(recoveryCodes.join("\n"))} className={styles.secondary}>Copy All</button>
-              <button disabled={loading} onClick={() => void enterPortal()} className={styles.primary}>{loading ? "Verifying session..." : "Saved → Enter SCENOVA"}</button>
+              <button onClick={() => navigator.clipboard.writeText(recoveryCodes.join("\n"))} className={styles.secondary}>คัดลอกทั้งหมด</button>
+              <button disabled={loading} onClick={() => void enterPortal()} className={styles.primary}>{loading ? "กำลังยืนยัน Session..." : "บันทึกแล้ว → เข้า SCENOVA"}</button>
             </div>
           ) : null}
         </div>
