@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
 import { getWorkspaceContext, getWorkspaceRail, WORKSPACE_NAV, type WorkspaceNavItem } from "@/lib/workspace-navigation";
 import styles from "./app-shell.module.css";
 
@@ -25,6 +25,10 @@ function ScenovaMark() {
   </svg>;
 }
 
+function LoadingWorkspace() {
+  return <div className={styles.loading}><span className={styles.loadingMark}><ScenovaMark /></span><b>SCENOVA STUDIO</b><small>กำลังเปิดพื้นที่ทำงาน…</small></div>;
+}
+
 function formatCredits(value: number | undefined) {
   if (value === undefined) return "—";
   return Number(value).toLocaleString("th-TH", { maximumFractionDigits: 2 });
@@ -44,14 +48,12 @@ function targetMatchesCurrent(href: string, pathname: string, search: URLSearchP
   return true;
 }
 
-export default function AppShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
+function WorkspaceShell({ children, pathname }: { children: React.ReactNode; pathname: string }) {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const standalone = pathname === "/" || pathname === "/login";
   const [me, setMe] = useState<Me>({ authenticated: false });
   const [balance, setBalance] = useState<Balance | null>(null);
-  const [checking, setChecking] = useState(!standalone);
+  const [checking, setChecking] = useState(true);
   const [hash, setHash] = useState("");
   const authLoaded = useRef(false);
 
@@ -63,10 +65,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [pathname, searchParams]);
 
   useEffect(() => {
-    if (standalone) {
-      setChecking(false);
-      return;
-    }
     if (authLoaded.current) {
       setChecking(false);
       return;
@@ -93,7 +91,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         router.replace("/login");
       });
     return () => { active = false; };
-  }, [standalone, router]);
+  }, [router]);
 
   useEffect(() => {
     if (!me.authenticated) return;
@@ -114,8 +112,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return Math.max(0, rail.findIndex((item) => new URL(item.href, "https://scenova.local").pathname === pathname));
   }, [rail, pathname, searchParams, hash]);
 
-  if (standalone) return <>{children}</>;
-  if (checking || !me.authenticated) return <div className={styles.loading}><span className={styles.loadingMark}><ScenovaMark /></span><b>SCENOVA STUDIO</b><small>กำลังเปิดพื้นที่ทำงาน…</small></div>;
+  if (checking || !me.authenticated) return <LoadingWorkspace />;
 
   const navLink = (item: WorkspaceNavItem) => {
     const active = item.href === "/portal" ? pathname === item.href : pathname === item.href || pathname.startsWith(item.href + "/");
@@ -166,4 +163,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <div className={styles.page} data-workspace={context}>{children}</div>
     </div>
   </div>;
+}
+
+export default function AppShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  if (pathname === "/" || pathname === "/login") return <>{children}</>;
+  return <Suspense fallback={<LoadingWorkspace />}><WorkspaceShell pathname={pathname}>{children}</WorkspaceShell></Suspense>;
 }
