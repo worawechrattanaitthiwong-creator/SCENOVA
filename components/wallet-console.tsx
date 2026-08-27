@@ -7,6 +7,7 @@ import styles from "./wallet-console.module.css";
 const topups = [100, 300, 500, 1000, 3000, 5000, 10000];
 type Balance = { paid: number; bonus: number; reserved: number; available: number };
 type CostEvent = { phase: string; credits: number };
+type Metric = { label: string; value: number | undefined; help: string; featured?: boolean };
 
 function credits(value: number | undefined) {
   return Number(value || 0).toLocaleString("th-TH", { maximumFractionDigits: 4 });
@@ -37,13 +38,13 @@ export default function WalletConsole() {
 
   const charged = useMemo(() => events.filter((event) => event.phase === "CHARGE").reduce((sum, event) => sum + Number(event.credits || 0), 0), [events]);
 
-  const metrics = [
+  const metrics: Metric[] = [
     { label: "พร้อมใช้", value: balance?.available, help: "ยอดที่ใช้เริ่มงานใหม่ได้ ณ ตอนนี้", featured: true },
     { label: "เครดิตจากการเติม", value: balance?.paid, help: "เครดิตจากเงินจริงที่บันทึกใน Wallet" },
     { label: "โบนัส", value: balance?.bonus, help: "เครดิตโปรโมชั่นหรือเครดิตที่ระบบมอบให้" },
     { label: "พักไว้สำหรับงาน", value: balance?.reserved, help: "เครดิตที่ Reserve ไว้ก่อนงานเสร็จ แล้วจึง Charge / Release / Refund ตามผลจริง" },
     { label: "ใช้ไปในรายการที่โหลด", value: charged, help: "ผลรวมรายการ CHARGE จากประวัติที่แสดงในหน้านี้" },
-  ] as const;
+  ];
 
   return <main className={styles.page}>
     <header className={styles.hero} id="balance">
