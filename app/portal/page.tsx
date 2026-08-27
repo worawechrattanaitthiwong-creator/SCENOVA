@@ -165,7 +165,7 @@ export default function PortalPage() {
         </Link>
         <Link href="/profile" className={styles.profileCard} prefetch={false}>
           <span className={styles.avatar}><Icon name="profile" /></span>
-          <span className={styles.profileCopy}><b>{me.name || "SCENOVA"}</b><small>{me.role === "ADMIN" ? "Administrator" : "สมาชิกระดับ Pro"}</small></span>
+          <span className={styles.profileCopy}><b>{me.name || "SCENOVA"}</b><small>{me.role === "ADMIN" ? "Administrator" : "สมาชิก SCENOVA"}</small></span>
           <span className={styles.profileArrow}>›</span>
         </Link>
       </div>
