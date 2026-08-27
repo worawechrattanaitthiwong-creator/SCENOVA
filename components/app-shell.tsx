@@ -128,7 +128,7 @@ function WorkspaceShell({ children, pathname }: { children: React.ReactNode; pat
         ? pathname === "/portal" && hash !== "#guide"
         : isWorkspaceNavActive(item, pathname);
     return <Link key={item.href} href={item.href} prefetch={false} className={active ? styles.active : ""} aria-current={active ? "page" : undefined} title={item.description}>
-      <span className={styles.navIcon}><Icon name={item.icon} />{item.badge ? <b>{item.badge}</b> : null}</span>
+      <span className={styles.navIcon}>{item.badge ? <b>{item.badge}</b> : <Icon name={item.icon} />}</span>
       <span className={styles.navText}>{item.label}</span>
     </Link>;
   };
