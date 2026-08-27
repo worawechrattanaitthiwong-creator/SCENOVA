@@ -5,7 +5,7 @@
 [class*="app-shell_loadingMark"],
 .scenova-admin-avatar,
 .scenova-user-admin-mark {
-  background: url('/brand/scenova-mark.webp') center / contain no-repeat !important;
+  background: url('/brand/scenova-mark.png') center / contain no-repeat !important;
   filter: none !important;
 }
 [class*="app-shell_logo"] > svg,
@@ -41,7 +41,7 @@
   background:
     linear-gradient(90deg, rgba(3,2,6,.98) 0%, rgba(4,3,8,.91) 27%, rgba(4,3,8,.34) 58%, rgba(3,2,6,.16) 78%),
     linear-gradient(180deg, rgba(4,3,8,.06), rgba(3,2,6,.34)),
-    url('/media/scenova-portal-hero.jpg') center / cover no-repeat !important;
+    url('/media/scenova-portal-hero.png') center / cover no-repeat !important;
   border-color: rgba(210,178,92,.30) !important;
   box-shadow: 0 26px 72px rgba(0,0,0,.34), inset 0 0 0 1px rgba(220,188,104,.05) !important;
 }

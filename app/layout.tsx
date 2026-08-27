@@ -12,9 +12,9 @@ export const metadata: Metadata = {
   description: "SCENOVA — AI cinematic production studio",
   applicationName: "SCENOVA",
   icons: {
-    icon: [{ url: "/brand/scenova-mark.webp", type: "image/webp" }],
-    shortcut: "/brand/scenova-mark.webp",
-    apple: "/brand/scenova-mark.webp",
+    icon: [{ url: "/brand/scenova-mark.png", type: "image/png" }],
+    shortcut: "/brand/scenova-mark.png",
+    apple: "/brand/scenova-mark.png",
   },
 };
 

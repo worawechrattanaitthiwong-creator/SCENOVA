@@ -43,14 +43,16 @@ export default function PortalPage() {
       </div>
     </header>
 
-    <section className={styles.hero} aria-label="SCENOVA Neo Noir Studio">
+    <section className={styles.hero} aria-label="SCENOVA Neo Noir Studio — สร้างภาพยนตร์ด้วยพลังของ AI">
       <img
         className={styles.heroImage}
-        src="/media/scenova-portal-hero.png?v=20260827-1"
+        src="/media/scenova-portal-hero.png"
         alt="SCENOVA Neo Noir Studio — สร้างภาพยนตร์ด้วยพลังของ AI"
         fetchPriority="high"
         decoding="sync"
       />
+      <Link href="/studio" className={`${styles.heroHotspot} ${styles.heroStart}`} aria-label="เริ่มสร้างภาพยนตร์" />
+      <Link href="/guide" className={`${styles.heroHotspot} ${styles.heroPreview}`} aria-label="ชมตัวอย่างและคู่มือการใช้งาน" />
     </section>
 
     <section className={styles.quickSection} aria-labelledby="quick-title">
