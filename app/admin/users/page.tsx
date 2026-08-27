@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import styles from "./users.module.css";
 
@@ -32,10 +31,16 @@ export default function AdminUsersPage() {
   const [logs, setLogs] = useState<ActivityItem[]>([]);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [query, setQuery] = useState("");
   const [createForm, setCreateForm] = useState({ name: "", email: "", password: "" });
   const [editForm, setEditForm] = useState({ name: "", email: "", password: "", creditDelta: "", suspendMinutes: "", reason: "" });
 
   const selected = useMemo(() => members.find((member) => member.id === selectedId) || null, [members, selectedId]);
+  const filteredMembers = useMemo(() => {
+    const needle = query.trim().toLocaleLowerCase("th-TH");
+    if (!needle) return members;
+    return members.filter((member) => `${member.name} ${member.email} ${member.active ? "active" : "blocked"}`.toLocaleLowerCase("th-TH").includes(needle));
+  }, [members, query]);
 
   async function loadMembers(preferredId?: string) {
     const response = await fetch("/api/admin/members", { cache: "no-store" });
@@ -141,22 +146,26 @@ export default function AdminUsersPage() {
 
   return <main className={styles.page}>
     <header className={styles.hero}>
-      <div><span className={styles.eyebrow}>USER CONTROL CENTER</span><h1>จัดการผู้ใช้และสิทธิ์การใช้งาน</h1><p>สร้าง แก้ไข รีเซ็ตรหัสผ่าน ปรับเครดิต ระงับเป็นนาที/ชั่วโมง/วัน บล็อกถาวร ปลดบล็อก ลบบัญชี และตรวจ Activity Log รายคนจากจุดเดียว</p></div>
-      <div className={styles.heroActions}><Link href="/guide" className={styles.ghost}>คู่มือ Admin</Link><Link href="/admin" className={styles.ghost}>Admin Console</Link></div>
+      <span className={`${styles.brandMark} scenova-user-admin-mark`} aria-hidden="true" />
+      <div><span className={styles.eyebrow}>USER ADMIN</span><h1>จัดการผู้ใช้งาน</h1><p>พื้นที่นี้มีเฉพาะงานที่เกี่ยวกับ User: ค้นหา สร้าง แก้ไขรหัสผ่าน ปรับเครดิต ระงับ บล็อก ลบ และตรวจ Log รายคน</p></div>
     </header>
     {message ? <div className={styles.notice}>{message}</div> : null}
 
     <div className={styles.layout}>
       <section className={styles.panel}>
-        <div className={styles.panelHead}><div><span className={styles.eyebrow}>MEMBERS</span><h2>บัญชีผู้ใช้</h2></div><span className={styles.count}>{members.length} คน</span></div>
+        <div className={styles.panelHead}><div><span className={styles.eyebrow}>USERS</span><h2>บัญชีผู้ใช้</h2></div><span className={styles.count}>{filteredMembers.length}/{members.length} คน</span></div>
+        <div className={styles.searchBar}>
+          <input className={styles.input} type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ค้นหาชื่อ อีเมล หรือสถานะผู้ใช้…" aria-label="ค้นหาผู้ใช้งาน" />
+          {query ? <button type="button" className={styles.clearSearch} onClick={() => setQuery("")}>ล้าง</button> : null}
+        </div>
         <form className={styles.create} onSubmit={createMember}>
           <div className={styles.grid2}><label className={styles.field}><span>ชื่อ</span><input className={styles.input} value={createForm.name} onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })} required /></label><label className={styles.field}><span>อีเมล</span><input className={styles.input} type="email" value={createForm.email} onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })} required /></label></div>
           <label className={styles.field}><span>รหัสผ่านเริ่มต้น</span><input className={styles.input} type="password" minLength={8} value={createForm.password} onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })} required /></label>
           <button className={styles.button} disabled={busy}>＋ เพิ่มผู้ใช้</button>
         </form>
-        <div className={styles.memberList}>{members.length ? members.map((member) => <button key={member.id} className={`${styles.member} ${selectedId === member.id ? styles.selected : ""}`} onClick={() => setSelectedId(member.id)}>
+        <div className={styles.memberList}>{filteredMembers.length ? filteredMembers.map((member) => <button key={member.id} className={`${styles.member} ${selectedId === member.id ? styles.selected : ""}`} onClick={() => setSelectedId(member.id)}>
           <span><b>{member.name}</b><small>{member.email}</small></span><span className={styles.pills}><i className={`${styles.pill} ${member.active ? styles.active : styles.blocked}`}>{member.active ? "ACTIVE" : "BLOCKED"}</i>{member.twoFactorEnabled ? <i className={styles.pill}>2FA</i> : null}</span>
-        </button>) : <div className={styles.empty}>ยังไม่มีสมาชิก</div>}</div>
+        </button>) : <div className={styles.empty}>{query ? "ไม่พบผู้ใช้ที่ตรงกับคำค้น" : "ยังไม่มีสมาชิก"}</div>}</div>
       </section>
 
       <section className={styles.panel}>
@@ -171,21 +180,21 @@ export default function AdminUsersPage() {
 
           <form onSubmit={saveProfile}>
             <div className={styles.grid2}><label className={styles.field}><span>ชื่อผู้ใช้</span><input className={styles.input} value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} /></label><label className={styles.field}><span>อีเมล</span><input className={styles.input} type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} /></label></div>
-            <label className={styles.field}><span>ตั้งรหัสผ่านใหม่ (เว้นว่างถ้าไม่เปลี่ยน)</span><input className={styles.input} type="password" minLength={8} value={editForm.password} onChange={(e) => setEditForm({ ...editForm, password: e.target.value })} placeholder="อย่างน้อย 8 ตัวอักษร" /></label>
+            <label className={styles.field}><span>ตั้งรหัสผ่านใหม่</span><input className={styles.input} type="password" minLength={8} value={editForm.password} onChange={(e) => setEditForm({ ...editForm, password: e.target.value })} placeholder="เว้นว่างถ้าไม่เปลี่ยน" /></label>
             <button className={styles.button} disabled={busy}>บันทึกข้อมูล / รีเซ็ตรหัสผ่าน</button>
           </form>
 
-          <div className={styles.section}><h3>เครดิต</h3><div className={styles.creditRow}><input className={styles.input} inputMode="numeric" value={editForm.creditDelta} onChange={(e) => setEditForm({ ...editForm, creditDelta: e.target.value })} placeholder="+500 เพิ่ม / -100 หัก" /><button className={styles.button} type="button" onClick={adjustCredits} disabled={busy}>ปรับเครดิต</button></div></div>
+          <div className={styles.section}><h3>เครดิตผู้ใช้</h3><div className={styles.creditRow}><input className={styles.input} inputMode="numeric" value={editForm.creditDelta} onChange={(e) => setEditForm({ ...editForm, creditDelta: e.target.value })} placeholder="+500 เพิ่ม / -100 หัก" /><button className={styles.button} type="button" onClick={adjustCredits} disabled={busy}>ปรับเครดิต</button></div></div>
 
-          <div className={styles.section}><h3>ระงับ / บล็อกการใช้งาน</h3><label className={styles.field}><span>เหตุผล (บันทึกลง Log)</span><input className={styles.input} value={editForm.reason} onChange={(e) => setEditForm({ ...editForm, reason: e.target.value })} placeholder="เช่น ตรวจสอบการใช้งานผิดปกติ" /></label><div className={styles.quickBlock}><button onClick={() => suspend(15)}>15 นาที</button><button onClick={() => suspend(60)}>1 ชั่วโมง</button><button onClick={() => suspend(1440)}>1 วัน</button><button onClick={() => suspend(10080)}>7 วัน</button><button onClick={blockForever}>บล็อกจนกว่าจะปลด</button></div><div className={styles.creditRow} style={{ marginTop: 8 }}><input className={styles.input} inputMode="numeric" value={editForm.suspendMinutes} onChange={(e) => setEditForm({ ...editForm, suspendMinutes: e.target.value })} placeholder="ระบุจำนวนนาทีเอง" /><button className={styles.ghost} onClick={suspendCustom} type="button">ระงับตามนาที</button></div>{!selected.active ? <div className={styles.actions} style={{ marginTop: 8 }}><button className={styles.button} onClick={unblock} type="button">ปลดบล็อกทันที</button></div> : null}</div>
+          <div className={styles.section}><h3>ระงับ / บล็อกผู้ใช้</h3><label className={styles.field}><span>เหตุผล</span><input className={styles.input} value={editForm.reason} onChange={(e) => setEditForm({ ...editForm, reason: e.target.value })} placeholder="บันทึกเหตุผลลง User Log" /></label><div className={styles.quickBlock}><button onClick={() => suspend(15)}>15 นาที</button><button onClick={() => suspend(60)}>1 ชั่วโมง</button><button onClick={() => suspend(1440)}>1 วัน</button><button onClick={() => suspend(10080)}>7 วัน</button><button onClick={blockForever}>บล็อกจนกว่าจะปลด</button></div><div className={styles.creditRow} style={{ marginTop: 8 }}><input className={styles.input} inputMode="numeric" value={editForm.suspendMinutes} onChange={(e) => setEditForm({ ...editForm, suspendMinutes: e.target.value })} placeholder="ระบุจำนวนนาทีเอง" /><button className={styles.ghost} onClick={suspendCustom} type="button">ระงับตามนาที</button></div>{!selected.active ? <div className={styles.actions} style={{ marginTop: 8 }}><button className={styles.button} onClick={unblock} type="button">ปลดบล็อกทันที</button></div> : null}</div>
 
-          <div className={`${styles.section} ${styles.dangerZone}`}><h3>Danger Zone</h3><p style={{ color: "#9c8e9f", fontSize: 12 }}>การลบบัญชีเป็นการลบจริงและอาจ cascade ไปยังข้อมูลที่ผูกกับ User ตาม schema ระบบจะขอให้พิมพ์ DELETE ยืนยันก่อนทุกครั้ง</p><button className={styles.danger} onClick={deleteMember} type="button" disabled={busy}>ลบบัญชีผู้ใช้นี้</button></div>
+          <div className={`${styles.section} ${styles.dangerZone}`}><h3>ลบบัญชีผู้ใช้</h3><p style={{ color: "#9c8e9f", fontSize: 12 }}>การลบบัญชีเป็นการลบจริง ระบบจะขอให้พิมพ์ DELETE ยืนยันก่อนทุกครั้ง</p><button className={styles.danger} onClick={deleteMember} type="button" disabled={busy}>ลบบัญชีผู้ใช้นี้</button></div>
         </div> : <div className={styles.empty}>เลือกบัญชีจากรายการด้านซ้ายเพื่อจัดการ</div>}
       </section>
     </div>
 
     <section className={`${styles.panel} ${styles.logPanel}`}>
-      <div className={styles.panelHead}><div><span className={styles.eyebrow}>ACTIVITY LOG</span><h2>Log การใช้งานของผู้ใช้</h2></div><span className={styles.count}>{logs.length} รายการล่าสุด</span></div>
+      <div className={styles.panelHead}><div><span className={styles.eyebrow}>USER ACTIVITY LOG</span><h2>Log การใช้งานของผู้ใช้</h2></div><span className={styles.count}>{logs.length} รายการล่าสุด</span></div>
       <div className={styles.logs}>{selected ? logs.length ? logs.map((log) => <article className={styles.log} key={log.id}><time>{when(log.createdAt)}</time><span className={styles.logKind}>{log.kind}</span><div><b>{log.title}</b>{log.detail ? <p>{log.detail}</p> : null}</div></article>) : <div className={styles.empty}>ยังไม่มี Activity Log สำหรับบัญชีนี้</div> : <div className={styles.empty}>เลือกผู้ใช้เพื่อดู Log</div>}</div>
     </section>
   </main>;
