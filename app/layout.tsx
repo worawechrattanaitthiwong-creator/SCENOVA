@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
 import AppShell from "@/components/app-shell";
+import HelpHintNormalizer from "@/components/help-hint-normalizer";
 import "./globals.css";
 import "./standards.css";
 import "./brand-logo-overrides.css";
 import "./legacy-theme-overrides.css";
+import "./brand-system-v2.css";
 
 export const metadata: Metadata = {
-  title: "SCENOVA — AI Movie & Series Studio",
-  description: "สตูดิโอ AI สำหรับออกแบบหนังและซีรีส์ด้วย Story, Character Lock, Timeline, Cinematic Prompt และ Multi-model Render Planning",
+  title: "SCENOVA",
+  description: "SCENOVA — AI cinematic production studio",
+  applicationName: "SCENOVA",
   icons: {
     icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
     shortcut: "/icon.svg",
@@ -18,7 +21,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="th">
-      <body><AppShell>{children}</AppShell></body>
+      <body>
+        <HelpHintNormalizer />
+        <AppShell>{children}</AppShell>
+      </body>
     </html>
   );
 }
