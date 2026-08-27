@@ -1,8 +1,9 @@
 export type WorkspaceNavItem = {
   href: string;
-  icon: string;
+  icon: "home" | "project" | "ai" | "board" | "library" | "settings" | "help";
   label: string;
   description: string;
+  badge?: string;
   activePaths?: readonly string[];
 };
 
@@ -13,15 +14,16 @@ export type WorkspaceRailItem = {
   description: string;
 };
 
+// Sidebar master: keep this identical to the original Start/Portal navigation.
+// Every authenticated route renders this same list through AppShell.
 export const WORKSPACE_NAV: readonly WorkspaceNavItem[] = [
-  { href: "/portal", icon: "✦", label: "เริ่มต้น", description: "ภาพรวมสตูดิโอ" },
-  { href: "/series", icon: "EP", label: "โปรเจกต์", description: "หนังและซีรีส์ของคุณ" },
-  { href: "/studio", icon: "AI", label: "AI Studio", description: "สร้างและกำกับงาน" },
-  { href: "/director", icon: "▤", label: "สตอรี่บอร์ด", description: "ฉาก กล้อง และไทม์ไลน์", activePaths: ["/director", "/camera", "/dialogue", "/reference"] },
-  { href: "/libraries", icon: "▦", label: "คลังทรัพยากร", description: "ตัวละคร เสียง และสไตล์" },
-  { href: "/agent", icon: "✧", label: "AI Agent", description: "งานอัตโนมัติและการอนุมัติ" },
-  { href: "/models", icon: "⬡", label: "Model Center", description: "โมเดล ราคา และความสามารถ" },
-  { href: "/render", icon: "▶", label: "คิวสร้าง", description: "ติดตามงานที่กำลังสร้าง" },
+  { href: "/portal", icon: "home", label: "เริ่มต้น", description: "ภาพรวมสตูดิโอ" },
+  { href: "/series", icon: "project", label: "โปรเจกต์", description: "หนังและซีรีส์ของคุณ", badge: "EP" },
+  { href: "/studio", icon: "ai", label: "AI Studio", description: "สร้างและกำกับงาน", badge: "AI" },
+  { href: "/director", icon: "board", label: "สตอรี่บอร์ด", description: "ฉาก กล้อง และไทม์ไลน์", activePaths: ["/director", "/camera", "/dialogue", "/reference"] },
+  { href: "/libraries", icon: "library", label: "คลังทรัพยากร", description: "ตัวละคร เสียง และสไตล์" },
+  { href: "/profile", icon: "settings", label: "การตั้งค่า", description: "บัญชี ความปลอดภัย และผู้ดูแล", activePaths: ["/profile", "/admin"] },
+  { href: "/portal#guide", icon: "help", label: "ช่วยเหลือ", description: "คู่มือการใช้งาน", activePaths: [] },
 ] as const;
 
 const portalRail: readonly WorkspaceRailItem[] = [
@@ -98,7 +100,7 @@ const adminRail: readonly WorkspaceRailItem[] = [
 ] as const;
 
 export function isWorkspaceNavActive(item: WorkspaceNavItem, pathname: string) {
-  const paths = item.activePaths || [item.href];
+  const paths = item.activePaths ?? [new URL(item.href, "https://scenova.local").pathname];
   return paths.some((path) => pathname === path || pathname.startsWith(path + "/"));
 }
 
