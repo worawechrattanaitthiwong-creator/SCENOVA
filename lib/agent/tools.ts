@@ -26,7 +26,7 @@ export function assertAgentToolAllowed(input: {
   killSwitch?: KillSwitchState;
   approvedBudgetThb?: number;
   creditReservationId?: string;
-  creditReservationMode?: "wallet" | "mock";
+  creditReservationMode?: "wallet" | "mock" | "byok";
 }) {
   const allowed = getAllowedAgentTools(input.run.stage);
   if (!allowed.includes(input.tool)) throw new Error(`AGENT_TOOL_NOT_ALLOWED:${input.tool}:${input.run.stage}`);
@@ -38,7 +38,7 @@ export function assertAgentToolAllowed(input: {
   if (input.tool === "generate_video") {
     if (!input.providerId) throw new Error("AGENT_PROVIDER_REQUIRED");
     if (!input.creditReservationId) throw new Error("CREDIT_RESERVATION_REQUIRED");
-    if (input.providerId !== "mock-seedance" && input.creditReservationMode !== "wallet") throw new Error("REAL_PROVIDER_REQUIRES_WALLET_RESERVATION");
+    if (input.providerId !== "mock-seedance" && !["wallet", "byok"].includes(input.creditReservationMode || "")) throw new Error("REAL_PROVIDER_REQUIRES_WALLET_OR_BYOK");
     if (input.run.estimatedSpendThb > input.run.approvalThresholdThb && (input.approvedBudgetThb || 0) < input.run.estimatedSpendThb) throw new Error("AGENT_APPROVAL_REQUIRED");
 
     const hourly = input.hourlySpendThb || 0;
