@@ -10,6 +10,7 @@ import "./theme-system-v3.css";
 import "./sidebar-premium-v1.css";
 import "./series-workspace-v4.css";
 import "./story-mode-polish-v2.css";
+import "./theme-audit-v4.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://scnva.com"),
@@ -39,15 +40,31 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f7f4fa" },
-    { media: "(prefers-color-scheme: dark)", color: "#07040d" },
+    { media: "(prefers-color-scheme: light)", color: "#f7f3fa" },
+    { media: "(prefers-color-scheme: dark)", color: "#050309" },
   ],
   colorScheme: "dark light",
 };
 
+const themeBootstrap = `
+(function () {
+  try {
+    var saved = localStorage.getItem('scenova-theme');
+    var theme = saved === 'light' || saved === 'dark'
+      ? saved
+      : (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+    document.documentElement.dataset.theme = theme;
+  } catch (_) {
+    document.documentElement.dataset.theme = 'dark';
+  }
+})();`;
+
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="th">
+    <html lang="th" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
+      </head>
       <body>
         <HelpHintNormalizer />
         <AppShell>{children}</AppShell>
