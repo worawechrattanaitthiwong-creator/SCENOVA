@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import styles from "./portal.module.css";
+import refine from "./portal-refine.module.css";
 
 type CharacterTemplate = {
   id: string;
@@ -62,9 +63,7 @@ export default function CarouselRow({ children, label }: { children: ReactNode; 
       <button type="button" data-direction="left" onPointerEnter={() => startGlide(-1)} onPointerLeave={stopGlide} onClick={() => move(-1)} aria-label={`เลื่อน${label}ไปทางซ้าย`}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 6-6 6 6 6" /></svg></button>
       <button type="button" data-direction="right" onPointerEnter={() => startGlide(1)} onPointerLeave={stopGlide} onClick={() => move(1)} aria-label={`เลื่อน${label}ไปทางขวา`}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 6 6 6-6 6" /></svg></button>
     </div>
-    <div className={styles.templateTrack} ref={rowRef} tabIndex={0} aria-label={label}>
-      {children}
-    </div>
+    <div className={`${styles.templateTrack} ${refine.templateTrack}`} ref={rowRef} tabIndex={0} aria-label={label}>{children}</div>
   </div>;
 }
 
@@ -87,11 +86,11 @@ export function CharacterTemplateRow() {
   }, []);
 
   return <CarouselRow label="เทมเพลตตัวละคร">
-    {items.map((character) => <Link href="/libraries?tab=characters" prefetch={false} key={character.id} className={`${styles.templateCard} ${styles.characterCard}`}>
+    {items.map((character) => <Link href="/libraries?tab=characters" prefetch={false} key={character.id} className={`${styles.templateCard} ${styles.characterCard} ${refine.templateCard} ${refine.characterCard}`}>
       <img src={avatarUrl(character)} alt={`เทมเพลตตัวละคร ${character.title}`} loading="lazy" decoding="async" />
       <span className={styles.templateShade} aria-hidden="true" />
       <span className={styles.characterTag}>{character.metadata?.role?.split(/[—/]/)[0]?.trim() || "CHARACTER"}</span>
-      <span className={styles.templateCopy}><b>{character.title}</b><small data-keep-small="true">{character.description}</small></span>
+      <span className={`${styles.templateCopy} ${refine.templateCopy}`}><b>{character.title}</b></span>
       <span className={styles.templateArrow} aria-hidden="true">→</span>
     </Link>)}
   </CarouselRow>;
