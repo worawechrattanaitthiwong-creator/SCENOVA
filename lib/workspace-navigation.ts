@@ -21,7 +21,7 @@ export const WORKSPACE_NAV: readonly WorkspaceNavItem[] = [
   { href: "/series", icon: "project", label: "Series", description: "ซีรีส์และตอนของคุณ", badge: "EP" },
   { href: "/director", icon: "board", label: "สตอรี่บอร์ด", description: "ฉาก กล้อง และไทม์ไลน์", activePaths: ["/director", "/camera", "/dialogue", "/reference"] },
   { href: "/libraries", icon: "library", label: "คลังทรัพยากร", description: "ตัวละคร เสียง และสไตล์" },
-  { href: "/profile", icon: "settings", label: "การตั้งค่า", description: "บัญชี 2FA ความปลอดภัย และระบบ", activePaths: ["/profile", "/admin"] },
+  { href: "/profile", icon: "settings", label: "การตั้งค่า", description: "บัญชี API 2FA ความปลอดภัย และระบบ", activePaths: ["/profile", "/admin"] },
   { href: "/portal#guide", icon: "help", label: "ช่วยเหลือ", description: "เมนูผู้ดูแลระบบ", activePaths: [] },
 ] as const;
 
@@ -88,6 +88,7 @@ const walletRail: readonly WorkspaceRailItem[] = [
 
 const settingsRail: readonly WorkspaceRailItem[] = [
   { href: "/profile", icon: "◉", label: "บัญชี", description: "ข้อมูลผู้ใช้และการเข้าสู่ระบบ" },
+  { href: "/profile/api", icon: "↔", label: "API & Models", description: "เชื่อม API, BYOK, Provider และสายงาน A–D" },
   { href: "/profile#security", icon: "◇", label: "2FA", description: "Authenticator และ Recovery Code" },
   { href: "/admin/security", icon: "⬡", label: "Security Center", description: "Emergency Control และมาตรการความปลอดภัย", adminOnly: true },
   { href: "/admin/ai-costs", icon: "●", label: "AI & Cost", description: "ต้นทุน AI และการควบคุมงบระบบ", adminOnly: true },
@@ -145,6 +146,7 @@ export function getWorkspaceContext(pathname: string): string {
   if (pathname.startsWith("/admin/security")) return "การตั้งค่า / Security Center";
   if (pathname.startsWith("/admin/ai-costs")) return "การตั้งค่า / AI & Cost";
   if (pathname === "/admin") return "Asset Administration";
+  if (pathname.startsWith("/profile/api")) return "การตั้งค่า / API & Models";
   if (pathname.startsWith("/profile")) return "การตั้งค่า";
   return "SCENOVA Studio";
 }
