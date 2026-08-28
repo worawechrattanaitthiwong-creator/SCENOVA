@@ -1,0 +1,329 @@
+/* SCENOVA Series theme hardening.
+   Imported last so legacy Series CSS cannot force black cards in light mode. */
+
+[data-workspace="Series"] {
+  --series-accent: #a85cff;
+  --series-accent-strong: #c27aff;
+  --series-accent-soft: rgba(168, 92, 255, .14);
+}
+
+[data-workspace="Series"] [class*="series-manager-v3_guide"] {
+  display: none !important;
+}
+
+[data-workspace="Series"] [class*="series-manager-v3_main"] {
+  max-width: 1460px !important;
+  padding: 28px 30px 72px !important;
+}
+
+[data-workspace="Series"] [class*="series-manager-v3_hero"] {
+  align-items: center !important;
+  margin-bottom: 18px !important;
+  padding-bottom: 18px !important;
+}
+
+[data-workspace="Series"] [class*="series-manager-v3_heroActions"] {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(150px, 1fr));
+  gap: 8px !important;
+}
+
+[data-workspace="Series"] [class*="series-manager-v3_heroActions"] :is(a, button) {
+  min-height: 42px !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---------------- Light: white + purple ---------------- */
+html[data-theme="light"] [data-workspace="Series"] {
+  color: #2c2233 !important;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(155, 91, 214, .08), transparent 25%),
+    linear-gradient(180deg, #fcfaff 0%, #f7f2fb 100%) !important;
+}
+
+html[data-theme="light"] [data-workspace="Series"] [class*="series-manager-v3_main"],
+html[data-theme="light"] [data-workspace="Series"] [class*="series-video-history_wrap"] {
+  color: #2c2233 !important;
+}
+
+html[data-theme="light"] [data-workspace="Series"] :is(
+  [class*="series-manager-v3_bible"],
+  [class*="series-manager-v3_history"],
+  [class*="series-manager-v3_sceneSection"],
+  [class*="series-manager-v3_card"],
+  [class*="series-manager-v3_sceneEditor"],
+  [class*="series-manager-v3_sceneWorkspace"] aside,
+  [class*="series-manager-v3_previous"],
+  [class*="series-manager-v3_durationBox"],
+  [class*="series-manager-v3_rule"],
+  [class*="series-manager-v3_score"]
+) {
+  color: #2d2334 !important;
+  border-color: #e2d6e9 !important;
+  background: rgba(255,255,255,.97) !important;
+  box-shadow: 0 8px 24px rgba(66, 39, 82, .05) !important;
+}
+
+html[data-theme="light"] [data-workspace="Series"] [class*="series-manager-v3_hero"] {
+  border-bottom: 1px solid #e4d6ed !important;
+}
+
+html[data-theme="light"] [data-workspace="Series"] :is(
+  [class*="series-manager-v3_hero"] > div:first-child > span,
+  [class*="series-manager-v3_sectionTitle"] > div > span,
+  [class*="series-manager-v3_cardHead"] > div > span,
+  [class*="series-manager-v3_score"] b,
+  [class*="series-manager-v3_rule"] > b,
+  [class*="series-manager-v3_historyRail"] span,
+  [class*="series-manager-v3_durationBox"] strong,
+  [class*="series-manager-v3_sceneEditor"] summary
+) {
+  color: #8e47cf !important;
+}
+
+html[data-theme="light"] [data-workspace="Series"] :is(
+  [class*="series-manager-v3_hero"] h1,
+  [class*="series-manager-v3_sectionTitle"] h2,
+  [class*="series-manager-v3_cardHead"] h2,
+  [class*="series-video-history_header"] h2,
+  [class*="series-video-history_body"] h3
+) {
+  color: #2b2133 !important;
+}
+
+html[data-theme="light"] [data-workspace="Series"] :is(
+  [class*="series-manager-v3_hero"] p,
+  [class*="series-manager-v3_bible"] small,
+  [class*="series-manager-v3_card"] small,
+  [class*="series-manager-v3_sceneEditor"] small,
+  [class*="series-manager-v3_previous"] p,
+  [class*="series-manager-v3_sceneTools"] span
+) {
+  color: #75677d !important;
+}
+
+html[data-theme="light"] [data-workspace="Series"] :is(input, select, textarea) {
+  color: #2c2233 !important;
+  border-color: #ddd1e5 !important;
+  background: #fff !important;
+  box-shadow: inset 0 1px 2px rgba(68, 41, 84, .025) !important;
+}
+
+html[data-theme="light"] [data-workspace="Series"] :is(input, textarea)::placeholder {
+  color: #9a8ea0 !important;
+}
+
+html[data-theme="light"] [data-workspace="Series"] :is(
+  [class*="series-manager-v3_bible"],
+  [class*="series-manager-v3_card"],
+  [class*="series-manager-v3_sceneEditor"],
+  [class*="series-manager-v3_field"]
+) label > span,
+html[data-theme="light"] [data-workspace="Series"] [class*="series-manager-v3_field"] > span {
+  color: #4a3a52 !important;
+}
+
+html[data-theme="light"] [data-workspace="Series"] [class*="series-manager-v3_locks"] label {
+  color: #493a51 !important;
+  border-color: #e2d5e9 !important;
+  background: linear-gradient(180deg, #fff, #f8f2fb) !important;
+}
+
+html[data-theme="light"] [data-workspace="Series"] [class*="series-manager-v3_locks"] input {
+  accent-color: #8d4bd1 !important;
+}
+
+html[data-theme="light"] [data-workspace="Series"] :is(
+  [class*="series-manager-v3_historyRail"] button,
+  [class*="series-manager-v3_timeline"] button,
+  [class*="series-manager-v3_sceneWorkspace"] aside button,
+  [class*="series-manager-v3_heroActions"] a,
+  [class*="series-manager-v3_heroActions"] button,
+  [class*="series-manager-v3_actions"] button,
+  [class*="series-manager-v3_sceneTools"] button,
+  [class*="series-manager-v3_cardHead"] button
+) {
+  color: #58346f !important;
+  border-color: #dcc9e7 !important;
+  background: linear-gradient(180deg, #fff, #f6effa) !important;
+}
+
+html[data-theme="light"] [data-workspace="Series"] :is(
+  [class*="series-manager-v3_historyRail"] button[class*="activeEpisode"],
+  [class*="series-manager-v3_timeline"] button[class*="activeScene"],
+  [class*="series-manager-v3_sceneWorkspace"] aside button[class*="activeList"],
+  [class*="series-manager-v3_actions"] [class*="primary"]
+) {
+  color: #fff !important;
+  border-color: #9250d3 !important;
+  background: linear-gradient(135deg, #8d4bd1, #b965f0) !important;
+}
+
+html[data-theme="light"] [data-workspace="Series"] [class*="series-manager-v3_sceneEditor"] details {
+  color: #4b3c53 !important;
+  border-color: #e2d6e9 !important;
+  background: #faf6fc !important;
+}
+
+/* Series video history also had its own hard-coded dark palette. */
+html[data-theme="light"] [data-workspace="Series"] :is(
+  [class*="series-video-history_header"],
+  [class*="series-video-history_grid"],
+  [class*="series-video-history_card"],
+  [class*="series-video-history_empty"]
+) {
+  color: #2c2233 !important;
+  border-color: #e2d6e9 !important;
+  background: rgba(255,255,255,.97) !important;
+}
+
+html[data-theme="light"] [data-workspace="Series"] [class*="series-video-history_preview"] {
+  background: linear-gradient(135deg, #f2e7fa, #fff) !important;
+}
+
+html[data-theme="light"] [data-workspace="Series"] :is(
+  [class*="series-video-history_header"] > div > span,
+  [class*="series-video-history_episode"],
+  [class*="series-video-history_preview"] > span,
+  [class*="series-video-history_headerActions"] strong
+) {
+  color: #8d4bd1 !important;
+}
+
+html[data-theme="light"] [data-workspace="Series"] :is(
+  [class*="series-video-history_header"] p,
+  [class*="series-video-history_body"] p,
+  [class*="series-video-history_meta"],
+  [class*="series-video-history_empty"]
+) {
+  color: #766a7d !important;
+}
+
+html[data-theme="light"] [data-workspace="Series"] [class*="series-video-history_actions"] :is(a, button) {
+  color: #57366c !important;
+  border-color: #ddcfe6 !important;
+  background: #fff !important;
+}
+
+html[data-theme="light"] [data-workspace="Series"] [class*="series-video-history_actions"] [class*="delete"],
+html[data-theme="light"] [data-workspace="Series"] [class*="series-video-history_headerActions"] button {
+  color: #a33f58 !important;
+  border-color: #efcbd4 !important;
+  background: #fff5f7 !important;
+}
+
+/* ---------------- Dark: black + bright purple ---------------- */
+html[data-theme="dark"] [data-workspace="Series"] {
+  color: #f6f0fb !important;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(169, 84, 255, .12), transparent 27%),
+    linear-gradient(180deg, #08060c 0%, #050309 100%) !important;
+}
+
+html[data-theme="dark"] [data-workspace="Series"] :is(
+  [class*="series-manager-v3_bible"],
+  [class*="series-manager-v3_history"],
+  [class*="series-manager-v3_sceneSection"],
+  [class*="series-manager-v3_card"],
+  [class*="series-manager-v3_sceneEditor"],
+  [class*="series-manager-v3_sceneWorkspace"] aside,
+  [class*="series-manager-v3_previous"],
+  [class*="series-manager-v3_durationBox"],
+  [class*="series-manager-v3_rule"],
+  [class*="series-manager-v3_score"],
+  [class*="series-video-history_header"],
+  [class*="series-video-history_grid"],
+  [class*="series-video-history_card"],
+  [class*="series-video-history_empty"]
+) {
+  color: #f6f0fb !important;
+  border-color: rgba(177, 100, 255, .20) !important;
+  background: rgba(16, 11, 22, .94) !important;
+}
+
+html[data-theme="dark"] [data-workspace="Series"] :is(
+  [class*="series-manager-v3_hero"] > div:first-child > span,
+  [class*="series-manager-v3_sectionTitle"] > div > span,
+  [class*="series-manager-v3_cardHead"] > div > span,
+  [class*="series-manager-v3_score"] b,
+  [class*="series-manager-v3_rule"] > b,
+  [class*="series-manager-v3_historyRail"] span,
+  [class*="series-manager-v3_durationBox"] strong,
+  [class*="series-manager-v3_sceneEditor"] summary,
+  [class*="series-video-history_header"] > div > span,
+  [class*="series-video-history_episode"],
+  [class*="series-video-history_headerActions"] strong
+) {
+  color: #c77cff !important;
+}
+
+html[data-theme="dark"] [data-workspace="Series"] :is(input, select, textarea) {
+  color: #f5eef9 !important;
+  border-color: rgba(177, 100, 255, .22) !important;
+  background: #0b0810 !important;
+}
+
+html[data-theme="dark"] [data-workspace="Series"] [class*="series-manager-v3_locks"] label,
+html[data-theme="dark"] [data-workspace="Series"] :is(
+  [class*="series-manager-v3_historyRail"] button,
+  [class*="series-manager-v3_timeline"] button,
+  [class*="series-manager-v3_sceneWorkspace"] aside button,
+  [class*="series-manager-v3_heroActions"] a,
+  [class*="series-manager-v3_heroActions"] button,
+  [class*="series-manager-v3_actions"] button,
+  [class*="series-manager-v3_sceneTools"] button,
+  [class*="series-manager-v3_cardHead"] button
+) {
+  color: #ead9f7 !important;
+  border-color: rgba(178, 99, 255, .22) !important;
+  background: #110b18 !important;
+}
+
+html[data-theme="dark"] [data-workspace="Series"] :is(
+  [class*="series-manager-v3_historyRail"] button[class*="activeEpisode"],
+  [class*="series-manager-v3_timeline"] button[class*="activeScene"],
+  [class*="series-manager-v3_sceneWorkspace"] aside button[class*="activeList"],
+  [class*="series-manager-v3_actions"] [class*="primary"]
+) {
+  color: #fff !important;
+  border-color: #a85cff !important;
+  background: linear-gradient(135deg, #7f38cf, #b65cff) !important;
+}
+
+html[data-theme="dark"] [data-workspace="Series"] [class*="series-manager-v3_sceneEditor"] details {
+  border-color: rgba(177, 100, 255, .20) !important;
+  background: #0d0912 !important;
+}
+
+html[data-theme="dark"] [data-workspace="Series"] [class*="series-video-history_preview"] {
+  background: linear-gradient(135deg, #160d20, #08050d) !important;
+}
+
+html[data-theme="dark"] [data-workspace="Series"] [class*="series-video-history_preview"] > span {
+  color: #c77cff !important;
+}
+
+html[data-theme="dark"] [data-workspace="Series"] [class*="series-video-history_actions"] :is(a, button) {
+  color: #eadcf4 !important;
+  border-color: rgba(177, 100, 255, .22) !important;
+  background: #120c19 !important;
+}
+
+html[data-theme="dark"] [data-workspace="Series"] [class*="series-video-history_actions"] [class*="delete"],
+html[data-theme="dark"] [data-workspace="Series"] [class*="series-video-history_headerActions"] button {
+  color: #ffabbf !important;
+  border-color: rgba(255, 111, 143, .30) !important;
+  background: rgba(94, 27, 44, .30) !important;
+}
+
+@media (max-width: 980px) {
+  [data-workspace="Series"] [class*="series-manager-v3_main"] {
+    padding: 20px 18px 76px !important;
+  }
+  [data-workspace="Series"] [class*="series-manager-v3_heroActions"] {
+    grid-template-columns: 1fr !important;
+    width: 100%;
+  }
+}
