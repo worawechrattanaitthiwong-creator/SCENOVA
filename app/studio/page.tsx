@@ -2,18 +2,18 @@
 
 import dynamic from "next/dynamic";
 
-const ScenovaStudioV3 = dynamic(
-  () => import("@/components/scenova-studio-v3"),
+const SingleEpisodeStudio = dynamic(
+  () => import("@/components/single-episode-studio"),
   {
     ssr: false,
     loading: () => (
       <div style={{ padding: "2rem", minHeight: "50vh" }}>
-        Opening SCENOVA Studio...
+        กำลังเปิด Single Episode Studio...
       </div>
     ),
   },
 );
 
 export default function StudioPage() {
-  return <ScenovaStudioV3 />;
+  return <SingleEpisodeStudio />;
 }
