@@ -17,8 +17,8 @@ export type WorkspaceRailItem = {
 
 export const WORKSPACE_NAV: readonly WorkspaceNavItem[] = [
   { href: "/portal", icon: "home", label: "เริ่มต้น", description: "ภาพรวมสตูดิโอ" },
-  { href: "/series", icon: "project", label: "โปรเจกต์", description: "หนังและซีรีส์ของคุณ", badge: "EP" },
   { href: "/studio", icon: "ai", label: "AI Studio", description: "สร้างและกำกับงาน", badge: "AI" },
+  { href: "/series", icon: "project", label: "Series", description: "ซีรีส์และตอนของคุณ", badge: "EP" },
   { href: "/director", icon: "board", label: "สตอรี่บอร์ด", description: "ฉาก กล้อง และไทม์ไลน์", activePaths: ["/director", "/camera", "/dialogue", "/reference"] },
   { href: "/libraries", icon: "library", label: "คลังทรัพยากร", description: "ตัวละคร เสียง และสไตล์" },
   { href: "/profile", icon: "settings", label: "การตั้งค่า", description: "บัญชี 2FA ความปลอดภัย และระบบ", activePaths: ["/profile", "/admin"] },
@@ -132,7 +132,7 @@ export function getWorkspaceRail(pathname: string): readonly WorkspaceRailItem[]
 
 export function getWorkspaceContext(pathname: string): string {
   if (pathname === "/portal") return "Production Command Center";
-  if (pathname.startsWith("/series")) return "โปรเจกต์และซีรีส์";
+  if (pathname.startsWith("/series")) return "Series";
   if (pathname.startsWith("/studio")) return "AI Studio";
   if (pathname.startsWith("/director") || pathname.startsWith("/camera") || pathname.startsWith("/dialogue") || pathname.startsWith("/reference")) return "Cinematic Direction";
   if (pathname.startsWith("/libraries")) return "คลังทรัพยากร";
