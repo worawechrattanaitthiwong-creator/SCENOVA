@@ -33,6 +33,7 @@ export const API_PROVIDER_DEFINITIONS: ProviderDefinition[] = [
     ready: true,
     purposeTh: "สมองวิเคราะห์คำสั่งหลัก",
     capabilityTh: "วิเคราะห์ Prompt, Locks, กล้อง, ฉาก, ตัวละคร และคืน Structured JSON",
+    credentialHintTh: "ใส่ Groq API Key แล้วระบบจะใช้เป็น Analyzer ของบัญชีนี้โดยตรง",
   },
   {
     id: "openrouter",
@@ -41,9 +42,10 @@ export const API_PROVIDER_DEFINITIONS: ProviderDefinition[] = [
     defaultBaseUrl: "https://openrouter.ai/api/v1",
     defaultModelId: "openai/gpt-oss-20b",
     systemKeyEnv: "OPENROUTER_API_KEY",
-    ready: false,
+    ready: true,
     purposeTh: "Analyzer สำรองหลายโมเดล",
-    capabilityTh: "Analyzer สำรองผ่าน OpenAI-compatible API; จะเปิดเมื่อ runtime dispatcher พร้อม",
+    capabilityTh: "Analyzer จริงผ่าน OpenAI-compatible API พร้อม Structured JSON และ Default Connection",
+    credentialHintTh: "ใส่ OpenRouter API Key และเปลี่ยน Model ได้ตามโมเดลที่บัญชีคุณเปิดใช้",
   },
   {
     id: "gemini",
@@ -52,31 +54,34 @@ export const API_PROVIDER_DEFINITIONS: ProviderDefinition[] = [
     defaultBaseUrl: "https://generativelanguage.googleapis.com/v1beta",
     defaultModelId: "gemini-2.5-flash",
     systemKeyEnv: "GEMINI_API_KEY",
-    ready: false,
-    purposeTh: "Analyzer สำรอง / Multimodal",
-    capabilityTh: "Analyzer สำหรับข้อความและ Reference แบบ Multimodal; จะเปิดเมื่อ runtime dispatcher พร้อม",
+    ready: true,
+    purposeTh: "Analyzer / Multimodal",
+    capabilityTh: "วิเคราะห์คำสั่งจริงผ่าน Gemini generateContent พร้อม Structured JSON และ Locks",
+    credentialHintTh: "ใส่ Gemini API Key; สามารถเปลี่ยน Model ในช่อง Model ได้โดยไม่เปลี่ยน Adapter",
   },
   {
     id: "openai-image",
     label: "OpenAI Image",
     kind: "IMAGE",
     defaultBaseUrl: "https://api.openai.com/v1",
-    defaultModelId: "gpt-image-1",
+    defaultModelId: "gpt-image-2",
     systemKeyEnv: "OPENAI_API_KEY",
-    ready: false,
+    ready: true,
     purposeTh: "ภาพ Preview / Reference",
-    capabilityTh: "สร้างภาพอ้างอิงก่อนส่งต่อเข้า Video Generator; จะเปิดเมื่อ Image runtime พร้อม",
+    capabilityTh: "สร้างภาพจริงผ่าน Image Generation API และคืน Reference ให้ Workflow ใช้ต่อ",
+    credentialHintTh: "ใส่ OpenAI API Key ที่มีสิทธิ์ใช้ Image Generation; Default ใช้ gpt-image-2",
   },
   {
     id: "gemini-image",
     label: "Gemini Image",
     kind: "IMAGE",
     defaultBaseUrl: "https://generativelanguage.googleapis.com/v1beta",
-    defaultModelId: "gemini-2.5-flash-image",
+    defaultModelId: "gemini-3.1-flash-image",
     systemKeyEnv: "GEMINI_API_KEY",
-    ready: false,
-    purposeTh: "ภาพ Preview / Reference สำรอง",
-    capabilityTh: "สร้างภาพอ้างอิงและเตรียม Image-to-Video; จะเปิดเมื่อ Image runtime พร้อม",
+    ready: true,
+    purposeTh: "ภาพ Preview / Reference",
+    capabilityTh: "สร้างและแก้ภาพ Reference จริงผ่าน Gemini Interactions พร้อมรับภาพอ้างอิงหลายภาพ",
+    credentialHintTh: "ใส่ Gemini API Key; Default ใช้ gemini-3.1-flash-image และรองรับ Reference Image",
   },
   {
     id: "seedance",
@@ -100,7 +105,7 @@ export const API_PROVIDER_DEFINITIONS: ProviderDefinition[] = [
     ready: true,
     purposeTh: "Video Generator สำหรับ Motion / Character",
     capabilityTh: "สร้าง Text-to-Video และ Image-to-Video จริง พร้อม Poll งานและรองรับ Kling JWT",
-    credentialHintTh: "Kling ใช้ AccessKey + SecretKey: วางเป็น AccessKey:SecretKey หรือวาง 2 บรรทัดในช่อง Credential ระบบจะสร้าง JWT ให้เองอัตโนมัติ",
+    credentialHintTh: "Kling ใช้ AccessKey + SecretKey: วางเป็น AccessKey:SecretKey หรือวาง 2 บรรทัด ระบบจะสร้าง JWT ให้เอง",
   },
   {
     id: "veo",
@@ -112,7 +117,7 @@ export const API_PROVIDER_DEFINITIONS: ProviderDefinition[] = [
     ready: true,
     purposeTh: "Video Generator คุณภาพสูง",
     capabilityTh: "สร้าง Veo แบบ Long-running operation, Poll จนเสร็จ และ Proxy media ฝั่ง Server โดยไม่เปิดเผย Key",
-    credentialHintTh: "ใส่ Gemini API Key ที่มีสิทธิ์ใช้ Veo ระบบจะทดสอบสิทธิ์ก่อนบันทึกและใช้ Key ฝั่ง Server เท่านั้น",
+    credentialHintTh: "ใส่ Gemini API Key ที่มีสิทธิ์ใช้ Veo ระบบจะใช้ Key ฝั่ง Server เท่านั้น",
   },
   {
     id: "runway",
@@ -124,7 +129,7 @@ export const API_PROVIDER_DEFINITIONS: ProviderDefinition[] = [
     ready: true,
     purposeTh: "Video Generator ทางเลือก",
     capabilityTh: "สร้าง Gen-4.5 Text/Image-to-Video จริงและ Poll task จาก Runway Developer API",
-    credentialHintTh: "ใส่ Runway Developer API Key; SCENOVA จะส่ง X-Runway-Version และ Bearer token ให้อัตโนมัติ",
+    credentialHintTh: "ใส่ Runway Developer API Key; SCENOVA จะส่ง API Version และ Bearer token ให้อัตโนมัติ",
   },
   {
     id: "wan",
@@ -136,17 +141,19 @@ export const API_PROVIDER_DEFINITIONS: ProviderDefinition[] = [
     ready: true,
     purposeTh: "Video Generator ทางเลือก",
     capabilityTh: "สร้าง Wan Text/Image-to-Video แบบ asynchronous และ Poll task ผ่าน Alibaba Model Studio / DashScope",
-    credentialHintTh: "ใส่ DashScope/Model Studio API Key; ถ้าบัญชีใช้ Workspace URL ใหม่ สามารถเปลี่ยน API Base URL ให้ตรง Region/Workspace ได้",
+    credentialHintTh: "ใส่ DashScope/Model Studio API Key; ถ้าบัญชีใช้ Workspace URL ใหม่ เปลี่ยน API Base URL ให้ตรง Region ได้",
   },
   {
     id: "elevenlabs",
     label: "ElevenLabs",
     kind: "VOICE",
     defaultBaseUrl: "https://api.elevenlabs.io/v1",
+    defaultModelId: "eleven_multilingual_v2",
     systemKeyEnv: "ELEVENLABS_API_KEY",
-    ready: false,
+    ready: true,
     purposeTh: "Voice / TTS",
-    capabilityTh: "สร้างเสียงพูดตาม Voice Lock และ Dialogue; จะเปิดเมื่อ Voice runtime พร้อม",
+    capabilityTh: "สร้างเสียงพูดจริงตาม Voice ID และ Dialogue ผ่าน ElevenLabs Text-to-Speech",
+    credentialHintTh: "ใส่ ElevenLabs API Key; ตอนสร้างเสียงให้เลือก Voice ID จาก Voice Library ของบัญชีคุณ",
   },
   {
     id: "openai-voice",
@@ -155,9 +162,10 @@ export const API_PROVIDER_DEFINITIONS: ProviderDefinition[] = [
     defaultBaseUrl: "https://api.openai.com/v1",
     defaultModelId: "gpt-4o-mini-tts",
     systemKeyEnv: "OPENAI_API_KEY",
-    ready: false,
-    purposeTh: "Voice / TTS สำรอง",
-    capabilityTh: "สร้างเสียงพูดผ่าน OpenAI Audio API; จะเปิดเมื่อ Voice runtime พร้อม",
+    ready: true,
+    purposeTh: "Voice / TTS",
+    capabilityTh: "สร้างเสียงพูดจริงผ่าน Audio Speech API พร้อม Voice และ Instructions",
+    credentialHintTh: "ใส่ OpenAI API Key; Default ใช้ gpt-4o-mini-tts และ voice=alloy หากยังไม่เลือกเสียง",
   },
 ];
 
@@ -181,9 +189,9 @@ export function getPublicProviderCatalog(): PublicProviderDefinition[] {
 
 function classifyProbe(response: Response | null, providerLabel: string) {
   if (!response) return { ok: false as const, code: "PROVIDER_UNREACHABLE", message: `เชื่อมต่อ ${providerLabel} ไม่สำเร็จ` };
-  if (response.status === 401 || response.status === 403) return { ok: false as const, code: "INVALID_API_KEY", message: "Credential ไม่ถูกต้องหรือไม่มีสิทธิ์" };
+  if (response.status === 401 || response.status === 403) return { ok: false as const, code: "INVALID_API_KEY", message: "Credential ไม่ถูกต้อง ไม่มีสิทธิ์ หรือ Key ถูกจำกัด Scope" };
   if (response.status === 429) return { ok: false as const, code: "RATE_LIMITED", message: `${providerLabel} จำกัดการเรียกชั่วคราว กรุณาลองอีกครั้ง` };
-  // Credential probes intentionally use harmless reads / nonexistent task IDs. 400/404 can therefore mean auth passed.
+  // Credential probes use harmless reads / nonexistent task IDs. 400/404/405 can mean authentication passed.
   if (response.ok || response.status === 400 || response.status === 404 || response.status === 405) return { ok: true as const };
   return { ok: false as const, code: `PROVIDER_HTTP_${response.status}`, message: `${providerLabel} ตอบกลับผิดปกติ (HTTP ${response.status})` };
 }
@@ -192,6 +200,13 @@ async function probeBearer(baseUrl: string, path: string, apiKey: string, extraH
   return fetch(`${baseUrl}${path}`, {
     method: "GET",
     headers: { Authorization: `Bearer ${apiKey.trim()}`, ...(extraHeaders || {}) },
+    signal: AbortSignal.timeout(12_000),
+  }).catch(() => null);
+}
+
+async function probeGemini(baseUrl: string, apiKey: string) {
+  return fetch(`${baseUrl}/models?pageSize=1`, {
+    headers: { "x-goog-api-key": apiKey.trim() },
     signal: AbortSignal.timeout(12_000),
   }).catch(() => null);
 }
@@ -209,19 +224,18 @@ export async function testProviderConnection(input: {
   const baseUrl = (input.baseUrl?.trim() || definition.defaultBaseUrl).replace(/\/$/, "");
   let response: Response | null = null;
 
-  if (definition.id === "groq") {
+  if (definition.id === "groq" || definition.id === "openrouter") {
     response = await probeBearer(baseUrl, "/models", input.apiKey);
+  } else if (definition.id === "gemini" || definition.id === "gemini-image" || definition.id === "veo") {
+    response = await probeGemini(baseUrl, input.apiKey);
+  } else if (definition.id === "openai-image" || definition.id === "openai-voice") {
+    response = await probeBearer(baseUrl, `/models/${encodeURIComponent(definition.defaultModelId || "")}`, input.apiKey);
   } else if (definition.id === "seedance") {
     response = await probeBearer(baseUrl, "/contents/generations/tasks/scenova-credential-check", input.apiKey, { "Content-Type": "application/json" });
   } else if (definition.id === "kling") {
     const token = createKlingAuthorization(input.apiKey);
     if (!token) return { ok: false as const, code: "INVALID_API_KEY", message: "กรุณาใส่ Kling AccessKey:SecretKey หรือ Bearer/JWT token" };
     response = await probeBearer(baseUrl, "/v1/videos/text2video?pageNum=1&pageSize=1", token, { "Content-Type": "application/json" });
-  } else if (definition.id === "veo") {
-    response = await fetch(`${baseUrl}/models?pageSize=1`, {
-      headers: { "x-goog-api-key": input.apiKey.trim() },
-      signal: AbortSignal.timeout(12_000),
-    }).catch(() => null);
   } else if (definition.id === "runway") {
     response = await probeBearer(baseUrl, "/tasks/00000000-0000-4000-8000-000000000000", input.apiKey, {
       "X-Runway-Version": "2024-11-06",
@@ -229,6 +243,11 @@ export async function testProviderConnection(input: {
     });
   } else if (definition.id === "wan") {
     response = await probeBearer(baseUrl, "/tasks/scenova-credential-check", input.apiKey, { "Content-Type": "application/json" });
+  } else if (definition.id === "elevenlabs") {
+    response = await fetch(`${baseUrl}/models`, {
+      headers: { "xi-api-key": input.apiKey.trim() },
+      signal: AbortSignal.timeout(12_000),
+    }).catch(() => null);
   }
 
   const result = classifyProbe(response, definition.label);
