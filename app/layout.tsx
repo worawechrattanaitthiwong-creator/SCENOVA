@@ -7,6 +7,7 @@ import "./legacy-theme-overrides.css";
 import "./brand-system-v2.css";
 import "./brand-home-v3.css";
 import "./theme-system-v3.css";
+import "./sidebar-premium-v1.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://scnva.com"),
