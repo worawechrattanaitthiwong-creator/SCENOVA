@@ -42,7 +42,7 @@ jobs:
             User $VPS_USER
             IdentityFile ~/.ssh/id_ed25519
             BatchMode yes
-            ConnectTimeout 8
+            ConnectTimeout 6
             ConnectionAttempts 1
             ServerAliveInterval 10
             ServerAliveCountMax 2
@@ -52,19 +52,19 @@ jobs:
           chmod 600 ~/.ssh/config
 
           connected=0
-          for attempt in 1 2 3 4 5; do
-            echo "SSH connectivity check ${attempt}/5..."
-            if timeout 15s ssh scenova-vps 'true'; then
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            echo "SSH connectivity check ${attempt}/12..."
+            if timeout 12s ssh scenova-vps 'true'; then
               connected=1
               break
             fi
-            if [ "$attempt" -lt 5 ]; then
-              sleep 5
+            if [ "$attempt" -lt 12 ]; then
+              sleep 8
             fi
           done
 
           if [ "$connected" -ne 1 ]; then
-            echo "ERROR: unable to establish authenticated SSH connection to VPS after 5 bounded attempts"
+            echo "ERROR: unable to establish authenticated SSH connection to VPS after 12 bounded attempts"
             exit 1
           fi
 
