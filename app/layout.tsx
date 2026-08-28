@@ -12,6 +12,7 @@ import "./series-workspace-v4.css";
 import "./story-mode-polish-v2.css";
 import "./theme-audit-v4.css";
 import "./series-theme-fix-v5.css";
+import "./single-episode-compact-v1.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://scnva.com"),
