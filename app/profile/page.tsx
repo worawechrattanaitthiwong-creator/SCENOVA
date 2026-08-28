@@ -87,6 +87,17 @@ export default function ProfilePage() {
           <button onClick={logout} className={styles.logout}>ออกจากระบบ</button>
         </section>
 
+        <section className={styles.card}>
+          <div className={styles.securityHead}>
+            <div>
+              <span className={styles.eyebrow}>API & MODELS</span>
+              <h2>API Connections / BYOK</h2>
+              <p className={styles.muted}>นำ API Key ของคุณมาเชื่อมต่อกับ SCENOVA ได้โดยตรง Key จะถูกเข้ารหัสฝั่ง Server และหน้าเว็บจะไม่แสดง Key เต็มหลังบันทึก</p>
+            </div>
+          </div>
+          <button type="button" onClick={() => router.push("/profile/api")} className={styles.primary}>จัดการ API Connections</button>
+        </section>
+
         {me.role === "ADMIN" ? <section className={styles.card}>
           <div className={styles.securityHead}>
             <div>
