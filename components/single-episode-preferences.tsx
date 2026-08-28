@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 
 type OptionKey = "advancedSetup" | "blocking" | "camera" | "look" | "sound" | "continuity" | "review";
 type Options = Record<OptionKey, boolean>;
+type Hosts = Partial<Record<OptionKey, HTMLElement>>;
 
 const STORAGE_KEY = "scenova-single-episode-options-v1";
 const DEFAULTS: Options = {
@@ -17,15 +18,15 @@ const DEFAULTS: Options = {
   review: false,
 };
 
-const ITEMS: Array<{ key: OptionKey; label: string }> = [
-  { key: "advancedSetup", label: "Locks / Negative" },
-  { key: "blocking", label: "Blocking รายคน" },
-  { key: "camera", label: "กล้องขั้นสูง" },
-  { key: "look", label: "แสง / การแสดง" },
-  { key: "sound", label: "เสียง / SFX" },
-  { key: "continuity", label: "Continuity" },
-  { key: "review", label: "ตรวจความพร้อม" },
-];
+const META: Record<OptionKey, { stage: string; label: string }> = {
+  advancedSetup: { stage: "ตั้งค่าตอน", label: "ใช้ Locks / Negative Prompt" },
+  blocking: { stage: "ตัวละครในฉาก", label: "กำหนด Blocking รายคน" },
+  camera: { stage: "กำกับภาพ", label: "ใช้กล้องและเลนส์ขั้นสูง" },
+  look: { stage: "ภาพและการแสดง", label: "กำหนดแสง สี และ Performance" },
+  sound: { stage: "เสียง", label: "ใช้ Ambience / SFX / Music" },
+  continuity: { stage: "ความต่อเนื่อง", label: "ใช้ Continuity / ข้อห้ามเฉพาะฉาก" },
+  review: { stage: "ก่อน Render", label: "เปิดตรวจความพร้อมก่อนสร้าง" },
+};
 
 function readOptions(): Options {
   if (typeof window === "undefined") return DEFAULTS;
@@ -52,9 +53,51 @@ function applyOptions(main: HTMLElement, options: Options) {
   main.dataset.seReview = String(options.review);
 }
 
+function ensureHostBefore(anchor: HTMLElement | null, key: OptionKey): HTMLElement | null {
+  const parent = anchor?.parentElement;
+  if (!anchor || !parent) return null;
+
+  let host = parent.querySelector<HTMLElement>(`:scope > [data-se-option-host="${key}"]`);
+  if (!host) {
+    host = document.createElement("div");
+    host.dataset.seOptionHost = key;
+    host.style.margin = "6px 0";
+    parent.insertBefore(host, anchor);
+  }
+  return host;
+}
+
+function sameHosts(a: Hosts, b: Hosts) {
+  const keys = Object.keys(META) as OptionKey[];
+  return keys.every((key) => a[key] === b[key]);
+}
+
+function InlineToggle({ optionKey, checked, onChange }: { optionKey: OptionKey; checked: boolean; onChange: (checked: boolean) => void }) {
+  const meta = META[optionKey];
+  return (
+    <div
+      className="sc-se-options"
+      aria-label={`${meta.stage}: ${meta.label}`}
+      style={{ minHeight: 36, padding: "5px 8px", margin: 0, gap: 8, borderRadius: 9 }}
+    >
+      <div className="sc-se-options__title" style={{ minWidth: 106, paddingRight: 8 }}>
+        <strong style={{ fontSize: 11 }}>{meta.stage}</strong>
+        <span style={{ fontSize: 9 }}>ส่วนเสริม</span>
+      </div>
+      <div className="sc-se-options__items" style={{ flex: 1 }}>
+        <label className={checked ? "is-on" : ""} style={{ minHeight: 27, padding: "4px 8px", fontSize: 10 }}>
+          <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+          <span>{meta.label}</span>
+        </label>
+        <span style={{ fontSize: 9, opacity: 0.58, whiteSpace: "nowrap" }}>{checked ? "เปิดใช้งาน" : "ไม่ใช้ — ซ่อนส่วนนี้"}</span>
+      </div>
+    </div>
+  );
+}
+
 export default function SingleEpisodePreferences() {
   const [options, setOptions] = useState<Options>(DEFAULTS);
-  const [host, setHost] = useState<HTMLElement | null>(null);
+  const [hosts, setHosts] = useState<Hosts>({});
 
   useEffect(() => {
     setOptions(readOptions());
@@ -62,19 +105,32 @@ export default function SingleEpisodePreferences() {
     const locate = () => {
       const main = findMain();
       if (!main) {
-        setHost(null);
+        setHosts((current) => Object.keys(current).length ? {} : current);
         return;
       }
 
-      let nextHost = main.querySelector<HTMLElement>(":scope > [data-single-episode-options-host]");
-      if (!nextHost) {
-        nextHost = document.createElement("div");
-        nextHost.dataset.singleEpisodeOptionsHost = "1";
-        const hero = main.querySelector<HTMLElement>('[class*="single-episode-studio_hero"]');
-        if (hero?.nextSibling) main.insertBefore(nextHost, hero.nextSibling);
-        else main.prepend(nextHost);
-      }
-      setHost((current) => current === nextHost ? current : nextHost);
+      // Remove the old all-in-one options bar from the previous layout, if it still exists in the DOM.
+      main.querySelectorAll<HTMLElement>(":scope > [data-single-episode-options-host]").forEach((node) => node.remove());
+
+      const next: Hosts = {};
+      const setup = main.querySelector<HTMLElement>("#setup");
+      const lockGrid = setup?.querySelector<HTMLElement>('[class*="single-episode-studio_lockGrid"]') || null;
+      next.advancedSetup = ensureHostBefore(lockGrid, "advancedSetup") || undefined;
+
+      const sceneEditor = main.querySelector<HTMLElement>('[class*="single-episode-studio_sceneEditor"]');
+      const blocks = sceneEditor
+        ? Array.from(sceneEditor.querySelectorAll<HTMLElement>('section[class*="single-episode-studio_directorBlock"]'))
+        : [];
+      next.blocking = ensureHostBefore(blocks[0] || null, "blocking") || undefined;
+      next.camera = ensureHostBefore(blocks[2] || null, "camera") || undefined;
+      next.look = ensureHostBefore(blocks[3] || null, "look") || undefined;
+      next.sound = ensureHostBefore(blocks[4] || null, "sound") || undefined;
+      next.continuity = ensureHostBefore(blocks[5] || null, "continuity") || undefined;
+
+      const review = main.querySelector<HTMLElement>('[class*="single-episode-studio_reviewPanel"]');
+      next.review = ensureHostBefore(review, "review") || undefined;
+
+      setHosts((current) => sameHosts(current, next) ? current : next);
     };
 
     locate();
@@ -88,33 +144,27 @@ export default function SingleEpisodePreferences() {
   }, []);
 
   useEffect(() => {
-    const main = host?.closest<HTMLElement>('main[class*="single-episode-studio_main"]');
+    const main = findMain();
     if (!main) return;
     applyOptions(main, options);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(options));
-  }, [host, options]);
+  }, [options, hosts]);
 
-  if (!host) return null;
+  const portals = (Object.keys(META) as OptionKey[])
+    .map((key) => {
+      const host = hosts[key];
+      if (!host) return null;
+      return createPortal(
+        <InlineToggle
+          optionKey={key}
+          checked={options[key]}
+          onChange={(checked) => setOptions((current) => ({ ...current, [key]: checked }))}
+        />,
+        host,
+        key,
+      );
+    })
+    .filter(Boolean);
 
-  return createPortal(
-    <div className="sc-se-options" aria-label="ส่วนเสริม Single Episode">
-      <div className="sc-se-options__title">
-        <strong>ส่วนเสริม</strong>
-        <span>ติ๊กเฉพาะสิ่งที่ต้องใช้</span>
-      </div>
-      <div className="sc-se-options__items">
-        {ITEMS.map((item) => (
-          <label key={item.key} className={options[item.key] ? "is-on" : ""}>
-            <input
-              type="checkbox"
-              checked={options[item.key]}
-              onChange={(event) => setOptions((current) => ({ ...current, [item.key]: event.target.checked }))}
-            />
-            <span>{item.label}</span>
-          </label>
-        ))}
-      </div>
-    </div>,
-    host,
-  );
+  return <>{portals}</>;
 }
