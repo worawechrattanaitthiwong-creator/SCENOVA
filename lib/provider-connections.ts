@@ -5,6 +5,7 @@ import {
   randomBytes,
   randomUUID,
 } from "node:crypto";
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 
 export type ProviderCategory = "ANALYZER" | "VIDEO" | "IMAGE" | "VOICE";
@@ -195,7 +196,7 @@ async function writeAudit(userId: string, action: string, resourceId: string | n
       action,
       resource: "provider-credential",
       resourceId,
-      metadata: metadata || undefined,
+      metadata: metadata ? (metadata as Prisma.InputJsonObject) : undefined,
     },
   });
 }
