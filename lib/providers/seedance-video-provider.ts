@@ -1,6 +1,6 @@
 import type { ModelDefinition } from "@/lib/domain";
 import { assertEmergencyCapability, enforceEmergencyRateLimit } from "@/lib/emergency-security";
-import type { GenerateVideoRequest, GenerateVideoResult, VideoProvider } from "@/lib/providers/video-provider";
+import type { GenerateVideoRequest, GenerateVideoResult, ProviderRuntimeCredential, VideoProvider } from "@/lib/providers/video-provider";
 
 const DEFAULT_BASE_URL = "https://operator.las.ap-southeast-1.bytepluses.com/api/v1";
 const DEFAULT_MODEL = "dreamina-seedance-2-5-260628";
@@ -38,9 +38,18 @@ function providerError(body: unknown, status: number) {
 
 export class Seedance25VideoProvider implements VideoProvider {
   id = "byteplus-seedance-2.5";
-  private readonly apiKey = process.env.SEEDANCE_API_KEY || process.env.BYTEPLUS_LAS_API_KEY || "";
-  private readonly baseUrl = (process.env.SEEDANCE_API_BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, "");
-  private readonly modelId = process.env.SEEDANCE_MODEL_ID || DEFAULT_MODEL;
+  credentialProviderId = "seedance";
+  billingMode: "BYOK" | "SYSTEM";
+  private readonly apiKey: string;
+  private readonly baseUrl: string;
+  private readonly modelId: string;
+
+  constructor(credential?: ProviderRuntimeCredential) {
+    this.apiKey = credential?.apiKey || process.env.SEEDANCE_API_KEY || process.env.BYTEPLUS_LAS_API_KEY || "";
+    this.baseUrl = (credential?.baseUrl || process.env.SEEDANCE_API_BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, "");
+    this.modelId = credential?.modelId || process.env.SEEDANCE_MODEL_ID || DEFAULT_MODEL;
+    this.billingMode = credential?.billingMode || "SYSTEM";
+  }
 
   isConfigured() {
     return Boolean(this.apiKey);
@@ -65,6 +74,7 @@ export class Seedance25VideoProvider implements VideoProvider {
   }
 
   async estimateCost(request: GenerateVideoRequest) {
+    if (this.billingMode === "BYOK") return { currency: "THB" as const, estimatedAmount: 0 };
     const duration = Math.max(4, Math.min(30, request.renderSegment.duration));
     const resolution = normalizedResolution(request.resolution);
     const baseUsdPerSecond = numberEnv("SEEDANCE_BASE_USD_PER_SECOND", 0.303);
@@ -119,10 +129,10 @@ export class Seedance25VideoProvider implements VideoProvider {
     });
     const body = await response.json().catch(() => ({})) as Record<string, unknown>;
     if (!response.ok) throw providerError(body, response.status);
-    const rawStatus = String(body.status || "queued");
+    const rawStatus = String(body.status || "queued").toLowerCase();
     const content = body.content && typeof body.content === "object" ? body.content as Record<string, unknown> : {};
     const error = body.error && typeof body.error === "object" ? JSON.stringify(body.error) : typeof body.error === "string" ? body.error : undefined;
-    const status: GenerateVideoResult["status"] = rawStatus === "succeeded" ? "completed" : rawStatus === "failed" || rawStatus === "expired" || rawStatus === "cancelled" ? "failed" : rawStatus === "running" ? "generating" : "queued";
+    const status: GenerateVideoResult["status"] = rawStatus === "succeeded" ? "completed" : ["failed", "expired", "cancelled", "canceled"].includes(rawStatus) ? "failed" : rawStatus === "running" ? "generating" : "queued";
     return {
       providerTaskId,
       status,
