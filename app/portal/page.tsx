@@ -43,14 +43,14 @@ function QuickIcon({ name }: { name: (typeof QUICK_ACTIONS)[number]["icon"] }) {
 function SectionHeading({ title, id, href }: { title: string; id: string; href?: string }) {
   return <div className={`${styles.sectionHead} ${refine.sectionHead}`}>
     <div className={`${styles.sectionTitle} ${refine.sectionTitle}`}><h2 id={id}>{title}</h2></div>
-    {href ? <Link href={href} prefetch={false} className={styles.viewAll}>ดูทั้งหมด <Arrow /></Link> : null}
+    {href ? <Link href={href} prefetch={false} className={`${styles.viewAll} ${refine.viewAll}`}>ดูทั้งหมด <Arrow /></Link> : null}
   </div>;
 }
 
 export default function PortalPage() {
   return <main className={`${styles.dashboard} ${refine.dashboard}`}>
     <section className={`${styles.hero} ${refine.hero}`} aria-label="SCENOVA AI Film Studio">
-      <img className={styles.heroImage} src="/media/scenova-portal-hero.png" alt="" fetchPriority="high" decoding="sync" />
+      <img className={`${styles.heroImage} ${refine.heroImage}`} src="/media/scenova-portal-hero.png" alt="" fetchPriority="high" decoding="sync" />
       <span className={styles.heroScrim} aria-hidden="true" />
       <span className={styles.heroClouds} aria-hidden="true" />
       <span className={styles.heroLights} aria-hidden="true" />
@@ -63,8 +63,8 @@ export default function PortalPage() {
       </div>
     </section>
 
-    <section className={`${styles.quickSection} ${refine.section}`} aria-labelledby="quick-title">
-      <SectionHeading id="quick-title" title="เริ่มต้นสร้างในแบบของคุณ" />
+    <section className={`${styles.quickSection} ${refine.section} ${refine.quickSection}`} aria-labelledby="quick-title">
+      <SectionHeading id="quick-title" title="เริ่มสร้างได้ทันที" />
       <div className={`${styles.quickGrid} ${refine.quickGrid}`}>
         {QUICK_ACTIONS.map((item, index) => <Link href={item.href} prefetch={false} key={item.title} className={`${styles.quickCard} ${refine.quickCard}`} data-tone={item.tone}>
           <span className={`${styles.quickNumber} ${refine.quickNumber}`}>{String(index + 1).padStart(2, "0")}</span>
@@ -75,20 +75,20 @@ export default function PortalPage() {
       </div>
     </section>
 
-    <section className={`${styles.templates} ${refine.section}`} aria-labelledby="template-heading">
-      <SectionHeading id="template-heading" title="เทมเพลตและแนวภาพยนตร์" href="/libraries?tab=images" />
+    <section className={`${styles.templates} ${refine.section} ${refine.templateSection}`} aria-labelledby="template-heading">
+      <SectionHeading id="template-heading" title="เลือกแนวภาพยนตร์" href="/libraries?tab=images" />
       <CarouselRow label="เทมเพลตและแนวภาพยนตร์">
         {TEMPLATES.map((template) => <Link href="/libraries?tab=images" prefetch={false} key={template.title} className={`${styles.templateCard} ${refine.templateCard}`}>
-          <Image src={template.image} alt={`ตัวอย่างสไตล์ ${template.title}`} fill sizes="(max-width: 700px) 82vw, 320px" />
-          <span className={styles.templateShade} aria-hidden="true" />
+          <Image src={template.image} alt={`ตัวอย่างสไตล์ ${template.title}`} fill sizes="(max-width: 700px) 86vw, 340px" />
+          <span className={`${styles.templateShade} ${refine.templateShade}`} aria-hidden="true" />
           <span className={`${styles.templateCopy} ${refine.templateCopy}`}><b>{template.title}</b></span>
-          <span className={styles.templateArrow}><Arrow /></span>
+          <span className={`${styles.templateArrow} ${refine.templateArrow}`}><Arrow /></span>
         </Link>)}
       </CarouselRow>
     </section>
 
-    <section className={`${styles.templates} ${styles.characterSection} ${refine.section}`} aria-labelledby="character-heading">
-      <SectionHeading id="character-heading" title="เทมเพลตตัวละครพร้อมสร้างเรื่อง" href="/studio#characters" />
+    <section className={`${styles.templates} ${styles.characterSection} ${refine.section} ${refine.characterSection}`} aria-labelledby="character-heading">
+      <SectionHeading id="character-heading" title="เลือกตัวละครเริ่มต้น" href="/studio#characters" />
       <CharacterTemplateRow />
     </section>
   </main>;
