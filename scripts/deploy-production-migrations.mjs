@@ -1,6 +1,8 @@
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
-import { loadEnvConfig } from "@next/env";
+import nextEnv from "@next/env";
+
+const { loadEnvConfig } = nextEnv;
 
 process.env.NODE_ENV = "production";
 loadEnvConfig(process.cwd(), false);
