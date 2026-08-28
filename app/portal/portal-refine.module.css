@@ -2,53 +2,76 @@
   width: 100%;
   height: 100%;
   min-height: 0;
-  padding: 8px 12px 10px;
+  padding: 8px 12px 12px;
   display: grid;
-  grid-template-rows: auto auto auto auto;
+  grid-template-rows: minmax(0, auto) auto auto auto;
   align-content: start;
-  gap: 8px;
+  gap: 10px;
   overflow: hidden;
+  background:
+    radial-gradient(circle at 72% 0%, rgba(139, 74, 204, .08), transparent 32%),
+    linear-gradient(180deg, #111014 0%, #17151a 100%);
 }
 
 .hero {
-  height: clamp(285px, 35dvh, 385px);
+  height: clamp(330px, 38dvh, 430px);
   border-radius: 18px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, .34);
+}
+
+.heroImage {
+  transform: none;
+  object-fit: cover;
+  object-position: 67% 50%;
 }
 
 .heroContent {
-  width: min(47%, 680px);
-  padding: clamp(26px, 3vw, 48px) clamp(28px, 3.3vw, 58px);
+  width: min(48%, 700px);
+  padding: clamp(30px, 3.4vw, 58px) clamp(30px, 3.5vw, 62px);
 }
 
 .heroContent h1 {
-  margin-top: 0;
-  font-size: clamp(34px, 2.85vw, 54px);
-  line-height: 1.04;
+  margin: 0;
+  font-size: clamp(38px, 3vw, 58px);
+  line-height: 1.03;
+  letter-spacing: -.035em;
 }
 
 .heroActions {
-  margin-top: 20px;
+  margin-top: 22px;
 }
 
 .heroActions a {
-  min-height: 42px;
-  padding-inline: 17px;
-  font-size: 11px;
+  min-height: 44px;
+  padding-inline: 18px;
+  font-size: 12px;
 }
 
 .section {
-  margin: 0;
   min-height: 0;
+  margin: 0;
+}
+
+.quickSection {
+  margin-top: 0;
+}
+
+.templateSection {
+  margin-top: 5px;
+}
+
+.characterSection {
+  margin-top: 1px;
 }
 
 .sectionHead {
-  min-height: 27px;
-  margin-bottom: 4px;
+  min-height: 30px;
+  margin-bottom: 7px;
   align-items: center;
 }
 
 .sectionTitle {
-  padding-left: 11px;
+  padding-left: 12px;
 }
 
 .sectionTitle::before {
@@ -57,25 +80,33 @@
 }
 
 .sectionTitle h2 {
-  font-size: clamp(16px, 1.25vw, 20px);
-  line-height: 1.12;
+  color: #f7f2f9;
+  font-size: clamp(17px, 1.22vw, 21px);
+  line-height: 1.1;
+  font-weight: 800;
+}
+
+.viewAll {
+  min-height: 29px;
+  padding-inline: 11px;
+  font-size: 9px;
 }
 
 .quickGrid {
-  gap: 6px;
+  gap: 7px;
 }
 
 .quickCard {
   min-height: 66px;
-  padding: 9px 24px 9px 9px;
-  grid-template-columns: 38px minmax(0, 1fr);
-  gap: 9px;
+  padding: 9px 25px 9px 10px;
+  grid-template-columns: 39px minmax(0, 1fr);
+  gap: 10px;
   border-radius: 12px;
 }
 
 .quickIcon {
-  width: 38px;
-  height: 38px;
+  width: 39px;
+  height: 39px;
   border-radius: 10px;
 }
 
@@ -84,65 +115,146 @@
   height: 20px;
 }
 
-.quickCopy b {
+.quickCard b {
   font-size: 12px;
 }
 
 .quickNumber {
-  top: 5px;
+  top: 6px;
   right: 7px;
 }
 
 .quickArrow {
-  right: 7px;
-  bottom: 7px;
+  right: 8px;
+  bottom: 8px;
 }
 
-.templateTrack {
-  grid-auto-columns: clamp(235px, 19.5vw, 320px);
-  gap: 6px;
-  padding: 1px 42px;
+.templateSection :global([class*="templateTrack"]),
+.characterSection :global([class*="templateTrack"]) {
+  grid-auto-columns: clamp(270px, 20.5vw, 350px);
+  gap: 10px;
+  padding: 2px 42px 3px;
 }
 
 .templateCard {
-  height: clamp(120px, 14dvh, 160px);
-  border-radius: 12px;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  border-radius: 14px;
+}
+
+.templateCard > img {
+  object-fit: cover;
+  object-position: center;
+}
+
+.templateShade {
+  background: linear-gradient(180deg, transparent 42%, rgba(4, 3, 7, .1) 58%, rgba(4, 3, 7, .92) 100%);
 }
 
 .templateCopy {
-  left: 12px;
-  right: 38px;
-  bottom: 10px;
+  left: 14px;
+  right: 42px;
+  bottom: 12px;
 }
 
 .templateCopy b {
-  font-size: 11px;
+  font-size: 12px;
+  line-height: 1.2;
 }
 
-.characterCard {
-  height: clamp(118px, 13.5dvh, 154px);
+.templateArrow {
+  right: 11px;
+  bottom: 10px;
+  width: 25px;
+  height: 25px;
+}
+
+.characterSection :global([class*="templateCard"]) {
+  height: auto;
+  aspect-ratio: 16 / 9;
+}
+
+.characterSection :global([class*="templateCopy"]) small,
+.characterSection small[data-keep-small="true"] {
+  display: none !important;
+}
+
+.characterSection :global([class*="templateCopy"]) {
+  left: 14px;
+  right: 42px;
+  bottom: 12px;
+}
+
+:global(html[data-theme="light"]) .dashboard {
+  color: #201a28;
+  background:
+    radial-gradient(circle at 78% -12%, rgba(139, 74, 204, .07), transparent 32%),
+    linear-gradient(180deg, #f7f5fa 0%, #f1eef5 100%);
+}
+
+:global(html[data-theme="light"]) .sectionTitle h2 {
+  color: #231b2b;
+}
+
+:global(html[data-theme="light"]) .quickCard {
+  border-color: rgba(var(--tone), .22);
+  color: #271f2e;
+  background:
+    radial-gradient(circle at 0 100%, rgba(var(--tone), .09), transparent 42%),
+    linear-gradient(145deg, rgba(255, 255, 255, .98), rgba(246, 242, 249, .98));
+  box-shadow: 0 5px 18px rgba(53, 35, 68, .06), inset 0 1px rgba(255, 255, 255, .9);
+}
+
+:global(html[data-theme="light"]) .quickCard:hover {
+  border-color: rgba(var(--tone), .46);
+  box-shadow: 0 10px 24px rgba(53, 35, 68, .1);
+}
+
+:global(html[data-theme="light"]) .quickCard b {
+  color: #251d2c;
+}
+
+:global(html[data-theme="light"]) .quickNumber {
+  color: rgba(45, 31, 55, .22);
+}
+
+:global(html[data-theme="light"]) .viewAll {
+  color: #793daf !important;
+  border-color: rgba(126, 68, 167, .2);
+  background: rgba(255, 255, 255, .72);
+}
+
+:global(html[data-theme="light"]) .templateSection,
+:global(html[data-theme="light"]) .characterSection {
+  color: #211926;
+}
+
+:global(html[data-theme="light"]) .templateCard {
+  border-color: rgba(91, 64, 108, .18);
+  box-shadow: 0 8px 22px rgba(42, 27, 53, .09);
 }
 
 @media (min-width: 821px) and (max-height: 920px) {
   .dashboard {
     padding-block: 6px 8px;
-    gap: 6px;
+    gap: 7px;
   }
 
   .hero {
-    height: clamp(245px, 31dvh, 300px);
+    height: clamp(300px, 35dvh, 340px);
   }
 
   .heroContent {
-    padding-block: 22px;
+    padding-block: 24px;
   }
 
   .heroContent h1 {
-    font-size: clamp(31px, 2.55vw, 44px);
+    font-size: clamp(34px, 2.7vw, 48px);
   }
 
   .heroActions {
-    margin-top: 14px;
+    margin-top: 16px;
   }
 
   .quickCard {
@@ -159,12 +271,14 @@
     grid-template-columns: 34px minmax(0, 1fr);
   }
 
-  .templateCard {
-    height: clamp(100px, 12dvh, 122px);
+  .templateSection :global([class*="templateTrack"]),
+  .characterSection :global([class*="templateTrack"]) {
+    grid-auto-columns: clamp(245px, 19.5vw, 315px);
   }
 
-  .characterCard {
-    height: clamp(98px, 11.5dvh, 118px);
+  .templateCard,
+  .characterSection :global([class*="templateCard"]) {
+    aspect-ratio: 16 / 8.7;
   }
 }
 
@@ -178,33 +292,43 @@
   }
 
   .hero {
-    height: 360px;
+    height: 390px;
     margin-top: 0;
   }
 
   .heroContent {
     width: 100%;
-    padding: 24px 20px;
+    padding: 28px 20px;
+  }
+
+  .heroContent h1 {
+    font-size: clamp(34px, 9vw, 46px);
   }
 
   .section {
-    margin-top: 16px;
+    margin-top: 18px;
+  }
+
+  .templateSection {
+    margin-top: 24px;
   }
 
   .sectionHead {
-    margin-bottom: 7px;
+    margin-bottom: 9px;
   }
 
   .quickGrid {
     grid-auto-columns: minmax(210px, 66vw);
   }
 
-  .templateTrack {
-    grid-auto-columns: minmax(250px, 74vw);
+  .templateSection :global([class*="templateTrack"]),
+  .characterSection :global([class*="templateTrack"]) {
+    grid-auto-columns: minmax(270px, 80vw);
+    padding-inline: 42px;
   }
 
   .templateCard,
-  .characterCard {
-    height: 170px;
+  .characterSection :global([class*="templateCard"]) {
+    aspect-ratio: 16 / 9;
   }
 }
