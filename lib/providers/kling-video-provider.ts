@@ -13,7 +13,7 @@ function base64Url(value: string | Buffer) {
   return Buffer.from(value).toString("base64url");
 }
 
-function parseCredentials(raw: string): KlingCredentials {
+export function parseKlingCredentials(raw: string): KlingCredentials {
   const value = raw.trim();
   if (!value) return { mode: "token", token: "" };
   if (value.startsWith("{")) {
@@ -43,6 +43,13 @@ export function createKlingJwt(accessKey: string, secretKey: string, nowSeconds 
   return `${input}.${signature}`;
 }
 
+export function createKlingAuthorization(raw: string) {
+  const credentials = parseKlingCredentials(raw);
+  return credentials.mode === "jwt-pair"
+    ? createKlingJwt(credentials.accessKey, credentials.secretKey)
+    : credentials.token;
+}
+
 export class KlingVideoProvider implements VideoProvider {
   id = "kling";
   credentialProviderId = "kling";
@@ -55,7 +62,7 @@ export class KlingVideoProvider implements VideoProvider {
     const envPair = process.env.KLING_ACCESS_KEY && process.env.KLING_SECRET_KEY
       ? `${process.env.KLING_ACCESS_KEY}:${process.env.KLING_SECRET_KEY}`
       : process.env.KLING_API_KEY || "";
-    this.credentials = parseCredentials(credential?.apiKey || envPair);
+    this.credentials = parseKlingCredentials(credential?.apiKey || envPair);
     this.baseUrl = (credential?.baseUrl || process.env.KLING_API_BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, "");
     this.modelId = credential?.modelId || process.env.KLING_MODEL_ID || DEFAULT_MODEL;
     this.billingMode = credential?.billingMode || "SYSTEM";
