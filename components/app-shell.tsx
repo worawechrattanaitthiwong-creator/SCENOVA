@@ -141,7 +141,7 @@ function WorkspaceShell({ children, pathname }: { children: React.ReactNode; pat
     return Math.max(0, rail.findIndex((item) => new URL(item.href, "https://scenova.local").pathname === pathname));
   }, [rail, pathname, searchParams, hash]);
 
-  if (checking || !me.authenticated) return <LoadingWorkspace />;
+  if (!checking && !me.authenticated) return null;
 
   const navLink = (item: WorkspaceNavItem) => {
     const isAdminUsers = item.href === "/portal#guide";
@@ -207,5 +207,5 @@ function WorkspaceShell({ children, pathname }: { children: React.ReactNode; pat
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   if (pathname === "/" || pathname === "/login") return <>{children}</>;
-  return <Suspense fallback={<LoadingWorkspace />}><WorkspaceShell pathname={pathname}>{children}</WorkspaceShell></Suspense>;
+  return <Suspense fallback={null}><WorkspaceShell pathname={pathname}>{children}</WorkspaceShell></Suspense>;
 }
