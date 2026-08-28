@@ -10,7 +10,8 @@ import {
   upsertUserApiConnection,
   type ApiConnectionKind,
 } from "@/lib/api-connections/store";
-import { getProviderDefinition, testProviderConnection } from "@/lib/api-connections/providers";
+import { getProviderDefinition, getPublicProviderCatalog, testProviderConnection } from "@/lib/api-connections/providers";
+import { buildApiRoutingSnapshot } from "@/lib/api-connections/routing";
 
 export const runtime = "nodejs";
 
@@ -53,7 +54,12 @@ export async function GET() {
 
   try {
     const connections = await listUserApiConnections(user.id);
-    return NextResponse.json({ ok: true, connections });
+    return NextResponse.json({
+      ok: true,
+      connections,
+      providers: getPublicProviderCatalog(),
+      routing: buildApiRoutingSnapshot(connections),
+    });
   } catch (error) {
     return errorResponse(error);
   }
