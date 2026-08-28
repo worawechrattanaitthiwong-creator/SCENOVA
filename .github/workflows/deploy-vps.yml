@@ -82,6 +82,15 @@ jobs:
               exit 1
             fi
 
+            # Bootstrap a persistent server-only BYOK encryption key once.
+            # Never echo the generated secret into CI logs.
+            if ! grep -Eq '^API_KEY_ENCRYPTION_KEY=.+$' .env.production; then
+              api_key_encryption_key="$(openssl rand -base64 32 | tr -d '\r\n')"
+              printf '\nAPI_KEY_ENCRYPTION_KEY="%s"\n' "$api_key_encryption_key" >> .env.production
+              unset api_key_encryption_key
+              echo "BYOK encryption key initialized on VPS"
+            fi
+
             git fetch origin main
             git checkout -B main FETCH_HEAD
 
@@ -91,6 +100,10 @@ jobs:
             npm run typecheck
             npm run test
             npm run build
+
+            # Apply committed schema migrations only after build/tests pass,
+            # immediately before the process reload.
+            npm run db:deploy
 
             pm2 reload ecosystem.config.cjs --update-env
             pm2 save
