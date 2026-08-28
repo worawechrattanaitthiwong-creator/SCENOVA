@@ -8,7 +8,7 @@ on:
 
 concurrency:
   group: scenova-main-production-v2
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -42,29 +42,29 @@ jobs:
             User $VPS_USER
             IdentityFile ~/.ssh/id_ed25519
             BatchMode yes
-            ConnectTimeout 15
-            ConnectionAttempts 2
-            ServerAliveInterval 15
-            ServerAliveCountMax 3
+            ConnectTimeout 8
+            ConnectionAttempts 1
+            ServerAliveInterval 10
+            ServerAliveCountMax 2
             StrictHostKeyChecking accept-new
             UserKnownHostsFile ~/.ssh/known_hosts
           EOF
           chmod 600 ~/.ssh/config
 
           connected=0
-          for attempt in 1 2 3 4 5 6 7 8 9 10; do
-            echo "SSH connectivity check ${attempt}/10..."
-            if ssh scenova-vps 'true'; then
+          for attempt in 1 2 3 4 5; do
+            echo "SSH connectivity check ${attempt}/5..."
+            if timeout 15s ssh scenova-vps 'true'; then
               connected=1
               break
             fi
-            if [ "$attempt" -lt 10 ]; then
-              sleep $((attempt < 5 ? 5 : 10))
+            if [ "$attempt" -lt 5 ]; then
+              sleep 5
             fi
           done
 
           if [ "$connected" -ne 1 ]; then
-            echo "ERROR: unable to establish authenticated SSH connection to VPS after 10 attempts"
+            echo "ERROR: unable to establish authenticated SSH connection to VPS after 5 bounded attempts"
             exit 1
           fi
 
