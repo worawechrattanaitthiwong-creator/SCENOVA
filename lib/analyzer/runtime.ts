@@ -241,7 +241,8 @@ export async function analyzeProductionPromptUniversal(input: {
     };
   } catch (error) {
     const status = Number((error as { status?: unknown })?.status || 0);
-    const detail = String((error as { providerBody?: unknown })?.providerBody || error instanceof Error ? error.message : error).slice(0, 500);
+    const providerBody = (error as { providerBody?: unknown })?.providerBody;
+    const detail = String(providerBody || (error instanceof Error ? error.message : error)).slice(0, 500);
     if (credential.connectionId) {
       await markApiConnectionStatus({
         userId: input.userId,
