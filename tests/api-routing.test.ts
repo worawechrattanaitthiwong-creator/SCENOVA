@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { SafeApiConnection } from "@/lib/api-connections/store";
 import { API_ROUTE_STAGES, buildApiRoutingSnapshot, getApiRouteStage } from "@/lib/api-connections/routing";
 import { getPublicProviderCatalog } from "@/lib/api-connections/providers";
+import { createKlingAuthorization, createKlingJwt } from "@/lib/providers/kling-video-provider";
 
 function connection(overrides: Partial<SafeApiConnection> & Pick<SafeApiConnection, "id" | "provider" | "kind">): SafeApiConnection {
   return {
@@ -49,19 +50,25 @@ describe("API pipeline routing", () => {
 });
 
 describe("provider registry readiness", () => {
-  it("only exposes actually implemented adapters as ready", () => {
+  it("exposes every provider with an implemented runtime as ready", () => {
     const providers = getPublicProviderCatalog();
-    const groq = providers.find((provider) => provider.id === "groq");
-    const seedance = providers.find((provider) => provider.id === "seedance");
-    const kling = providers.find((provider) => provider.id === "kling");
-    const veo = providers.find((provider) => provider.id === "veo");
+    const expectedByStage = {
+      A: ["groq", "openrouter", "gemini"],
+      B: ["openai-image", "gemini-image"],
+      C: ["seedance", "kling", "veo", "runway", "wan"],
+      D: ["elevenlabs", "openai-voice"],
+    } as const;
 
-    expect(groq?.status).toBe("READY");
-    expect(groq?.stageId).toBe("A");
-    expect(seedance?.status).toBe("ADAPTER_PENDING");
-    expect(kling?.status).toBe("ADAPTER_PENDING");
-    expect(veo?.status).toBe("ADAPTER_PENDING");
-    expect(seedance?.stageId).toBe("C");
+    for (const [stageId, ids] of Object.entries(expectedByStage)) {
+      for (const id of ids) {
+        const provider = providers.find((item) => item.id === id);
+        expect(provider, `${id} must exist in provider catalog`).toBeTruthy();
+        expect(provider?.status, `${id} must only be marked ready after its runtime exists`).toBe("READY");
+        expect(provider?.ready).toBe(true);
+        expect(provider?.stageId).toBe(stageId);
+        expect(provider?.defaultBaseUrl).toBeTruthy();
+      }
+    }
   });
 
   it("assigns every provider to a known pipeline stage", () => {
@@ -70,5 +77,19 @@ describe("provider registry readiness", () => {
     for (const provider of providers) {
       expect(["A", "B", "C", "D"]).toContain(provider.stageId);
     }
+  });
+});
+
+describe("Kling BYOK authentication", () => {
+  it("creates a deterministic HS256 JWT from AccessKey and SecretKey", () => {
+    const token = createKlingJwt("access-example", "secret-example", 1_700_000_000);
+    expect(token.split(".")).toHaveLength(3);
+    expect(token).toBe(createKlingJwt("access-example", "secret-example", 1_700_000_000));
+    expect(token).not.toContain("secret-example");
+  });
+
+  it("accepts the single-field AccessKey:SecretKey format used by the API Center", () => {
+    const token = createKlingAuthorization("access-example:secret-example");
+    expect(token.split(".")).toHaveLength(3);
   });
 });
