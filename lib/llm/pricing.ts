@@ -9,6 +9,8 @@ const DEFAULT_PRICES: Record<string, LlmPrice> = {
   "gpt-5.6-terra": { inputUsdPerMillion: 2, cachedInputUsdPerMillion: 0.2, outputUsdPerMillion: 12 },
   "gpt-5.6-sol": { inputUsdPerMillion: 4, cachedInputUsdPerMillion: 0.4, outputUsdPerMillion: 20 },
   "gpt-5.6": { inputUsdPerMillion: 4, cachedInputUsdPerMillion: 0.4, outputUsdPerMillion: 20 },
+  "openai/gpt-oss-20b": { inputUsdPerMillion: 0.075, cachedInputUsdPerMillion: 0.037, outputUsdPerMillion: 0.30 },
+  "openai/gpt-oss-120b": { inputUsdPerMillion: 0.15, cachedInputUsdPerMillion: 0.075, outputUsdPerMillion: 0.60 },
 };
 
 function envPrice(modelId: string, base: LlmPrice) {
