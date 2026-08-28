@@ -9,6 +9,7 @@ import "./brand-home-v3.css";
 import "./theme-system-v3.css";
 import "./sidebar-premium-v1.css";
 import "./series-workspace-v4.css";
+import "./story-mode-polish-v2.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://scnva.com"),
