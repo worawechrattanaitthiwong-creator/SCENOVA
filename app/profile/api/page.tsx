@@ -3,23 +3,73 @@
 import { useEffect, useMemo, useState } from "react";
 import styles from "./api-connections.module.css";
 
+type ConnectionKind = "ANALYZER" | "VIDEO" | "IMAGE" | "VOICE";
+type ConnectionStatus = "CONNECTED" | "INVALID" | "RATE_LIMITED" | "ERROR";
+
 type Connection = {
   id: string;
   provider: string;
-  kind: "ANALYZER" | "VIDEO" | "IMAGE" | "VOICE";
+  kind: ConnectionKind;
   modelId: string | null;
   baseUrl: string | null;
   maskedKey: string;
-  status: "CONNECTED" | "INVALID" | "RATE_LIMITED" | "ERROR";
+  status: ConnectionStatus;
   enabled: boolean;
   isDefault: boolean;
   lastTestedAt: string | null;
   lastError: string | null;
 };
 
+type Provider = {
+  id: string;
+  label: string;
+  kind: ConnectionKind;
+  defaultBaseUrl: string;
+  defaultModelId?: string;
+  ready: boolean;
+  purposeTh: string;
+  capabilityTh: string;
+  stageId: string;
+  stageLabelTh: string;
+  status: "READY" | "ADAPTER_PENDING";
+  systemConfigured: boolean;
+};
+
+type RouteStage = {
+  id: string;
+  kind: ConnectionKind;
+  labelTh: string;
+  shortTh: string;
+  descriptionTh: string;
+  optional: boolean;
+  connectionCount: number;
+  activeConnectionId: string | null;
+  activeProvider: string | null;
+  activeStatus: ConnectionStatus | null;
+  ready: boolean;
+};
+
+const KIND_ORDER: ConnectionKind[] = ["ANALYZER", "IMAGE", "VIDEO", "VOICE"];
+const KIND_LABEL: Record<ConnectionKind, string> = {
+  ANALYZER: "A · วิเคราะห์",
+  IMAGE: "B · ภาพ / Reference",
+  VIDEO: "C · สร้างคลิป",
+  VOICE: "D · เสียง / พากย์",
+};
+
+function statusText(status: ConnectionStatus) {
+  if (status === "CONNECTED") return "เชื่อมต่อแล้ว";
+  if (status === "RATE_LIMITED") return "จำกัดการเรียกชั่วคราว";
+  if (status === "INVALID") return "Key ไม่ถูกต้อง";
+  return "มีปัญหาการเชื่อมต่อ";
+}
+
 export default function ApiConnectionsPage() {
   const [connections, setConnections] = useState<Connection[]>([]);
-  const [provider, setProvider] = useState("groq");
+  const [providers, setProviders] = useState<Provider[]>([]);
+  const [routing, setRouting] = useState<RouteStage[]>([]);
+  const [activeKind, setActiveKind] = useState<ConnectionKind>("ANALYZER");
+  const [providerId, setProviderId] = useState("groq");
   const [apiKey, setApiKey] = useState("");
   const [modelId, setModelId] = useState("openai/gpt-oss-20b");
   const [baseUrl, setBaseUrl] = useState("https://api.groq.com/openai/v1");
@@ -27,30 +77,63 @@ export default function ApiConnectionsPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const analyzerConnections = useMemo(() => connections.filter((item) => item.kind === "ANALYZER"), [connections]);
+  const visibleProviders = useMemo(() => providers.filter((item) => item.kind === activeKind), [providers, activeKind]);
+  const selectedProvider = useMemo(() => providers.find((item) => item.id === providerId && item.kind === activeKind) || visibleProviders[0] || null, [providers, providerId, activeKind, visibleProviders]);
 
   async function loadConnections() {
     const response = await fetch("/api/api-connections", { cache: "no-store", credentials: "same-origin" });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || "โหลด API Connections ไม่สำเร็จ");
     setConnections(data.connections || []);
+    setProviders(data.providers || []);
+    setRouting(data.routing || []);
   }
 
-  useEffect(() => { void loadConnections().catch((err) => setError(err instanceof Error ? err.message : "โหลดข้อมูลไม่สำเร็จ")); }, []);
+  useEffect(() => {
+    void loadConnections().catch((err) => setError(err instanceof Error ? err.message : "โหลดข้อมูลไม่สำเร็จ"));
+  }, []);
+
+  useEffect(() => {
+    if (!visibleProviders.length) return;
+    const current = visibleProviders.find((item) => item.id === providerId) || visibleProviders[0];
+    if (current.id !== providerId) setProviderId(current.id);
+    setModelId(current.defaultModelId || "");
+    setBaseUrl(current.defaultBaseUrl || "");
+  }, [activeKind, providers]);
+
+  function chooseProvider(provider: Provider) {
+    setProviderId(provider.id);
+    setModelId(provider.defaultModelId || "");
+    setBaseUrl(provider.defaultBaseUrl || "");
+    setApiKey("");
+    setError("");
+    setMessage("");
+  }
 
   async function connect() {
-    setLoading(true); setError(""); setMessage("");
+    if (!selectedProvider?.ready) return;
+    setLoading(true);
+    setError("");
+    setMessage("");
     try {
       const response = await fetch("/api/api-connections", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "same-origin",
-        body: JSON.stringify({ provider, kind: "ANALYZER", apiKey, modelId, baseUrl, enabled: true, isDefault: true }),
+        body: JSON.stringify({
+          provider: selectedProvider.id,
+          kind: selectedProvider.kind,
+          apiKey,
+          modelId: modelId.trim() || null,
+          baseUrl: baseUrl.trim() || selectedProvider.defaultBaseUrl || null,
+          enabled: true,
+          isDefault: true,
+        }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.message || data.error || "เชื่อมต่อไม่สำเร็จ");
       setApiKey("");
-      setMessage("เชื่อมต่อและบันทึก API Key แบบเข้ารหัสเรียบร้อยแล้ว");
+      setMessage(`${selectedProvider.label} เชื่อมต่อสำเร็จและบันทึก Key แบบเข้ารหัสแล้ว`);
       await loadConnections();
     } catch (err) {
       setError(err instanceof Error ? err.message : "เชื่อมต่อไม่สำเร็จ");
@@ -60,7 +143,8 @@ export default function ApiConnectionsPage() {
   }
 
   async function patch(connection: Connection, changes: Partial<Pick<Connection, "enabled" | "isDefault" | "modelId">>) {
-    setError(""); setMessage("");
+    setError("");
+    setMessage("");
     const response = await fetch("/api/api-connections", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -75,7 +159,8 @@ export default function ApiConnectionsPage() {
 
   async function remove(connection: Connection) {
     if (!window.confirm(`ลบ API Key ของ ${connection.provider.toUpperCase()} ออกจาก SCENOVA?`)) return;
-    setError(""); setMessage("");
+    setError("");
+    setMessage("");
     const response = await fetch(`/api/api-connections?id=${encodeURIComponent(connection.id)}`, { method: "DELETE", credentials: "same-origin" });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) return setError(data.error || "ลบการเชื่อมต่อไม่สำเร็จ");
@@ -83,7 +168,7 @@ export default function ApiConnectionsPage() {
     await loadConnections();
   }
 
-  function statusClass(status: Connection["status"]) {
+  function statusClass(status: ConnectionStatus) {
     if (status === "CONNECTED") return `${styles.badge} ${styles.ok}`;
     if (status === "RATE_LIMITED") return `${styles.badge} ${styles.warn}`;
     return `${styles.badge} ${styles.bad}`;
@@ -91,54 +176,111 @@ export default function ApiConnectionsPage() {
 
   return <main className={styles.page}>
     <header className={styles.hero}>
-      <span className={styles.eyebrow}>API & MODELS</span>
-      <h1>เชื่อมต่อ API ของคุณ</h1>
-      <p>นำ API Key ของคุณมาวางแล้วกดเชื่อมต่อ SCENOVA จะทดสอบ Key ก่อนบันทึก และเก็บเฉพาะข้อมูลที่เข้ารหัสไว้ฝั่ง Server เท่านั้น หน้าเว็บจะเห็นเพียงท้าย Key 4 ตัว</p>
+      <span className={styles.eyebrow}>API & MODELS · CONNECTION CENTER</span>
+      <h1>ศูนย์เชื่อมต่อ AI ของ SCENOVA</h1>
+      <p>ทุก API ถูกจัดตาม “สายงาน” เดียวกันทั้งระบบ เพื่อไม่ให้ต่อผิดหน้าที่: A วิเคราะห์ → B ภาพอ้างอิง → C สร้างคลิป → D เสียง ผู้ใช้สามารถใช้ BYOK ได้เฉพาะ Provider ที่ Adapter เปิดใช้งานจริงแล้วเท่านั้น</p>
     </header>
+
+    <section className={styles.pipeline} aria-label="สายการทำงาน API">
+      {routing.map((stage, index) => <div className={styles.pipelineUnit} key={stage.id}>
+        <article className={`${styles.stage} ${stage.ready ? styles.stageReady : ""}`}>
+          <div className={styles.stageTop}><b>{stage.id}</b><span>{stage.shortTh}</span></div>
+          <h2>{stage.labelTh.replace(`${stage.id} · `, "")}</h2>
+          <p>{stage.descriptionTh}</p>
+          <div className={styles.stageState}>
+            <span className={stage.ready ? styles.dotReady : styles.dotIdle} />
+            {stage.ready ? `${stage.activeProvider?.toUpperCase()} พร้อมใช้งาน` : stage.connectionCount ? "มี Connection แต่ยังไม่พร้อม" : stage.optional ? "ยังไม่ต่อ · ข้ามได้" : "รอ Connection"}
+          </div>
+        </article>
+        {index < routing.length - 1 ? <span className={styles.pipelineArrow} aria-hidden>→</span> : null}
+      </div>)}
+    </section>
 
     {message ? <div className={styles.notice}>{message}</div> : null}
     {error ? <div className={`${styles.notice} ${styles.error}`}>{error}</div> : null}
 
-    <div className={styles.grid}>
+    <div className={styles.layout}>
       <section className={styles.card}>
-        <h2>AI Analyzer</h2>
-        <p className={styles.muted}>Analyzer ทำหน้าที่อ่านคำสั่ง แยกฉาก กล้อง ตัวละคร แสง เสียง และ Lock แล้วคืน Structured JSON ก่อนส่งต่อไปยัง AI Generator ตัวจริง</p>
+        <div className={styles.cardHeading}>
+          <div><span className={styles.sectionKicker}>เลือกสายที่ต้องการเชื่อม</span><h2>Provider Registry</h2></div>
+          <span className={styles.securePill}>🔒 Server encrypted</span>
+        </div>
 
-        <label className={styles.field}><span>Provider</span>
-          <select className={styles.select} value={provider} onChange={(event) => setProvider(event.target.value)}>
-            <option value="groq">Groq — พร้อมใช้งาน</option>
-          </select>
-        </label>
-        <label className={styles.field}><span>API Key</span><input className={styles.input} type="password" autoComplete="off" value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder="gsk_••••••••••••" /></label>
-        <label className={styles.field}><span>Model</span><input className={styles.input} value={modelId} onChange={(event) => setModelId(event.target.value)} placeholder="openai/gpt-oss-20b" /></label>
-        <label className={styles.field}><span>API Base URL</span><input className={styles.input} value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} /></label>
+        <div className={styles.kindTabs} role="tablist" aria-label="ประเภท API">
+          {KIND_ORDER.map((kind) => <button key={kind} type="button" role="tab" aria-selected={activeKind === kind} className={activeKind === kind ? styles.kindActive : ""} onClick={() => setActiveKind(kind)}>{KIND_LABEL[kind]}</button>)}
+        </div>
 
-        <div className={styles.actions}><button type="button" className={styles.primary} disabled={loading || apiKey.trim().length < 8} onClick={connect}>{loading ? "กำลังทดสอบ…" : "ทดสอบและเชื่อมต่อ"}</button></div>
-        <div className={styles.note}><b>BYOK:</b> ค่า AI ของ Groq จะถูกคิดกับบัญชี Groq ของผู้ใช้โดยตรง ส่วน SCENOVA สามารถคิด Platform Credit แยกได้ด้วยตัวแปร <code>SCENOVA_BYOK_ANALYZER_CREDIT_FEE</code>.</div>
+        <div className={styles.providerGrid}>
+          {visibleProviders.map((provider) => {
+            const connected = connections.find((item) => item.provider === provider.id && item.kind === provider.kind);
+            const selected = selectedProvider?.id === provider.id;
+            return <button type="button" className={`${styles.providerCard} ${selected ? styles.providerSelected : ""}`} key={`${provider.kind}:${provider.id}`} onClick={() => chooseProvider(provider)}>
+              <div className={styles.providerTop}>
+                <span className={styles.plug}>{provider.stageId}</span>
+                <span className={provider.ready ? `${styles.badge} ${styles.ok}` : `${styles.badge} ${styles.pending}`}>{provider.ready ? "Adapter พร้อม" : "กำลังเตรียม Adapter"}</span>
+              </div>
+              <strong>{provider.label}</strong>
+              <small>{provider.purposeTh}</small>
+              <p>{provider.capabilityTh}</p>
+              <div className={styles.providerFoot}>
+                <span>{connected ? statusText(connected.status) : "ยังไม่เชื่อม"}</span>
+                {provider.systemConfigured ? <b>System API ✓</b> : <b>BYOK</b>}
+              </div>
+            </button>;
+          })}
+        </div>
+
+        {selectedProvider ? <div className={styles.connector}>
+          <div className={styles.connectorHead}>
+            <div><span className={styles.plugLarge}>{selectedProvider.stageId}</span><div><h3>{selectedProvider.label}</h3><p>{selectedProvider.stageLabelTh}</p></div></div>
+            <span className={selectedProvider.ready ? `${styles.badge} ${styles.ok}` : `${styles.badge} ${styles.pending}`}>{selectedProvider.ready ? "รับ Key ได้" : "ยังไม่รับ Key"}</span>
+          </div>
+
+          {selectedProvider.ready ? <>
+            <label className={styles.field}><span>API Key</span><input className={styles.input} type="password" autoComplete="off" value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder="วาง API Key ของ Provider นี้" /></label>
+            <label className={styles.field}><span>Model</span><input className={styles.input} value={modelId} onChange={(event) => setModelId(event.target.value)} placeholder="Default model" /></label>
+            <label className={styles.field}><span>API Base URL</span><input className={styles.input} value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} placeholder="Provider API endpoint" /></label>
+            <div className={styles.actions}><button type="button" className={styles.primary} disabled={loading || apiKey.trim().length < 8} onClick={connect}>{loading ? "กำลังตรวจสอบ…" : "ทดสอบ Key และเชื่อมสาย"}</button></div>
+            <div className={styles.note}><b>BYOK:</b> ค่าเรียก Provider ถูกคิดกับบัญชี Provider ของเจ้าของ Key โดยตรง ส่วน SCENOVA สามารถคิด Platform Credit สำหรับ Workflow/Analyzer/Storage แยกต่างหากได้</div>
+          </> : <div className={styles.pendingBox}>
+            <b>ยังไม่เปิดรับ API Key เพื่อป้องกันสถานะหลอก</b>
+            <p>สล็อตและสายงานของ {selectedProvider.label} ถูกเตรียมไว้แล้ว แต่ Adapter ฝั่ง Server ยังไม่เปิดใช้งานจริง เมื่อ Adapter พร้อม สถานะจะเปลี่ยนเป็น “รับ Key ได้” และปุ่มเชื่อมต่อจะเปิดอัตโนมัติ</p>
+          </div>}
+        </div> : null}
       </section>
 
       <section className={styles.card}>
-        <h2>การเชื่อมต่อของฉัน</h2>
-        <p className={styles.muted}>Key เต็มจะไม่ถูกส่งกลับมาที่ Browser หลังบันทึก หากต้องการเปลี่ยน Key ให้วาง Key ใหม่แล้วเชื่อมต่อซ้ำ</p>
-        <div className={styles.list}>
-          {analyzerConnections.length === 0 ? <div className={styles.empty}>ยังไม่มี Analyzer API ที่เชื่อมต่อ</div> : analyzerConnections.map((connection) => <article className={styles.connection} key={connection.id}>
-            <div className={styles.connectionHead}>
-              <div><h3>{connection.provider.toUpperCase()}</h3><small>{connection.maskedKey}</small></div>
-              <span className={statusClass(connection.status)}>{connection.status}</span>
-            </div>
-            <div className={styles.meta}>
-              <div><small>Model</small><b>{connection.modelId || "Default"}</b></div>
-              <div><small>โหมด</small><b>{connection.isDefault ? "ค่าเริ่มต้น" : "สำรอง"}</b></div>
-              <div><small>สถานะใช้งาน</small><b>{connection.enabled ? "เปิด" : "ปิด"}</b></div>
-              <div><small>ทดสอบล่าสุด</small><b>{connection.lastTestedAt ? new Date(connection.lastTestedAt).toLocaleString("th-TH") : "—"}</b></div>
-            </div>
-            {connection.lastError ? <p className={styles.muted}>ล่าสุด: {connection.lastError}</p> : null}
-            <div className={styles.actions}>
-              <button type="button" className={styles.secondary} onClick={() => patch(connection, { enabled: !connection.enabled })}>{connection.enabled ? "ปิดใช้งาน" : "เปิดใช้งาน"}</button>
-              {!connection.isDefault ? <button type="button" className={styles.secondary} onClick={() => patch(connection, { isDefault: true })}>ตั้งเป็นค่าเริ่มต้น</button> : null}
-              <button type="button" className={styles.danger} onClick={() => remove(connection)}>ลบ Key</button>
-            </div>
-          </article>)}
+        <div className={styles.cardHeading}>
+          <div><span className={styles.sectionKicker}>สถานะจริงจากบัญชีนี้</span><h2>การเชื่อมต่อของฉัน</h2></div>
+          <span className={styles.countPill}>{connections.length} Connections</span>
+        </div>
+        <p className={styles.muted}>Key เต็มจะไม่ถูกส่งกลับมาที่ Browser หลังบันทึก การ์ดด้านล่างแสดงเฉพาะสถานะ, Model, สายงาน และท้าย Key เท่านั้น</p>
+
+        <div className={styles.connectionGroups}>
+          {KIND_ORDER.map((kind) => {
+            const items = connections.filter((item) => item.kind === kind);
+            return <div className={styles.connectionGroup} key={kind}>
+              <div className={styles.groupTitle}><span>{KIND_LABEL[kind]}</span><b>{items.length}</b></div>
+              {items.length === 0 ? <div className={styles.empty}>ยังไม่มี Connection ในสายนี้</div> : items.map((connection) => <article className={styles.connection} key={connection.id}>
+                <div className={styles.connectionHead}>
+                  <div><h3>{connection.provider.toUpperCase()}</h3><small>{connection.maskedKey}</small></div>
+                  <span className={statusClass(connection.status)}>{statusText(connection.status)}</span>
+                </div>
+                <div className={styles.meta}>
+                  <div><small>Model</small><b>{connection.modelId || "Default"}</b></div>
+                  <div><small>Routing</small><b>{connection.isDefault ? "Default ของสาย" : "สำรอง"}</b></div>
+                  <div><small>ใช้งาน</small><b>{connection.enabled ? "เปิด" : "ปิด"}</b></div>
+                  <div><small>ทดสอบล่าสุด</small><b>{connection.lastTestedAt ? new Date(connection.lastTestedAt).toLocaleString("th-TH") : "—"}</b></div>
+                </div>
+                {connection.lastError ? <p className={styles.connectionError}>ล่าสุด: {connection.lastError}</p> : null}
+                <div className={styles.actions}>
+                  <button type="button" className={styles.secondary} onClick={() => patch(connection, { enabled: !connection.enabled })}>{connection.enabled ? "ปิดใช้งาน" : "เปิดใช้งาน"}</button>
+                  {!connection.isDefault ? <button type="button" className={styles.secondary} onClick={() => patch(connection, { isDefault: true })}>ตั้งเป็น Default</button> : null}
+                  <button type="button" className={styles.danger} onClick={() => remove(connection)}>ลบ Key</button>
+                </div>
+              </article>)}
+            </div>;
+          })}
         </div>
       </section>
     </div>
