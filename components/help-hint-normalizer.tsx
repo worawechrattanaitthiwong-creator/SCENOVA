@@ -13,6 +13,7 @@ const SKIP_SELECTOR = [
   "[class*='setupBox']",
   "[class*='recovery']",
   "[class*='story-mode_']",
+  "[class*='single-episode-studio_']",
   "code",
 ].join(",");
 
