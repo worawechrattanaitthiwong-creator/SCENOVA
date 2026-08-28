@@ -214,6 +214,7 @@ export default function ApiConnectionsPage() {
           {visibleProviders.map((provider) => {
             const connected = connections.find((item) => item.provider === provider.id && item.kind === provider.kind);
             const selected = selectedProvider?.id === provider.id;
+            const credentialLabel = provider.systemConfigured ? "มี System Key" : provider.ready ? "BYOK พร้อม" : "ยังไม่เปิดเชื่อม";
             return <button type="button" className={`${styles.providerCard} ${selected ? styles.providerSelected : ""}`} key={`${provider.kind}:${provider.id}`} onClick={() => chooseProvider(provider)}>
               <div className={styles.providerTop}>
                 <span className={styles.plug}>{provider.stageId}</span>
@@ -224,7 +225,7 @@ export default function ApiConnectionsPage() {
               <p>{provider.capabilityTh}</p>
               <div className={styles.providerFoot}>
                 <span>{connected ? statusText(connected.status) : "ยังไม่เชื่อม"}</span>
-                {provider.systemConfigured ? <b>System API ✓</b> : <b>BYOK</b>}
+                <b>{credentialLabel}</b>
               </div>
             </button>;
           })}
