@@ -84,12 +84,14 @@ jobs:
 
             # Bootstrap a persistent server-only BYOK encryption key once.
             # Never echo the generated secret into CI logs.
-            if ! grep -Eq '^API_KEY_ENCRYPTION_KEY=.+$' .env.production; then
+            current_api_key_encryption_key="$(grep -E '^API_KEY_ENCRYPTION_KEY=' .env.production | tail -n 1 | cut -d= -f2- | tr -d '\r\n"[:space:]' || true)"
+            if [ -z "$current_api_key_encryption_key" ]; then
               api_key_encryption_key="$(openssl rand -base64 32 | tr -d '\r\n')"
               printf '\nAPI_KEY_ENCRYPTION_KEY="%s"\n' "$api_key_encryption_key" >> .env.production
               unset api_key_encryption_key
               echo "BYOK encryption key initialized on VPS"
             fi
+            unset current_api_key_encryption_key
 
             git fetch origin main
             git checkout -B main FETCH_HEAD
@@ -101,9 +103,9 @@ jobs:
             npm run test
             npm run build
 
-            # Apply committed schema migrations only after build/tests pass,
-            # immediately before the process reload.
-            npm run db:deploy
+            # Prisma CLI does not load .env.production automatically.
+            # This helper loads it through @next/env without exposing secrets.
+            node scripts/deploy-production-migrations.mjs
 
             pm2 reload ecosystem.config.cjs --update-env
             pm2 save
