@@ -6,6 +6,7 @@ import "./standards.css";
 import "./legacy-theme-overrides.css";
 import "./brand-system-v2.css";
 import "./brand-home-v3.css";
+import "./theme-system-v3.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://scnva.com"),
@@ -34,8 +35,11 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#07040d",
-  colorScheme: "dark",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f7f4fa" },
+    { media: "(prefers-color-scheme: dark)", color: "#07040d" },
+  ],
+  colorScheme: "dark light",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

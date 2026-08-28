@@ -10,6 +10,7 @@ type Me = { authenticated: boolean; name?: string; email?: string; role?: "ADMIN
 type Balance = { paid: number; bonus: number; reserved: number; available: number };
 type SearchState = { get(name: string): string | null; toString(): string };
 type IconName = WorkspaceNavItem["icon"] | "profile" | "arrow";
+type ThemeMode = "dark" | "light";
 
 function Icon({ name }: { name: IconName }) {
   const common = {
@@ -81,7 +82,15 @@ function WorkspaceShell({ children, pathname }: { children: React.ReactNode; pat
   const [balance, setBalance] = useState<Balance | null>(null);
   const [checking, setChecking] = useState(true);
   const [hash, setHash] = useState("");
+  const [theme, setTheme] = useState<ThemeMode>("dark");
   const authLoaded = useRef(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("scenova-theme");
+    const next: ThemeMode = saved === "light" || saved === "dark" ? saved : (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+    setTheme(next);
+    document.documentElement.dataset.theme = next;
+  }, []);
 
   useEffect(() => {
     const syncHash = () => setHash(window.location.hash || "");
@@ -115,9 +124,16 @@ function WorkspaceShell({ children, pathname }: { children: React.ReactNode; pat
     return () => { active = false; };
   }, [me.authenticated]);
 
+  function applyTheme(next: ThemeMode) {
+    setTheme(next);
+    localStorage.setItem("scenova-theme", next);
+    document.documentElement.dataset.theme = next;
+  }
+
   const rawRail = useMemo(() => getWorkspaceRail(pathname), [pathname]);
   const rail = useMemo(() => rawRail.filter((item) => !item.adminOnly || me.role === "ADMIN"), [rawRail, me.role]);
   const context = useMemo(() => getWorkspaceContext(pathname), [pathname]);
+  const hideTopbar = pathname === "/studio";
   const activeRailIndex = useMemo(() => {
     const exact = rail.findIndex((item) => targetMatchesCurrent(item.href, pathname, searchParams, hash));
     if (exact >= 0) return exact;
@@ -141,24 +157,28 @@ function WorkspaceShell({ children, pathname }: { children: React.ReactNode; pat
     </Link>;
   };
 
-  return <div className={styles.shell}>
-    <aside className={styles.sidebar}>
+  return <div className={styles.shell} data-sc-shell>
+    <aside className={styles.sidebar} data-sc-sidebar>
       <Link href="/portal" className={styles.brand} prefetch={false} aria-label="SCENOVA Studio — หน้าเริ่มต้น">
         <span className={styles.logo}><ScenovaMark /></span>
         <span className={styles.brandName}>SCENOVA</span>
         <small data-keep-small>STUDIO</small>
       </Link>
 
-      <nav className={styles.mainNav} aria-label="เมนูหลัก">{WORKSPACE_NAV.map(navLink)}</nav>
+      <nav className={styles.mainNav} data-sc-main-nav aria-label="เมนูหลัก">{WORKSPACE_NAV.map(navLink)}</nav>
 
       <div className={styles.sidebarBottom}>
-        <Link href="/wallet" prefetch={false} className={styles.creditShortcut}>
+        <div className="sc-theme-switch" role="group" aria-label="ธีมหน้าจอ">
+          <button type="button" data-active={theme === "light"} aria-pressed={theme === "light"} onClick={() => applyTheme("light")}>☀ ขาว</button>
+          <button type="button" data-active={theme === "dark"} aria-pressed={theme === "dark"} onClick={() => applyTheme("dark")}>☾ มืด</button>
+        </div>
+        <Link href="/wallet" prefetch={false} className={styles.creditShortcut} data-sc-credit>
           <small>เครดิตของคุณ</small>
           <strong>{formatCredits(balance?.available)}</strong>
           <span>เครดิต</span>
           <b>เติมเครดิต</b>
         </Link>
-        <Link href="/profile" prefetch={false} className={styles.profileCard}>
+        <Link href="/profile" prefetch={false} className={styles.profileCard} data-sc-profile>
           <span className={styles.profileAvatar}><Icon name="profile" /></span>
           <span className={styles.profileCopy}><b>{me.name || "SCENOVA"}</b><small>{me.role === "ADMIN" ? "Administrator" : "สมาชิก SCENOVA"}</small></span>
           <span className={styles.profileArrow}><Icon name="arrow" /></span>
@@ -166,9 +186,9 @@ function WorkspaceShell({ children, pathname }: { children: React.ReactNode; pat
       </div>
     </aside>
 
-    <div className={styles.workspace}>
-      <header className={styles.topbar}>
-        <nav className={styles.subNav} aria-label={`ขั้นตอน ${context}`}>
+    <div className={styles.workspace} data-sc-workspace style={hideTopbar ? { gridTemplateRows: "minmax(0, 1fr)" } : undefined}>
+      {!hideTopbar ? <header className={styles.topbar} data-sc-topbar>
+        <nav className={styles.subNav} data-sc-sub-nav aria-label={`ขั้นตอน ${context}`}>
           {rail.map((item, index) => {
             const effectiveHref = item.href === "/portal#guide" ? "/guide" : item.href;
             return <Link key={item.href} href={effectiveHref} prefetch={false} className={index === activeRailIndex ? styles.subActive : ""} aria-current={index === activeRailIndex ? "step" : undefined}>
@@ -178,8 +198,8 @@ function WorkspaceShell({ children, pathname }: { children: React.ReactNode; pat
           })}
         </nav>
         <Link className={styles.helpLink} href="/guide" prefetch={false}><span>?</span><b>คู่มือการใช้งาน</b></Link>
-      </header>
-      <div className={styles.page} data-workspace={context}>{children}</div>
+      </header> : null}
+      <div className={styles.page} data-sc-page data-workspace={context}>{children}</div>
     </div>
   </div>;
 }
