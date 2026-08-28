@@ -1,5 +1,15 @@
 import type { ModelDefinition, PromptBundle, RenderSegment, Resolution } from "@/lib/domain";
 
+export type ProviderBillingMode = "BYOK" | "SYSTEM" | "MOCK";
+
+export type ProviderRuntimeCredential = {
+  apiKey: string;
+  baseUrl?: string | null;
+  modelId?: string | null;
+  billingMode: Exclude<ProviderBillingMode, "MOCK">;
+  connectionId?: string | null;
+};
+
 export type GenerateVideoRequest = {
   projectId: string;
   episodeId: string;
@@ -29,6 +39,8 @@ export type GenerateVideoResult = {
 
 export interface VideoProvider {
   id: string;
+  billingMode?: ProviderBillingMode;
+  credentialProviderId?: string;
   getModelDefinition(): ModelDefinition;
   estimateCost(request: GenerateVideoRequest): Promise<{ currency: "THB"; estimatedAmount: number }>;
   generate(request: GenerateVideoRequest): Promise<GenerateVideoResult>;
