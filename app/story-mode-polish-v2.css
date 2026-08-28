@@ -1,0 +1,194 @@
+/* Story Mode usability polish: keep guidance visible, predictable and compact. */
+
+[data-workspace="AI Studio"] [class*="story-mode_main"] {
+  max-width: 1340px !important;
+  padding: 26px 32px 92px !important;
+}
+
+/* Put descriptions directly below their heading instead of floating across the row. */
+[data-workspace="AI Studio"] [class*="story-mode_sectionTitle"] {
+  display: block !important;
+  margin-bottom: 18px !important;
+}
+
+[data-workspace="AI Studio"] [class*="story-mode_sectionTitle"] > div {
+  min-width: 0 !important;
+}
+
+[data-workspace="AI Studio"] [class*="story-mode_sectionTitle"] > p {
+  max-width: 760px !important;
+  margin: 6px 0 0 !important;
+  font-size: 13px !important;
+  line-height: 1.55 !important;
+}
+
+[data-workspace="AI Studio"] [class*="story-mode_sectionTitleRow"] {
+  align-items: flex-end !important;
+  gap: 22px !important;
+}
+
+[data-workspace="AI Studio"] [class*="story-mode_pageHeader"] {
+  align-items: center !important;
+  padding: 2px 0 22px !important;
+  border-bottom: 1px solid rgba(143, 83, 199, .12);
+}
+
+[data-workspace="AI Studio"] [class*="story-mode_pageHeader"] h1 {
+  font-size: clamp(30px, 2.6vw, 38px) !important;
+}
+
+[data-workspace="AI Studio"] [class*="story-mode_pageHeader"] p {
+  max-width: 700px !important;
+  font-size: 14px !important;
+}
+
+/* Field guidance is inline and readable. HelpHintNormalizer skips Story Mode, so no floating black tooltip. */
+[data-workspace="AI Studio"] [class*="story-mode_main"] small {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 8px !important;
+  width: fit-content;
+  max-width: 100%;
+  margin-top: 7px !important;
+  padding: 6px 9px !important;
+  border: 1px solid rgba(144, 83, 199, .14);
+  border-radius: 8px;
+  background: rgba(140, 76, 199, .055);
+  color: var(--story-muted) !important;
+  font-size: 12px !important;
+  line-height: 1.45 !important;
+}
+
+[data-workspace="AI Studio"] [class*="story-mode_main"] small::before {
+  content: "i";
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  display: grid;
+  place-items: center;
+  margin-top: 0;
+  border: 1px solid rgba(143, 81, 204, .26);
+  border-radius: 50%;
+  background: rgba(143, 81, 204, .09);
+  color: var(--story-accent);
+  font: 800 11px/1 system-ui, sans-serif;
+}
+
+/* Standardize all controls and number/icon badges. */
+[data-workspace="AI Studio"] [class*="story-mode_field"] :is(input, select, textarea) {
+  border-radius: 10px !important;
+  font-size: 14px !important;
+}
+
+[data-workspace="AI Studio"] [class*="story-mode_itemNumber"],
+[data-workspace="AI Studio"] [class*="story-mode_sceneList"] button > b {
+  width: 34px !important;
+  height: 34px !important;
+  flex: 0 0 34px !important;
+  border: 1px solid rgba(147, 82, 211, .16);
+  border-radius: 10px !important;
+  font-size: 12px !important;
+  box-shadow: none !important;
+}
+
+[data-workspace="AI Studio"] [class*="story-mode_counter"] button {
+  width: 34px !important;
+  height: 34px !important;
+  display: grid !important;
+  place-items: center !important;
+  border-radius: 8px !important;
+  font-size: 18px !important;
+  line-height: 1 !important;
+}
+
+[data-workspace="AI Studio"] [class*="story-mode_countControl"] {
+  min-height: 44px;
+  padding: 4px 6px 4px 10px;
+  border: 1px solid var(--story-border);
+  border-radius: 11px;
+  background: var(--story-surface-soft);
+}
+
+/* Story foundation: clear primary writing area + compact technical settings. */
+[data-workspace="AI Studio"] [class*="story-mode_foundationGrid"] {
+  grid-template-columns: minmax(0, 1.45fr) minmax(340px, .55fr) !important;
+  gap: 20px !important;
+}
+
+[data-workspace="AI Studio"] [class*="story-mode_storyField"] textarea {
+  min-height: 180px !important;
+}
+
+[data-workspace="AI Studio"] [class*="story-mode_settingsGrid"] {
+  gap: 10px !important;
+}
+
+[data-workspace="AI Studio"] [class*="story-mode_libraryHint"] {
+  min-height: 66px !important;
+  padding: 10px 12px !important;
+  border-style: solid !important;
+}
+
+/* Character rows read as one form group instead of loose cards. */
+[data-workspace="AI Studio"] [class*="story-mode_castList"] {
+  gap: 10px !important;
+}
+
+[data-workspace="AI Studio"] [class*="story-mode_castRow"] {
+  padding: 15px !important;
+  border-radius: 14px !important;
+  box-shadow: 0 7px 22px rgba(56, 33, 71, .045) !important;
+}
+
+[data-workspace="AI Studio"] [class*="story-mode_animalToggle"] {
+  margin-top: 18px !important;
+  padding-top: 16px !important;
+}
+
+/* Timeline controls use the same sizing language as the rest of the system. */
+[data-workspace="AI Studio"] [class*="story-mode_durationControl"],
+[data-workspace="AI Studio"] [class*="story-mode_sceneDuration"] {
+  border-radius: 12px !important;
+}
+
+[data-workspace="AI Studio"] [class*="story-mode_timeline"] button {
+  min-height: 44px !important;
+  border-radius: 9px !important;
+}
+
+[data-workspace="AI Studio"] [class*="story-mode_sceneWorkspace"] {
+  border-radius: 15px !important;
+}
+
+/* Light theme: guidance and controls stay soft lavender, never stark or tooltip-black. */
+html[data-theme="light"] [data-workspace="AI Studio"] [class*="story-mode_main"] small {
+  border-color: #e5d8ed !important;
+  background: #f7f0fb !important;
+  color: #716579 !important;
+}
+
+html[data-theme="light"] [data-workspace="AI Studio"] [class*="story-mode_main"] small::before {
+  border-color: #d8bce8;
+  background: #efe1f7;
+  color: #7435a8;
+}
+
+html[data-theme="light"] [data-workspace="AI Studio"] [class*="story-mode_countControl"] {
+  border-color: #e2d6e9 !important;
+  background: #faf6fc !important;
+}
+
+@media (max-width: 980px) {
+  [data-workspace="AI Studio"] [class*="story-mode_foundationGrid"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  [data-workspace="AI Studio"] [class*="story-mode_sectionTitleRow"] {
+    align-items: flex-start !important;
+    flex-direction: column !important;
+  }
+
+  [data-workspace="AI Studio"] [class*="story-mode_countControl"] {
+    align-self: flex-start;
+  }
+}
