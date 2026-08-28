@@ -1,8 +1,8 @@
 import type { Project } from "@/lib/domain";
 import { planGeneration, type PlannedGeneration } from "@/lib/orchestrator";
 import { planEpisodeRender } from "@/lib/render-planner";
-import type { GenerateVideoRequest } from "@/lib/providers/video-provider";
-import { getVideoProviderById, getVideoProviderMap, resolveAlternateProvider, selectVideoProvider } from "@/lib/providers/provider-registry";
+import type { GenerateVideoRequest, ProviderBillingMode } from "@/lib/providers/video-provider";
+import { getUserVideoProviderById, getUserVideoProviderMap, resolveUserAlternateProvider, selectUserVideoProvider } from "@/lib/providers/provider-registry";
 import { getAgentPolicy } from "@/lib/agent/policy";
 import { decideAgentRecovery } from "@/lib/agent/recovery";
 import { chooseAgentAction, type AgentBrainDecision } from "@/lib/agent/brain";
@@ -21,6 +21,7 @@ type GenerationOutput = {
   order: number;
   attempt: number;
   providerId: string;
+  billingMode?: ProviderBillingMode;
   providerTaskId?: string;
   status: "submitting" | "queued" | "generating" | "completed" | "failed";
   estimatedCostThb: number;
@@ -105,7 +106,7 @@ function quoteItems(plan: PlannedGeneration): CostQuoteItem[] {
     { category: "AGENT_PLANNING", label: "AI Planning / Agent Director", estimatedCredits: agentFee, included: agentFee === 0 },
     { category: "PROMPT_GENERATION", label: "Production Prompt", estimatedCredits: promptFee, included: promptFee === 0 },
     { category: "CONTINUITY_CHECK", label: "Continuity / Canon Check", estimatedCredits: continuityFee, included: continuityFee === 0 },
-    { category: "VIDEO_GENERATION", label: "Video Generation", estimatedCredits: videoCredits },
+    { category: "VIDEO_GENERATION", label: "Video Generation", estimatedCredits: videoCredits, included: videoCredits === 0 },
   ];
 }
 
@@ -146,7 +147,8 @@ async function processAgentStage(run: AgentRunRecord, job: AgentQueueJobRecord) 
     const decision = await brainDecision(run, project, episodeIndex, job.attempts);
     if (await honorPauseDecision(run, decision)) return;
     assertAgentToolAllowed({ run, tool: "improve_prompt" });
-    const planned = await planGeneration(project, episodeIndex, { promptContext: { userId: run.userId, runId: run.id }, providers: getVideoProviderMap() });
+    const userProviders = await getUserVideoProviderMap(run.userId);
+    const planned = await planGeneration(project, episodeIndex, { promptContext: { userId: run.userId, runId: run.id }, providers: userProviders });
     const plannedCosts = { ...(state.plannedCosts || {}), [String(episodeIndex)]: planned.estimatedTotalThb };
     state.plannedCosts = plannedCosts;
     run.planJson = planned;
@@ -198,10 +200,11 @@ async function processAgentStage(run: AgentRunRecord, job: AgentQueueJobRecord) 
 
     if (decision.tool === "switch_provider") {
       assertAgentToolAllowed({ run, tool: "switch_provider" });
-      const current = state.selectedProviderId || selectVideoProvider(project.mainModelId).provider.id;
-      const alternate = resolveAlternateProvider(current, project.mainModelId);
+      const currentSelection = await selectUserVideoProvider(run.userId, project.mainModelId, state.selectedProviderId || null);
+      const current = state.selectedProviderId || currentSelection.provider.id;
+      const alternate = await resolveUserAlternateProvider(run.userId, current, project.mainModelId);
       if (!alternate) {
-        await pauseAgentRun(run, "Agent ขอเปลี่ยน Provider แต่ยังไม่มี Alternate Provider ที่เปิดใช้งาน");
+        await pauseAgentRun(run, "Agent ขอเปลี่ยน Provider แต่ยังไม่มี Alternate Provider ที่เชื่อมต่อพร้อมใช้งาน");
         return;
       }
       state.selectedProviderId = alternate.provider.id;
@@ -210,7 +213,7 @@ async function processAgentStage(run: AgentRunRecord, job: AgentQueueJobRecord) 
       await recordAgentDecision({ runId: run.id, stage: run.stage, action: "PROVIDER_SWITCH", reason: alternate.reason, providerId: alternate.provider.id });
     }
 
-    const selection = selectVideoProvider(project.mainModelId, state.selectedProviderId || null);
+    const selection = await selectUserVideoProvider(run.userId, project.mainModelId, state.selectedProviderId || null);
     const provider = selection.provider;
     state.selectedProviderId = provider.id;
     const renderPlan = planEpisodeRender(project, episode);
@@ -241,29 +244,31 @@ async function processAgentStage(run: AgentRunRecord, job: AgentQueueJobRecord) 
       };
 
       if (output?.providerTaskId && ["queued", "generating"].includes(output.status)) {
-        const currentProvider = getVideoProviderById(output.providerId);
-        if (!currentProvider) throw new Error(`PROVIDER_UNAVAILABLE:${output.providerId}`);
+        const currentProvider = await getUserVideoProviderById(run.userId, output.providerId);
+        if (!currentProvider) throw new Error(`PROVIDER_CONNECTION_REQUIRED:${output.providerId}`);
         const status = await currentProvider.getStatus(output.providerTaskId);
         output = {
           ...output,
+          billingMode: output.billingMode || currentProvider.billingMode,
           status: status.status,
           outputUrl: status.outputUrl,
           lastFrameUrl: status.lastFrameUrl,
           error: status.error,
         };
         outputs[existingIndex] = output;
+        const outputUsesWallet = output.billingMode === "SYSTEM" && output.providerId !== "mock-seedance";
         if (output.status === "failed") {
-          if (output.reservationId && output.providerId !== "mock-seedance") await wallet.refund(output.reservationId, output.error || "Provider failed");
+          if (output.reservationId && outputUsesWallet) await wallet.refund(output.reservationId, output.error || "Provider failed");
           throw new Error(`PROVIDER_FAILED:${output.providerId}:${output.error || "unknown"}`);
         }
         if (output.status === "completed" && !output.settled) {
-          if (output.reservationId && output.providerId !== "mock-seedance") {
+          if (output.reservationId && outputUsesWallet) {
             await wallet.charge(output.reservationId, output.reservedCredits);
             run.actualSpendThb += output.estimatedCostThb;
           }
           output.settled = true;
           outputs[existingIndex] = output;
-          await recordAgentDecision({ runId: run.id, stage: run.stage, action: "PROVIDER_COMPLETED", reason: `Provider ส่งผลลัพธ์ Render Segment ${renderSegment.order} สำเร็จ`, providerId: output.providerId, metadata: { order: renderSegment.order, estimatedCostThb: output.estimatedCostThb, credits: output.reservedCredits || 0 } });
+          await recordAgentDecision({ runId: run.id, stage: run.stage, action: "PROVIDER_COMPLETED", reason: `Provider ส่งผลลัพธ์ Render Segment ${renderSegment.order} สำเร็จ`, providerId: output.providerId, metadata: { order: renderSegment.order, billingMode: output.billingMode, estimatedCostThb: output.estimatedCostThb, credits: output.reservedCredits || 0 } });
         } else if (output.status !== "completed") {
           pending = true;
         }
@@ -272,11 +277,13 @@ async function processAgentStage(run: AgentRunRecord, job: AgentQueueJobRecord) 
       if (output?.status === "completed") continue;
 
       const estimate = await provider.estimateCost({ ...requestBase, idempotencyKey: `estimate:${run.id}:${episode.id}:${renderSegment.order}` });
-      const isReal = provider.id !== "mock-seedance";
+      const isMock = provider.id === "mock-seedance";
+      const billingMode: ProviderBillingMode = isMock ? "MOCK" : provider.billingMode || "SYSTEM";
+      const usesWallet = billingMode === "SYSTEM" && !isMock;
       const attempt = outputs.filter((item) => item.order === renderSegment.order).reduce((max, item) => Math.max(max, item.attempt), 0) + 1;
-      const reservedCredits = isReal ? Math.max(1, creditsFromThb(estimate.estimatedAmount)) : 0;
-      let reservationId = `mock-reservation:${run.id}:${episode.id}:${renderSegment.order}:attempt:${attempt}`;
-      if (isReal) {
+      const reservedCredits = usesWallet ? Math.max(1, creditsFromThb(estimate.estimatedAmount)) : 0;
+      let reservationId = `${billingMode.toLowerCase()}-reservation:${run.id}:${episode.id}:${renderSegment.order}:attempt:${attempt}`;
+      if (usesWallet) {
         const reservation = await wallet.reserve({
           userId: run.userId,
           credits: reservedCredits,
@@ -285,7 +292,7 @@ async function processAgentStage(run: AgentRunRecord, job: AgentQueueJobRecord) 
           quoteId,
           referenceId: `${run.id}:${episode.id}:${renderSegment.order}:attempt:${attempt}`,
           idempotencyKey: `video:${run.id}:${episode.id}:${renderSegment.order}:${provider.id}:attempt:${attempt}`,
-          metadata: { runId: run.id, projectId: project.id, episodeId: episode.id, order: renderSegment.order, attempt, providerId: provider.id },
+          metadata: { runId: run.id, projectId: project.id, episodeId: episode.id, order: renderSegment.order, attempt, providerId: provider.id, billingMode },
           expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000),
         });
         reservationId = reservation.reservationId;
@@ -300,11 +307,11 @@ async function processAgentStage(run: AgentRunRecord, job: AgentQueueJobRecord) 
         dailySpendThb: spendWindows.dailySpendThb,
         approvedBudgetThb: approvedBudget,
         creditReservationId: reservationId,
-        creditReservationMode: isReal ? "wallet" : "mock",
+        creditReservationMode: isMock ? "mock" : billingMode === "BYOK" ? "byok" : "wallet",
       });
 
       const idempotencyKey = `agent:${run.id}:${episode.id}:${renderSegment.order}:attempt:${attempt}`;
-      const placeholder: GenerationOutput = { order: renderSegment.order, attempt, providerId: provider.id, status: "submitting", estimatedCostThb: estimate.estimatedAmount, reservationId, reservedCredits };
+      const placeholder: GenerationOutput = { order: renderSegment.order, attempt, providerId: provider.id, billingMode, status: "submitting", estimatedCostThb: estimate.estimatedAmount, reservationId, reservedCredits };
       outputs.push(placeholder);
       state.outputsByEpisode = { ...(state.outputsByEpisode || {}), [String(episodeIndex)]: outputs };
       run.stateJson = state as Record<string, unknown>;
@@ -314,22 +321,23 @@ async function processAgentStage(run: AgentRunRecord, job: AgentQueueJobRecord) 
         const task = await provider.generate({ ...requestBase, idempotencyKey });
         const index = outputs.indexOf(placeholder);
         outputs[index] = { ...placeholder, providerTaskId: task.providerTaskId, status: task.status, outputUrl: task.outputUrl, lastFrameUrl: task.lastFrameUrl, error: task.error };
-        if (!isReal) simulatedCost += estimate.estimatedAmount;
-        await recordAgentDecision({ runId: run.id, stage: run.stage, action: attempt > 1 ? "RETRY_SEGMENT" : "GENERATE_SEGMENT", reason: `${selection.reason}; ผ่าน Tool Guardrail และ ${isReal ? "Wallet Reservation จริง" : "Mock Reservation"}`, providerId: provider.id, metadata: { order: renderSegment.order, attempt, estimatedCostThb: estimate.estimatedAmount, reservedCredits, quoteId } });
+        if (isMock) simulatedCost += estimate.estimatedAmount;
+        const reservationLabel = billingMode === "BYOK" ? "BYOK โดยไม่หักค่า Provider จาก SCENOVA Wallet" : usesWallet ? "Wallet Reservation จริง" : "Mock Reservation";
+        await recordAgentDecision({ runId: run.id, stage: run.stage, action: attempt > 1 ? "RETRY_SEGMENT" : "GENERATE_SEGMENT", reason: `${selection.reason}; ผ่าน Tool Guardrail และ ${reservationLabel}`, providerId: provider.id, metadata: { order: renderSegment.order, attempt, billingMode, estimatedCostThb: estimate.estimatedAmount, reservedCredits, quoteId } });
         if (task.status === "completed") {
-          if (isReal) {
+          if (usesWallet) {
             await wallet.charge(reservationId, reservedCredits);
             run.actualSpendThb += estimate.estimatedAmount;
           }
           outputs[index].settled = true;
         } else if (task.status === "failed") {
-          if (isReal) await wallet.refund(reservationId, task.error || "Provider rejected generation");
+          if (usesWallet) await wallet.refund(reservationId, task.error || "Provider rejected generation");
           throw new Error(`PROVIDER_FAILED:${provider.id}:${task.error || "unknown"}`);
         } else {
           pending = true;
         }
       } catch (error) {
-        if (isReal) await wallet.refund(reservationId, error instanceof Error ? error.message : String(error)).catch(() => undefined);
+        if (usesWallet) await wallet.refund(reservationId, error instanceof Error ? error.message : String(error)).catch(() => undefined);
         placeholder.status = "failed";
         placeholder.error = error instanceof Error ? error.message : String(error);
         throw error;
@@ -426,8 +434,9 @@ export async function runAgentWorkerOnce(workerId: string) {
       if (recovery.action === "ASK_USER") { await pauseAgentRun(run, recovery.reason); await completeAgentJob(job.id); return true; }
       if (recovery.action === "SWITCH_PROVIDER") {
         const project = inputOf(run).project;
-        const current = state.selectedProviderId || selectVideoProvider(project.mainModelId).provider.id;
-        const alternate = resolveAlternateProvider(current, project.mainModelId);
+        const currentSelection = await selectUserVideoProvider(run.userId, project.mainModelId, state.selectedProviderId || null).catch(() => null);
+        const current = state.selectedProviderId || currentSelection?.provider.id || "";
+        const alternate = await resolveUserAlternateProvider(run.userId, current, project.mainModelId);
         if (alternate) {
           state.providerSwitches = Number(state.providerSwitches || 0) + 1;
           state.selectedProviderId = alternate.provider.id;
@@ -441,7 +450,7 @@ export async function runAgentWorkerOnce(workerId: string) {
           await completeAgentJob(job.id);
           return true;
         }
-        await pauseAgentRun(run, "Provider ใช้งานไม่ได้และไม่มี Alternate Provider ที่เปิดใช้งาน");
+        await pauseAgentRun(run, "Provider ใช้งานไม่ได้และไม่มี Alternate Provider ที่เชื่อมต่อพร้อมใช้งาน");
         await completeAgentJob(job.id);
         return true;
       }
