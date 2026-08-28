@@ -1,0 +1,236 @@
+/* Single Episode v2 — compact timing + opt-in production extras. */
+
+[class*="single-episode-studio_main"] {
+  width: min(1480px, 100%) !important;
+  padding: 14px 18px 72px !important;
+}
+
+/* Remove the old 1–4 strip. The page should read top-to-bottom without another navigation layer. */
+[class*="single-episode-studio_flowBar"] { display: none !important; }
+
+/* Compact hero. */
+[class*="single-episode-studio_hero"] {
+  gap: 14px !important;
+  padding: 0 0 9px !important;
+}
+[class*="single-episode-studio_hero"] h1 {
+  margin: 2px 0 3px !important;
+  font-size: clamp(24px, 2.1vw, 31px) !important;
+}
+[class*="single-episode-studio_hero"] p {
+  max-width: 760px !important;
+  font-size: 11px !important;
+  line-height: 1.4 !important;
+}
+
+/* Opt-in extras bar injected by SingleEpisodePreferences. */
+[data-single-episode-options-host] { margin: 0 0 9px; }
+.sc-se-options {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 46px;
+  padding: 7px 9px;
+  border: 1px solid rgba(171, 109, 230, .18);
+  border-radius: 12px;
+  background: rgba(139, 79, 196, .055);
+}
+.sc-se-options__title {
+  min-width: 112px;
+  padding: 0 8px 0 2px;
+  border-right: 1px solid rgba(171, 109, 230, .15);
+}
+.sc-se-options__title strong,
+.sc-se-options__title span { display: block; }
+.sc-se-options__title strong { font-size: 12px; line-height: 1.2; }
+.sc-se-options__title span { margin-top: 2px; opacity: .66; font-size: 9px; }
+.sc-se-options__items {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.sc-se-options__items label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 5px 8px;
+  border: 1px solid rgba(171, 109, 230, .18);
+  border-radius: 999px;
+  background: rgba(255,255,255,.035);
+  white-space: nowrap;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 750;
+}
+.sc-se-options__items label.is-on {
+  border-color: rgba(164, 87, 236, .5);
+  background: rgba(145, 69, 218, .16);
+  color: #c78bff;
+}
+.sc-se-options__items input { accent-color: #9252df; }
+html[data-theme="light"] .sc-se-options {
+  border-color: #dfcfee;
+  background: linear-gradient(180deg, #fff, #faf6fd);
+  box-shadow: 0 6px 20px rgba(85, 45, 111, .045);
+}
+html[data-theme="light"] .sc-se-options__items label { background: #fff; color: #5e5365; }
+html[data-theme="light"] .sc-se-options__items label.is-on { background: #f0e4fb; color: #7335ad; }
+
+/* Make the core panels read as compact form sections. */
+[class*="single-episode-studio_panel"],
+[class*="single-episode-studio_reviewPanel"] {
+  margin-bottom: 8px !important;
+  padding: 12px 14px !important;
+  border-radius: 13px !important;
+}
+[class*="single-episode-studio_sectionHead"] { margin-bottom: 9px !important; }
+[class*="single-episode-studio_sectionHead"] h2 { font-size: 17px !important; }
+[class*="single-episode-studio_sectionHead"] p,
+[class*="single-episode-studio_blockHead"] p { display: none !important; }
+[class*="single-episode-studio_field"] > small { display: none !important; }
+
+/* Advanced setup is optional. Hide Global Negative + Locks unless enabled. */
+[class*="single-episode-studio_main"][data-se-advanced-setup="false"] [class*="single-episode-studio_negativeField"],
+[class*="single-episode-studio_main"][data-se-advanced-setup="false"] [class*="single-episode-studio_lockGrid"] {
+  display: none !important;
+}
+[class*="single-episode-studio_main"][data-se-advanced-setup="false"] [class*="single-episode-studio_storyField"] {
+  grid-column: 1 / -1 !important;
+}
+[class*="single-episode-studio_storyField"] textarea,
+[class*="single-episode-studio_negativeField"] textarea { min-height: 78px !important; }
+
+/* Character cards: keep identity info but shorten the form. */
+[class*="single-episode-studio_characterCard"] { padding: 9px !important; }
+[class*="single-episode-studio_characterCard"] textarea { min-height: 50px !important; }
+[class*="single-episode-studio_animalToggle"] {
+  min-height: 42px;
+  margin-top: 8px !important;
+  padding-top: 8px !important;
+}
+[class*="single-episode-studio_animalToggle"] > div:first-child > span { display: none !important; }
+
+/* Timing: total duration + scene strip share one compact row. */
+[id="scenes"][class*="single-episode-studio_panel"] {
+  display: grid !important;
+  grid-template-columns: minmax(300px, .42fr) minmax(0, 1fr);
+  gap: 7px 9px !important;
+}
+[id="scenes"] > [class*="single-episode-studio_sectionHeadRow"],
+[id="scenes"] > [class*="single-episode-studio_sceneWorkspace"] {
+  grid-column: 1 / -1;
+}
+[id="scenes"] > [class*="single-episode-studio_durationPanel"] {
+  grid-column: 1;
+  margin: 0 !important;
+}
+[id="scenes"] > [class*="single-episode-studio_timeline"] {
+  grid-column: 2;
+  margin: 0 !important;
+}
+
+[class*="single-episode-studio_durationPanel"],
+[class*="single-episode-studio_sceneDuration"] {
+  display: grid !important;
+  grid-template-columns: auto minmax(120px, 1fr) auto;
+  align-items: center !important;
+  gap: 8px !important;
+  min-height: 40px;
+  padding: 6px 9px !important;
+  border-radius: 9px !important;
+}
+[class*="single-episode-studio_durationPanel"] > div,
+[class*="single-episode-studio_sceneDuration"] > div { display: contents !important; }
+[class*="single-episode-studio_durationPanel"] > div > span,
+[class*="single-episode-studio_sceneDuration"] > div > span {
+  grid-column: 1;
+  grid-row: 1;
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+[class*="single-episode-studio_durationPanel"] > input,
+[class*="single-episode-studio_sceneDuration"] > input {
+  grid-column: 2;
+  grid-row: 1;
+  margin: 0 !important;
+}
+[class*="single-episode-studio_durationPanel"] > div > strong,
+[class*="single-episode-studio_sceneDuration"] > div > strong {
+  grid-column: 3;
+  grid-row: 1;
+  min-width: 58px;
+  text-align: right;
+  font-size: 11px;
+}
+[class*="single-episode-studio_durationPanel"] > small,
+[class*="single-episode-studio_sceneDuration"] > small { display: none !important; }
+
+[class*="single-episode-studio_timeline"] {
+  display: flex !important;
+  align-items: stretch;
+  gap: 3px !important;
+  overflow: hidden !important;
+}
+[class*="single-episode-studio_timeline"] button {
+  min-width: 38px !important;
+  min-height: 40px !important;
+  padding: 3px 5px !important;
+  border-radius: 8px !important;
+}
+[class*="single-episode-studio_timeline"] button b,
+[class*="single-episode-studio_timeline"] button span { font-size: 9px !important; }
+
+/* Scene editor: make current-scene duration a one-line control. */
+[class*="single-episode-studio_sceneEditor"] { padding: 10px !important; }
+[class*="single-episode-studio_sceneEditorHead"] { margin-bottom: 7px !important; }
+[class*="single-episode-studio_sceneDuration"] { margin: 4px 0 7px !important; }
+[class*="single-episode-studio_directorBlock"] {
+  margin-top: 7px !important;
+  padding: 9px !important;
+}
+[class*="single-episode-studio_blockHead"] { margin-bottom: 6px !important; }
+
+/* Core stays visible: Action & Dialogue. Everything else is opt-in. */
+[class*="single-episode-studio_main"][data-se-blocking="false"] [class*="single-episode-studio_sceneEditor"] > section[class*="single-episode-studio_directorBlock"]:nth-of-type(1),
+[class*="single-episode-studio_main"][data-se-camera="false"] [class*="single-episode-studio_sceneEditor"] > section[class*="single-episode-studio_directorBlock"]:nth-of-type(3),
+[class*="single-episode-studio_main"][data-se-look="false"] [class*="single-episode-studio_sceneEditor"] > section[class*="single-episode-studio_directorBlock"]:nth-of-type(4),
+[class*="single-episode-studio_main"][data-se-sound="false"] [class*="single-episode-studio_sceneEditor"] > section[class*="single-episode-studio_directorBlock"]:nth-of-type(5),
+[class*="single-episode-studio_main"][data-se-continuity="false"] [class*="single-episode-studio_sceneEditor"] > section[class*="single-episode-studio_directorBlock"]:nth-of-type(6) {
+  display: none !important;
+}
+
+/* Review is optional and percentages no longer dominate this page. */
+[class*="single-episode-studio_main"][data-se-review="false"] [class*="single-episode-studio_reviewPanel"] { display: none !important; }
+[class*="single-episode-studio_readiness"] > strong { display: none !important; }
+[class*="single-episode-studio_stickyFooter"] > div:first-child > span { display: none !important; }
+[class*="single-episode-studio_reviewGrid"] article { min-height: 62px !important; }
+
+/* Footer stays compact; actions remain available. */
+[class*="single-episode-studio_stickyFooter"] {
+  min-height: 46px;
+  margin-top: 7px !important;
+  padding: 6px 8px !important;
+}
+
+@media (max-width: 980px) {
+  [id="scenes"][class*="single-episode-studio_panel"] { grid-template-columns: 1fr !important; }
+  [id="scenes"] > [class*="single-episode-studio_durationPanel"],
+  [id="scenes"] > [class*="single-episode-studio_timeline"] { grid-column: 1 !important; }
+  .sc-se-options { align-items: flex-start; }
+  .sc-se-options__title { min-width: 92px; }
+}
+
+@media (max-width: 720px) {
+  [class*="single-episode-studio_main"] { padding: 12px 10px 82px !important; }
+  .sc-se-options { display: block; }
+  .sc-se-options__title { border-right: 0; margin-bottom: 6px; }
+  .sc-se-options__items { padding-bottom: 2px; }
+  [class*="single-episode-studio_durationPanel"],
+  [class*="single-episode-studio_sceneDuration"] {
+    grid-template-columns: auto 1fr auto !important;
+  }
+}
