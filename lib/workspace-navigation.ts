@@ -89,6 +89,7 @@ const walletRail: readonly WorkspaceRailItem[] = [
 const settingsRail: readonly WorkspaceRailItem[] = [
   { href: "/profile", icon: "◉", label: "บัญชี", description: "ข้อมูลผู้ใช้และการเข้าสู่ระบบ" },
   { href: "/profile#security", icon: "◇", label: "2FA", description: "Authenticator และ Recovery Code" },
+  { href: "/profile/api-connections", icon: "⌁", label: "API & Models", description: "System API, BYOK, Analyzer และ Generator Connections" },
   { href: "/admin/security", icon: "⬡", label: "Security Center", description: "Emergency Control และมาตรการความปลอดภัย", adminOnly: true },
   { href: "/admin/ai-costs", icon: "●", label: "AI & Cost", description: "ต้นทุน AI และการควบคุมงบระบบ", adminOnly: true },
   { href: "/guide", icon: "?", label: "คู่มือ", description: "คู่มือระบบตามสิทธิ์บัญชี" },
@@ -144,6 +145,7 @@ export function getWorkspaceContext(pathname: string): string {
   if (pathname.startsWith("/admin/users")) return "User Control Center";
   if (pathname.startsWith("/admin/security")) return "การตั้งค่า / Security Center";
   if (pathname.startsWith("/admin/ai-costs")) return "การตั้งค่า / AI & Cost";
+  if (pathname.startsWith("/profile/api-connections")) return "การตั้งค่า / API & Models";
   if (pathname === "/admin") return "Asset Administration";
   if (pathname.startsWith("/profile")) return "การตั้งค่า";
   return "SCENOVA Studio";
