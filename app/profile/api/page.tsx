@@ -29,6 +29,7 @@ type Provider = {
   ready: boolean;
   purposeTh: string;
   capabilityTh: string;
+  credentialHintTh?: string;
   stageId: string;
   stageLabelTh: string;
   status: "READY" | "ADAPTER_PENDING";
@@ -60,8 +61,14 @@ const KIND_LABEL: Record<ConnectionKind, string> = {
 function statusText(status: ConnectionStatus) {
   if (status === "CONNECTED") return "เชื่อมต่อแล้ว";
   if (status === "RATE_LIMITED") return "จำกัดการเรียกชั่วคราว";
-  if (status === "INVALID") return "Key ไม่ถูกต้อง";
+  if (status === "INVALID") return "Credential ไม่ถูกต้อง";
   return "มีปัญหาการเชื่อมต่อ";
+}
+
+function credentialPlaceholder(provider: Provider | null) {
+  if (!provider) return "วาง API Key / Credential";
+  if (provider.id === "kling") return "AccessKey:SecretKey";
+  return `วาง API Key / Credential ของ ${provider.label}`;
 }
 
 export default function ApiConnectionsPage() {
@@ -133,7 +140,7 @@ export default function ApiConnectionsPage() {
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.message || data.error || "เชื่อมต่อไม่สำเร็จ");
       setApiKey("");
-      setMessage(`${selectedProvider.label} เชื่อมต่อสำเร็จและบันทึก Key แบบเข้ารหัสแล้ว`);
+      setMessage(`${selectedProvider.label} ผ่านการตรวจสอบแล้ว และบันทึก Credential แบบเข้ารหัสเรียบร้อย`);
       await loadConnections();
     } catch (err) {
       setError(err instanceof Error ? err.message : "เชื่อมต่อไม่สำเร็จ");
@@ -158,13 +165,13 @@ export default function ApiConnectionsPage() {
   }
 
   async function remove(connection: Connection) {
-    if (!window.confirm(`ลบ API Key ของ ${connection.provider.toUpperCase()} ออกจาก SCENOVA?`)) return;
+    if (!window.confirm(`ลบ Credential ของ ${connection.provider.toUpperCase()} ออกจาก SCENOVA?`)) return;
     setError("");
     setMessage("");
     const response = await fetch(`/api/api-connections?id=${encodeURIComponent(connection.id)}`, { method: "DELETE", credentials: "same-origin" });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) return setError(data.error || "ลบการเชื่อมต่อไม่สำเร็จ");
-    setMessage("ลบ API Key เรียบร้อยแล้ว");
+    setMessage("ลบ Credential เรียบร้อยแล้ว");
     await loadConnections();
   }
 
@@ -178,7 +185,7 @@ export default function ApiConnectionsPage() {
     <header className={styles.hero}>
       <span className={styles.eyebrow}>API & MODELS · CONNECTION CENTER</span>
       <h1>ศูนย์เชื่อมต่อ AI ของ SCENOVA</h1>
-      <p>ทุก API ถูกจัดตาม “สายงาน” เดียวกันทั้งระบบ เพื่อไม่ให้ต่อผิดหน้าที่: A วิเคราะห์ → B ภาพอ้างอิง → C สร้างคลิป → D เสียง ผู้ใช้สามารถใช้ BYOK ได้เฉพาะ Provider ที่ Adapter เปิดใช้งานจริงแล้วเท่านั้น</p>
+      <p>ทุก API ถูกจัดตามสายงานเดียวกัน: A วิเคราะห์ → B ภาพอ้างอิง → C สร้างคลิป → D เสียง เมื่อ Provider ขึ้น “Adapter พร้อม” คุณใส่ Credential แล้วกดทดสอบได้ทันที และ SCENOVA จะเลือก Default Connection ของสายนั้นให้ Workflow ใช้จริง</p>
     </header>
 
     <section className={styles.pipeline} aria-label="สายการทำงาน API">
@@ -234,18 +241,22 @@ export default function ApiConnectionsPage() {
         {selectedProvider ? <div className={styles.connector}>
           <div className={styles.connectorHead}>
             <div><span className={styles.plugLarge}>{selectedProvider.stageId}</span><div><h3>{selectedProvider.label}</h3><p>{selectedProvider.stageLabelTh}</p></div></div>
-            <span className={selectedProvider.ready ? `${styles.badge} ${styles.ok}` : `${styles.badge} ${styles.pending}`}>{selectedProvider.ready ? "รับ Key ได้" : "ยังไม่รับ Key"}</span>
+            <span className={selectedProvider.ready ? `${styles.badge} ${styles.ok}` : `${styles.badge} ${styles.pending}`}>{selectedProvider.ready ? "รับ Credential ได้" : "ยังไม่รับ Credential"}</span>
           </div>
 
           {selectedProvider.ready ? <>
-            <label className={styles.field}><span>API Key</span><input className={styles.input} type="password" autoComplete="off" value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder="วาง API Key ของ Provider นี้" /></label>
+            <label className={styles.field}>
+              <span>Credential / API Key</span>
+              <input className={styles.input} type="password" autoComplete="off" value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder={credentialPlaceholder(selectedProvider)} />
+            </label>
+            {selectedProvider.credentialHintTh ? <div className={styles.note}><b>รูปแบบ Credential:</b> {selectedProvider.credentialHintTh}</div> : null}
             <label className={styles.field}><span>Model</span><input className={styles.input} value={modelId} onChange={(event) => setModelId(event.target.value)} placeholder="Default model" /></label>
             <label className={styles.field}><span>API Base URL</span><input className={styles.input} value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} placeholder="Provider API endpoint" /></label>
-            <div className={styles.actions}><button type="button" className={styles.primary} disabled={loading || apiKey.trim().length < 8} onClick={connect}>{loading ? "กำลังตรวจสอบ…" : "ทดสอบ Key และเชื่อมสาย"}</button></div>
-            <div className={styles.note}><b>BYOK:</b> ค่าเรียก Provider ถูกคิดกับบัญชี Provider ของเจ้าของ Key โดยตรง ส่วน SCENOVA สามารถคิด Platform Credit สำหรับ Workflow/Analyzer/Storage แยกต่างหากได้</div>
+            <div className={styles.actions}><button type="button" className={styles.primary} disabled={loading || apiKey.trim().length < 8} onClick={connect}>{loading ? "กำลังตรวจสอบ…" : "ทดสอบ Credential และเชื่อมสาย"}</button></div>
+            <div className={styles.note}><b>BYOK:</b> ค่า Generation ของ Provider ถูกคิดกับบัญชีเจ้าของ Credential โดยตรง SCENOVA จะไม่หักต้นทุน Provider ซ้ำจาก Wallet; ค่าบริการ Platform/Workflow ที่กำหนดไว้จะแยกจากกัน</div>
           </> : <div className={styles.pendingBox}>
-            <b>ยังไม่เปิดรับ API Key เพื่อป้องกันสถานะหลอก</b>
-            <p>สล็อตและสายงานของ {selectedProvider.label} ถูกเตรียมไว้แล้ว แต่ Adapter ฝั่ง Server ยังไม่เปิดใช้งานจริง เมื่อ Adapter พร้อม สถานะจะเปลี่ยนเป็น “รับ Key ได้” และปุ่มเชื่อมต่อจะเปิดอัตโนมัติ</p>
+            <b>ยังไม่เปิดรับ Credential เพื่อป้องกันสถานะหลอก</b>
+            <p>Provider นี้จะเปิดให้เชื่อมต่อก็ต่อเมื่อ Adapter ฝั่ง Server มี Runtime และการตรวจ Credential พร้อมใช้งานจริง</p>
           </div>}
         </div> : null}
       </section>
@@ -255,7 +266,7 @@ export default function ApiConnectionsPage() {
           <div><span className={styles.sectionKicker}>สถานะจริงจากบัญชีนี้</span><h2>การเชื่อมต่อของฉัน</h2></div>
           <span className={styles.countPill}>{connections.length} Connections</span>
         </div>
-        <p className={styles.muted}>Key เต็มจะไม่ถูกส่งกลับมาที่ Browser หลังบันทึก การ์ดด้านล่างแสดงเฉพาะสถานะ, Model, สายงาน และท้าย Key เท่านั้น</p>
+        <p className={styles.muted}>Credential เต็มจะไม่ถูกส่งกลับมาที่ Browser หลังบันทึก การ์ดด้านล่างแสดงเฉพาะสถานะ, Model, สายงาน และท้าย Credential เท่านั้น</p>
 
         <div className={styles.connectionGroups}>
           {KIND_ORDER.map((kind) => {
@@ -277,7 +288,7 @@ export default function ApiConnectionsPage() {
                 <div className={styles.actions}>
                   <button type="button" className={styles.secondary} onClick={() => patch(connection, { enabled: !connection.enabled })}>{connection.enabled ? "ปิดใช้งาน" : "เปิดใช้งาน"}</button>
                   {!connection.isDefault ? <button type="button" className={styles.secondary} onClick={() => patch(connection, { isDefault: true })}>ตั้งเป็น Default</button> : null}
-                  <button type="button" className={styles.danger} onClick={() => remove(connection)}>ลบ Key</button>
+                  <button type="button" className={styles.danger} onClick={() => remove(connection)}>ลบ Credential</button>
                 </div>
               </article>)}
             </div>;
