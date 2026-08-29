@@ -43,105 +43,144 @@ html[data-theme] [data-sc-page] {
   color: var(--sc-text) !important;
   background-color: var(--sc-bg) !important;
 }
-html[data-theme] [data-sc-page] :is(h1,h2,h3,h4,h5,h6,strong,b) {
-  text-shadow: none;
-}
-html[data-theme] [data-sc-page] :is(p,small,label,legend,caption) {
-  text-shadow: none;
-}
+html[data-theme] [data-sc-page] :is(h1,h2,h3,h4,h5,h6,strong,b) { text-shadow:none; }
+html[data-theme] [data-sc-page] :is(p,small,label,legend,caption) { text-shadow:none; }
 
 /* Common structural UI surfaces across Portal, Studio, Series, Director, Library,
    Agent, Models, Render, Wallet, Settings and Admin. Preview/canvas/media classes
    are not included here so cinematic artwork keeps its intended appearance. */
 html[data-theme] [data-sc-page] :is(
-  [class*="_panel__"],
-  [class*="_card__"],
-  [class*="_box__"],
-  [class*="_toolbar__"],
-  [class*="_sheet__"],
-  [class*="_drawer__"],
-  [class*="_dialog__"],
-  [class*="_modal__"],
-  [class*="_inspector__"],
-  [class*="_sidebar__"],
-  [class*="_statusBar__"],
-  [class*="_runList__"]
-) {
-  border-color: var(--sc-line) !important;
-}
+  [class*="_panel__"],[class*="_card__"],[class*="_box__"],[class*="_toolbar__"],
+  [class*="_sheet__"],[class*="_drawer__"],[class*="_dialog__"],[class*="_modal__"],
+  [class*="_inspector__"],[class*="_sidebar__"],[class*="_statusBar__"],[class*="_runList__"]
+) { border-color:var(--sc-line) !important; }
 
 html[data-theme="light"] [data-sc-page] :is(
-  [class*="_panel__"],
-  [class*="_card__"],
-  [class*="_box__"],
-  [class*="_toolbar__"],
-  [class*="_sheet__"],
-  [class*="_drawer__"],
-  [class*="_dialog__"],
-  [class*="_modal__"],
-  [class*="_inspector__"],
-  [class*="_statusBar__"],
-  [class*="_runList__"]
+  [class*="_panel__"],[class*="_card__"],[class*="_box__"],[class*="_toolbar__"],
+  [class*="_sheet__"],[class*="_drawer__"],[class*="_dialog__"],[class*="_modal__"],
+  [class*="_inspector__"],[class*="_statusBar__"],[class*="_runList__"]
 ) {
-  color: var(--sc-text) !important;
-  background-color: var(--sc-panel) !important;
+  color:var(--sc-text) !important;
+  background-color:var(--sc-panel) !important;
 }
-
 html[data-theme="dark"] [data-sc-page] :is(
-  [class*="_panel__"],
-  [class*="_card__"],
-  [class*="_box__"],
-  [class*="_toolbar__"],
-  [class*="_sheet__"],
-  [class*="_drawer__"],
-  [class*="_dialog__"],
-  [class*="_modal__"],
-  [class*="_inspector__"],
-  [class*="_statusBar__"],
-  [class*="_runList__"]
-) {
-  color: var(--sc-text) !important;
-}
+  [class*="_panel__"],[class*="_card__"],[class*="_box__"],[class*="_toolbar__"],
+  [class*="_sheet__"],[class*="_drawer__"],[class*="_dialog__"],[class*="_modal__"],
+  [class*="_inspector__"],[class*="_statusBar__"],[class*="_runList__"]
+) { color:var(--sc-text) !important; }
 
 /* Forms and tables always follow the active theme. */
 html[data-theme] [data-sc-page] :is(input,textarea,select) {
-  color: var(--sc-text) !important;
-  border-color: var(--sc-line) !important;
-  background-color: var(--sc-panel) !important;
-  caret-color: var(--sc-purple-bright);
+  color:var(--sc-text) !important;
+  border-color:var(--sc-line) !important;
+  background-color:var(--sc-panel) !important;
+  caret-color:var(--sc-purple-bright);
 }
-html[data-theme] [data-sc-page] :is(input,textarea)::placeholder {
-  color: var(--sc-muted-2) !important;
-}
-html[data-theme] [data-sc-page] :is(input,textarea,select):focus {
-  border-color: var(--sc-purple) !important;
-}
-html[data-theme] [data-sc-page] option {
-  color: var(--sc-text);
-  background: var(--sc-panel);
-}
-html[data-theme] [data-sc-page] :is(table,thead,tbody,tr,th,td) {
-  border-color: var(--sc-line) !important;
-}
-html[data-theme] [data-sc-page] th {
-  color: var(--sc-text) !important;
-  background-color: var(--sc-panel-2) !important;
-}
-html[data-theme] [data-sc-page] td { color: var(--sc-text); }
+html[data-theme] [data-sc-page] :is(input,textarea)::placeholder { color:var(--sc-muted-2) !important; }
+html[data-theme] [data-sc-page] :is(input,textarea,select):focus { border-color:var(--sc-purple) !important; }
+html[data-theme] [data-sc-page] option { color:var(--sc-text);background:var(--sc-panel); }
+html[data-theme] [data-sc-page] :is(table,thead,tbody,tr,th,td) { border-color:var(--sc-line) !important; }
+html[data-theme] [data-sc-page] th { color:var(--sc-text) !important;background-color:var(--sc-panel-2) !important; }
+html[data-theme] [data-sc-page] td { color:var(--sc-text); }
 
-/* Non-primary controls inherit the current theme. Branded purple primary actions
-   are left untouched. */
+/* Non-primary controls inherit the current theme. Branded purple primary actions stay purple. */
 html[data-theme] [data-sc-page] :is(
-  [class*="_secondary__"],
-  [class*="_ghost__"],
-  [class*="_cancel__"],
-  [class*="_closeButton__"],
-  [class*="_backButton__"]
+  [class*="_secondary__"],[class*="_ghost__"],[class*="_cancel__"],
+  [class*="_closeButton__"],[class*="_backButton__"]
 ) {
-  color: var(--sc-text) !important;
-  border-color: var(--sc-line) !important;
-  background-color: var(--sc-panel-2) !important;
+  color:var(--sc-text) !important;
+  border-color:var(--sc-line) !important;
+  background-color:var(--sc-panel-2) !important;
 }
+
+/* Model Center: cards/specs previously stayed near-black in Light mode. */
+html[data-theme] [data-workspace="Model Center"] :is(
+  [class*="models_card__"],[class*="models_spec__"]
+) {
+  color:var(--sc-text) !important;
+  border-color:var(--sc-line) !important;
+  background-color:var(--sc-panel) !important;
+  background-image:none !important;
+}
+html[data-theme] [data-workspace="Model Center"] [class*="models_spec__"] { background-color:var(--sc-panel-2) !important; }
+html[data-theme] [data-workspace="Model Center"] [class*="models_tags__"] span {
+  color:var(--sc-purple) !important;
+  border-color:var(--sc-line) !important;
+  background:color-mix(in srgb,var(--sc-purple) 9%,var(--sc-panel-2)) !important;
+}
+
+/* Render queue: job rows and progress rails follow the active theme. */
+html[data-theme] [data-workspace="คิวสร้างวิดีโอ"] [class*="render_job__"] {
+  color:var(--sc-text) !important;
+  border-color:var(--sc-line) !important;
+  background-color:var(--sc-panel) !important;
+  background-image:none !important;
+}
+html[data-theme] [data-workspace="คิวสร้างวิดีโอ"] [class*="render_track__"] { background:var(--sc-panel-3) !important; }
+html[data-theme] [data-workspace="คิวสร้างวิดีโอ"] [class*="render_project__"] b { color:var(--sc-text) !important; }
+
+/* Wallet / credit activity: legacy dark metric and top-up surfaces are mapped to tokens. */
+html[data-theme] [data-workspace="เครดิตและค่าใช้จ่าย"] :is(
+  [class*="wallet-console_metric__"],[class*="wallet-console_card__"],
+  [class*="wallet-console_statusCard__"],[class*="wallet-console_topup__"],
+  [class*="credit-activity_section__"],[class*="credit-activity_metrics__"] article
+) {
+  color:var(--sc-text) !important;
+  border-color:var(--sc-line) !important;
+  background-color:var(--sc-panel) !important;
+  background-image:none !important;
+}
+html[data-theme] [data-workspace="เครดิตและค่าใช้จ่าย"] :is(
+  [class*="wallet-console_flow__"] > div,[class*="wallet-console_paymentDisabled__"],
+  [class*="credit-activity_filters__"] button
+) {
+  color:var(--sc-muted) !important;
+  border-color:var(--sc-line) !important;
+  background:var(--sc-panel-2) !important;
+}
+html[data-theme] [data-workspace="เครดิตและค่าใช้จ่าย"] :is(
+  [class*="wallet-console_heroActions__"] a,[class*="wallet-console_links__"] a
+) {
+  color:var(--sc-text) !important;
+  border-color:var(--sc-line) !important;
+  background:var(--sc-panel-2) !important;
+}
+html[data-theme] [data-workspace="เครดิตและค่าใช้จ่าย"] [class*="credit-activity_row__"] b { color:var(--sc-text) !important; }
+
+/* Library: UI chrome follows white/purple or black/purple; media preview tiles remain visual. */
+html[data-theme] [data-workspace="คลังทรัพยากร"] [class*="library-hub_main__"] { color:var(--sc-text) !important; }
+html[data-theme] [data-workspace="คลังทรัพยากร"] [class*="library-hub_header__"] span { color:var(--sc-purple) !important; }
+html[data-theme] [data-workspace="คลังทรัพยากร"] [class*="library-hub_header__"] p { color:var(--sc-muted) !important; }
+html[data-theme] [data-workspace="คลังทรัพยากร"] :is(
+  [class*="library-hub_section__"],[class*="library-hub_card__"],
+  [class*="library-hub_detailModal__"],[class*="library-hub_detailGrid__"] article,
+  [class*="library-hub_detailFooter__"]
+) {
+  color:var(--sc-text) !important;
+  border-color:var(--sc-line) !important;
+  background-color:var(--sc-panel) !important;
+}
+html[data-theme] [data-workspace="คลังทรัพยากร"] :is(
+  [class*="library-hub_tabs__"] button,[class*="library-hub_actions__"] button,
+  [class*="library-hub_actions__"] a,[class*="library-hub_secondaryAction__"],
+  [class*="library-hub_search__"]
+) {
+  color:var(--sc-text) !important;
+  border-color:var(--sc-line) !important;
+  background:var(--sc-panel-2) !important;
+}
+html[data-theme] [data-workspace="คลังทรัพยากร"] [class*="library-hub_tabs__"] button[class*="active"] {
+  color:#fff !important;
+  border-color:var(--sc-purple) !important;
+  background:var(--sc-purple) !important;
+}
+html[data-theme] [data-workspace="คลังทรัพยากร"] [class*="library-hub_tag__"] {
+  color:var(--sc-purple) !important;
+  background:color-mix(in srgb,var(--sc-purple) 9%,var(--sc-panel-2)) !important;
+}
+html[data-theme] [data-workspace="คลังทรัพยากร"] :is(
+  [class*="library-hub_detailIntro__"] span,[class*="library-hub_detailGrid__"] article span
+) { color:var(--sc-purple) !important; }
 
 /* Semantic status colors remain meaningful in both appearances. */
 html[data-theme="dark"] [data-sc-page] [class*="_success__"] { color:#8aefbc !important; }
