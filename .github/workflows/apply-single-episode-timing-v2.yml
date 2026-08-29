@@ -1,0 +1,31 @@
+name: Apply Single Episode Timing V2
+
+on:
+  push:
+    paths:
+      - "scripts/apply-single-episode-timing-v2.mjs"
+      - ".github/workflows/apply-single-episode-timing-v2.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch-main:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Apply timing and language patch
+        run: node scripts/apply-single-episode-timing-v2.mjs
+      - name: Commit patched Studio
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add components/single-episode-studio.tsx components/single-episode-studio.module.css components/single-episode-studio-polish.tsx
+          git diff --cached --quiet && exit 0
+          git commit -m "Refine single episode timing and scene controls"
+          git push origin HEAD:main
