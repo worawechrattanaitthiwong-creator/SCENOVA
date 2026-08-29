@@ -134,6 +134,7 @@ function WorkspaceShell({ children, pathname }: { children: React.ReactNode; pat
   const rail = useMemo(() => rawRail.filter((item) => !item.adminOnly || me.role === "ADMIN"), [rawRail, me.role]);
   const context = useMemo(() => getWorkspaceContext(pathname), [pathname]);
   const hideTopbar = pathname === "/studio";
+  const showApiBackbar = pathname === "/profile/api";
   const activeRailIndex = useMemo(() => {
     const exact = rail.findIndex((item) => targetMatchesCurrent(item.href, pathname, searchParams, hash));
     if (exact >= 0) return exact;
@@ -187,17 +188,26 @@ function WorkspaceShell({ children, pathname }: { children: React.ReactNode; pat
     </aside>
 
     <div className={styles.workspace} data-sc-workspace style={hideTopbar ? { gridTemplateRows: "minmax(0, 1fr)" } : undefined}>
-      {!hideTopbar ? <header className={styles.topbar} data-sc-topbar>
-        <nav className={styles.subNav} data-sc-sub-nav aria-label={`ขั้นตอน ${context}`}>
-          {rail.map((item, index) => {
-            const effectiveHref = item.href === "/portal#guide" ? "/guide" : item.href;
-            return <Link key={item.href} href={effectiveHref} prefetch={false} className={index === activeRailIndex ? styles.subActive : ""} aria-current={index === activeRailIndex ? "step" : undefined}>
-              <span className={styles.railIcon}>{item.icon}</span>
-              <span className={styles.railCopy}><b>{item.label}</b><small>{item.description}</small></span>
-            </Link>;
-          })}
-        </nav>
-        <Link className={styles.helpLink} href="/guide" prefetch={false}><span>?</span><b>คู่มือการใช้งาน</b></Link>
+      {!hideTopbar ? <header className={`${styles.topbar} ${showApiBackbar ? styles.apiBackTopbar : ""}`} data-sc-topbar>
+        {showApiBackbar ? (
+          <button className={styles.backButton} type="button" onClick={() => router.back()} data-keep-small>
+            <span className={styles.backIcon}><Icon name="arrow" /></span>
+            <span><b>ย้อนกลับ</b><small>กลับไปหน้าก่อนหน้า</small></span>
+          </button>
+        ) : (
+          <>
+            <nav className={styles.subNav} data-sc-sub-nav aria-label={`ขั้นตอน ${context}`}>
+              {rail.map((item, index) => {
+                const effectiveHref = item.href === "/portal#guide" ? "/guide" : item.href;
+                return <Link key={item.href} href={effectiveHref} prefetch={false} className={index === activeRailIndex ? styles.subActive : ""} aria-current={index === activeRailIndex ? "step" : undefined}>
+                  <span className={styles.railIcon}>{item.icon}</span>
+                  <span className={styles.railCopy}><b>{item.label}</b><small>{item.description}</small></span>
+                </Link>;
+              })}
+            </nav>
+            <Link className={styles.helpLink} href="/guide" prefetch={false}><span>?</span><b>คู่มือการใช้งาน</b></Link>
+          </>
+        )}
       </header> : null}
       <div className={styles.page} data-sc-page data-workspace={context}>{children}</div>
     </div>

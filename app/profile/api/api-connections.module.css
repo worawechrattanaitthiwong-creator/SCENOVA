@@ -10,7 +10,7 @@
   --api-line: var(--line, #e7e1eb);
   width: min(100%, 1500px);
   margin: 0 auto;
-  padding: 26px 28px 72px;
+  padding: 18px 22px 52px;
   color: var(--api-text);
 }
 
@@ -25,10 +25,10 @@
 
 .pageHeader {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
-  gap: 28px;
-  padding: 8px 2px 24px;
+  gap: 20px;
+  padding: 4px 2px 16px;
 }
 
 .headerCopy {
@@ -39,7 +39,7 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  margin-bottom: 13px;
+  margin-bottom: 9px;
   color: var(--api-muted);
   font-size: 12px;
 }
@@ -51,7 +51,7 @@
 
 .headerCopy h1 {
   margin: 0;
-  font-size: clamp(30px, 3vw, 42px);
+  font-size: clamp(28px, 2.5vw, 36px);
   font-weight: 760;
   letter-spacing: -0.035em;
   line-height: 1.08;
@@ -59,17 +59,17 @@
 
 .headerCopy p {
   max-width: 680px;
-  margin: 12px 0 0;
+  margin: 8px 0 0;
   color: var(--api-muted);
-  font-size: 14px;
-  line-height: 1.75;
+  font-size: 12px;
+  line-height: 1.65;
 }
 
 .headerSummary {
   display: grid;
-  grid-template-columns: repeat(2, minmax(112px, auto)) minmax(238px, auto);
-  overflow: hidden;
-  min-width: 520px;
+  grid-template-columns: repeat(2, minmax(96px, auto)) minmax(210px, auto);
+  overflow: visible;
+  min-width: 460px;
   border: 1px solid var(--api-line);
   border-radius: 16px;
   background: var(--api-surface);
@@ -78,8 +78,8 @@
 
 .summaryItem,
 .securitySummary {
-  min-height: 80px;
-  padding: 15px 17px;
+  min-height: 64px;
+  padding: 10px 13px;
 }
 
 .summaryItem {
@@ -99,7 +99,7 @@
   display: block;
   margin: 2px 0 1px;
   color: var(--api-text);
-  font-size: 22px;
+  font-size: 18px;
   line-height: 1.15;
 }
 
@@ -118,6 +118,76 @@
   display: block;
   margin-bottom: 3px;
   font-size: 12px;
+}
+
+.summaryLabel {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 5px;
+}
+
+.infoTip {
+  position: relative;
+  display: inline-flex !important;
+  flex: 0 0 auto;
+  align-items: center;
+}
+
+.infoTip > button {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--api-accent-border);
+  border-radius: 50%;
+  color: var(--api-accent);
+  background: var(--api-surface);
+  cursor: help;
+}
+
+.infoTip > button:hover,
+.infoTip > button:focus-visible {
+  border-color: var(--api-accent);
+  outline: none;
+  background: var(--api-accent-soft);
+}
+
+.infoPopover {
+  position: absolute;
+  z-index: 80;
+  top: calc(100% + 8px);
+  right: 0;
+  width: max-content;
+  max-width: min(280px, 72vw);
+  padding: 9px 11px;
+  border: 1px solid var(--api-accent-border);
+  border-radius: 9px;
+  color: var(--api-text);
+  background: var(--api-surface);
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--api-text) 16%, transparent);
+  font-size: 10px;
+  font-weight: 450;
+  line-height: 1.55;
+  opacity: 0;
+  transform: translateY(-3px);
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 140ms ease, transform 140ms ease, visibility 140ms ease;
+}
+
+.infoPopover strong {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--api-text);
+  font-size: 10px;
+}
+
+.infoTip:hover .infoPopover,
+.infoTip:focus-within .infoPopover {
+  opacity: 1;
+  transform: translateY(0);
+  visibility: visible;
 }
 
 .summaryIcon,
@@ -143,7 +213,7 @@
 }
 
 .workflowPanel {
-  padding: 20px;
+  padding: 14px;
 }
 
 .sectionHeading,
@@ -155,7 +225,7 @@
 }
 
 .sectionHeading {
-  padding: 0 2px 16px;
+  padding: 0 2px 10px;
 }
 
 .eyebrow,
@@ -172,7 +242,7 @@
 .sectionHeading h2,
 .panelHeader h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 740;
   letter-spacing: -0.015em;
 }
@@ -193,19 +263,19 @@
 .stageRail {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .stageButton {
   position: relative;
   display: grid;
-  grid-template-columns: 35px minmax(0, 1fr);
+  grid-template-columns: 31px minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
-  padding: 12px;
+  padding: 9px;
   border: 1px solid var(--api-line);
-  border-radius: 13px;
+  border-radius: 11px;
   color: var(--api-text);
   text-align: left;
   background: var(--api-surface-raised);
@@ -241,10 +311,10 @@
 .stageNumber {
   display: grid;
   place-items: center;
-  width: 35px;
-  height: 35px;
+  width: 31px;
+  height: 31px;
   border: 1px solid var(--api-line);
-  border-radius: 10px;
+  border-radius: 9px;
   color: var(--api-muted);
   font-size: 12px;
   font-weight: 800;
@@ -287,7 +357,7 @@
   gap: 6px;
   overflow: hidden;
   min-width: 0;
-  padding-top: 7px;
+  padding-top: 5px;
   border-top: 1px solid var(--api-line);
   color: var(--api-muted);
   font-size: 10px;
@@ -383,17 +453,17 @@
   display: grid;
   grid-template-columns: minmax(0, 1.16fr) minmax(390px, 0.84fr);
   align-items: start;
-  gap: 16px;
-  margin-top: 16px;
+  gap: 12px;
+  margin-top: 12px;
 }
 
 .panel {
   min-width: 0;
-  padding: 22px;
+  padding: 16px;
 }
 
 .panelHeader {
-  padding-bottom: 17px;
+  padding-bottom: 12px;
   border-bottom: 1px solid var(--api-line);
 }
 
@@ -404,7 +474,7 @@
 
 .countPill {
   flex: 0 0 auto;
-  padding: 6px 9px;
+  padding: 5px 8px;
   border: 1px solid var(--api-line);
   border-radius: 999px;
   color: var(--api-muted);
@@ -419,8 +489,8 @@
   align-items: center;
   justify-content: center;
   gap: 9px;
-  min-height: 126px;
-  margin-top: 16px;
+  min-height: 94px;
+  margin-top: 12px;
   border: 1px dashed var(--api-line);
   border-radius: 14px;
   color: var(--api-muted);
@@ -455,21 +525,21 @@
 .providerGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 9px;
-  margin-top: 16px;
+  gap: 7px;
+  margin-top: 12px;
 }
 
 .providerCard {
   position: relative;
   display: grid;
-  grid-template-columns: 38px minmax(0, 1fr) 19px;
+  grid-template-columns: 34px minmax(0, 1fr) 18px;
   align-items: center;
-  gap: 11px;
+  gap: 9px;
   min-width: 0;
-  min-height: 76px;
-  padding: 11px;
+  min-height: 60px;
+  padding: 8px;
   border: 1px solid var(--api-line);
-  border-radius: 13px;
+  border-radius: 11px;
   color: var(--api-text);
   text-align: left;
   background: var(--api-surface-raised);
@@ -504,10 +574,10 @@
 }
 
 .providerMonogram {
-  width: 38px;
-  height: 38px;
-  border-radius: 11px;
-  font-size: 13px;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  font-size: 12px;
 }
 
 .providerCopy {
@@ -520,12 +590,12 @@
   align-items: center;
   gap: 7px;
   min-width: 0;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .providerTitleRow > strong {
   overflow: hidden;
-  font-size: 13px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -534,8 +604,8 @@
   display: -webkit-box;
   overflow: hidden;
   color: var(--api-muted);
-  font-size: 10px;
-  line-height: 1.45;
+  font-size: 9px;
+  line-height: 1.35;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
@@ -566,10 +636,10 @@
 }
 
 .connectionForm {
-  margin-top: 14px;
-  padding: 18px;
+  margin-top: 10px;
+  padding: 14px;
   border: 1px solid var(--api-accent-border);
-  border-radius: 16px;
+  border-radius: 13px;
   background: var(--api-surface-soft);
 }
 
@@ -588,10 +658,10 @@
 }
 
 .providerMonogramLarge {
-  width: 43px;
-  height: 43px;
-  border-radius: 12px;
-  font-size: 15px;
+  width: 37px;
+  height: 37px;
+  border-radius: 10px;
+  font-size: 13px;
   background: var(--api-surface);
 }
 
@@ -607,7 +677,7 @@
 }
 
 .formProvider strong {
-  font-size: 15px;
+  font-size: 13px;
 }
 
 .formBadges {
@@ -646,11 +716,11 @@
 }
 
 .capability {
-  margin: 13px 0 16px;
-  padding-bottom: 14px;
+  margin: 10px 0 12px;
+  padding-bottom: 10px;
   border-bottom: 1px solid var(--api-line);
   color: var(--api-muted);
-  font-size: 11px;
+  font-size: 10px;
   line-height: 1.6;
 }
 
@@ -698,7 +768,7 @@
   grid-template-columns: 37px minmax(0, 1fr) 37px;
   align-items: center;
   overflow: hidden;
-  height: 45px;
+  height: 40px;
   border: 1px solid var(--api-line);
   border-radius: 11px;
   background: var(--api-surface);
@@ -763,8 +833,8 @@
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  margin-top: 14px;
-  padding: 10px 0;
+  margin-top: 10px;
+  padding: 8px 0;
   border: 0;
   border-top: 1px solid var(--api-line);
   border-bottom: 1px solid var(--api-line);
@@ -801,7 +871,7 @@
   display: grid;
   grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
   gap: 10px;
-  padding-top: 12px;
+  padding-top: 9px;
 }
 
 .advancedFields label {
@@ -839,7 +909,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-top: 15px;
+  margin-top: 11px;
 }
 
 .submitExplanation {
@@ -871,7 +941,7 @@
   justify-content: center;
   gap: 8px;
   min-width: 174px;
-  height: 42px;
+  height: 38px;
   padding: 0 15px;
   border: 1px solid var(--api-accent);
   border-radius: 10px;
@@ -921,10 +991,10 @@
   grid-template-columns: 36px minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
-  margin-top: 16px;
-  padding: 11px;
+  margin-top: 12px;
+  padding: 9px;
   border: 1px solid var(--api-line);
-  border-radius: 13px;
+  border-radius: 11px;
   background: var(--api-surface-raised);
 }
 
@@ -966,14 +1036,14 @@
 
 .connectionList {
   display: grid;
-  gap: 10px;
-  margin-top: 11px;
+  gap: 8px;
+  margin-top: 9px;
 }
 
 .connectionCard {
-  padding: 14px;
+  padding: 11px;
   border: 1px solid var(--api-line);
-  border-radius: 14px;
+  border-radius: 11px;
   background: var(--api-surface);
 }
 
@@ -987,21 +1057,21 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 9px;
 }
 
 .connectionIdentity {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
 }
 
 .connectionMonogram {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  font-size: 12px;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  font-size: 11px;
 }
 
 .connectionIdentity strong,
@@ -1028,7 +1098,7 @@
   flex: 0 0 auto;
   align-items: center;
   gap: 5px;
-  padding: 5px 7px;
+  padding: 4px 6px;
   border-radius: 999px;
   font-size: 9px;
   font-weight: 720;
@@ -1065,9 +1135,9 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 8px;
-  margin-top: 12px;
-  padding: 10px;
-  border-radius: 10px;
+  margin-top: 8px;
+  padding: 8px;
+  border-radius: 8px;
   background: var(--api-surface-raised);
 }
 
@@ -1110,8 +1180,8 @@
 }
 
 .connectionFooter {
-  margin-top: 11px;
-  padding-top: 10px;
+  margin-top: 8px;
+  padding-top: 8px;
   border-top: 1px solid var(--api-line);
 }
 
@@ -1154,7 +1224,7 @@
   align-items: center;
   justify-content: center;
   gap: 5px;
-  min-height: 29px;
+  min-height: 27px;
   padding: 0 8px;
   border: 1px solid var(--api-line);
   border-radius: 8px;
@@ -1183,18 +1253,18 @@
 }
 
 .emptyState {
-  margin-top: 11px;
-  padding: 27px 22px 22px;
+  margin-top: 9px;
+  padding: 20px 16px 16px;
   border: 1px dashed var(--api-line);
-  border-radius: 14px;
+  border-radius: 11px;
   text-align: center;
   background: var(--api-surface-raised);
 }
 
 .emptyIcon {
-  width: 42px;
-  height: 42px;
-  margin: 0 auto 11px;
+  width: 36px;
+  height: 36px;
+  margin: 0 auto 8px;
 }
 
 .emptyState h3 {
@@ -1204,7 +1274,7 @@
 
 .emptyState > p {
   max-width: 370px;
-  margin: 7px auto 15px;
+  margin: 6px auto 11px;
   color: var(--api-muted);
   font-size: 10px;
   line-height: 1.65;
@@ -1247,8 +1317,8 @@
 .securityNote {
   display: flex;
   gap: 8px;
-  margin-top: 14px;
-  padding-top: 13px;
+  margin-top: 10px;
+  padding-top: 10px;
   border-top: 1px solid var(--api-line);
   color: var(--api-muted);
 }
@@ -1275,13 +1345,13 @@
 .connectionSkeleton {
   display: grid;
   gap: 10px;
-  margin-top: 11px;
+  margin-top: 9px;
 }
 
 .connectionSkeleton span {
   display: block;
-  height: 142px;
-  border-radius: 14px;
+  height: 118px;
+  border-radius: 11px;
   background: linear-gradient(
     90deg,
     var(--api-surface-raised),

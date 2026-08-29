@@ -56,6 +56,7 @@ type IconName =
   | "chevron"
   | "eye"
   | "eyeOff"
+  | "info"
   | "key"
   | "plug"
   | "power"
@@ -131,6 +132,14 @@ function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
           <path d="M6.6 6.7C4 8.4 2.5 12 2.5 12s3.5 6 9.5 6c1.2 0 2.3-.2 3.3-.6" />
         </svg>
       );
+    case "info":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 10.5v6" />
+          <path d="M12 7.5h.01" />
+        </svg>
+      );
     case "key":
       return (
         <svg {...common}>
@@ -193,6 +202,20 @@ function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
         </svg>
       );
   }
+}
+
+function InfoTip({ label, children }: { label: string; children: string }) {
+  return (
+    <span className={styles.infoTip}>
+      <button type="button" aria-label={`คำอธิบาย: ${label}`}>
+        <Icon name="info" size={15} />
+      </button>
+      <span className={styles.infoPopover} role="tooltip">
+        <strong>{label}</strong>
+        {children}
+      </span>
+    </span>
+  );
 }
 
 function credentialPlaceholder(provider?: Provider) {
@@ -266,14 +289,17 @@ export default function ApiConnectionsPage() {
     [connections],
   );
 
+  const activeReadyCount = useMemo(
+    () =>
+      activeConnections.filter(
+        (connection) => connection.enabled && connection.status === "CONNECTED",
+      ).length,
+    [activeConnections],
+  );
+
   const readyStageCount = useMemo(
     () => routing.filter((stage) => stage.ready).length,
     [routing],
-  );
-
-  const activeRoute = useMemo(
-    () => routing.find((stage) => stage.kind === activeKind),
-    [activeKind, routing],
   );
 
   async function loadConnections(silent = false) {
@@ -333,6 +359,15 @@ export default function ApiConnectionsPage() {
 
   async function connect() {
     if (!selectedProvider) return;
+    const existingConnection = connections.find(
+      (connection) =>
+        connection.kind === selectedProvider.kind &&
+        connection.provider === selectedProvider.id,
+    );
+    const hasFallbackConnection = connections.some(
+      (connection) =>
+        connection.kind === selectedProvider.kind && connection.isDefault,
+    );
     setLoading(true);
     setMessage("");
     setError("");
@@ -349,7 +384,7 @@ export default function ApiConnectionsPage() {
           modelId,
           baseUrl,
           enabled: true,
-          isDefault: true,
+          isDefault: existingConnection?.isDefault ?? !hasFallbackConnection,
         }),
       });
       const payload = await response.json();
@@ -357,7 +392,7 @@ export default function ApiConnectionsPage() {
 
       setApiKey("");
       setShowKey(false);
-      setMessage(`${selectedProvider.label} พร้อมใช้งานและถูกเลือกเป็นค่าเริ่มต้นแล้ว`);
+      setMessage(`${selectedProvider.label} เชื่อมต่อแล้ว และพร้อมให้หน้าสร้างเลือกใช้งาน`);
       await loadConnections(true);
     } catch (connectError) {
       setError(
@@ -408,7 +443,7 @@ export default function ApiConnectionsPage() {
   const activeMeta = KIND_META[activeKind];
 
   return (
-    <main className={styles.page}>
+    <main className={styles.page} data-keep-small>
       <header className={styles.pageHeader}>
         <div className={styles.headerCopy}>
           <div className={styles.breadcrumb}>
@@ -418,28 +453,38 @@ export default function ApiConnectionsPage() {
           </div>
           <h1>ศูนย์เชื่อมต่อ AI</h1>
           <p>
-            จัดการ Provider ที่ SCENOVA ใช้ในแต่ละขั้นตอนของงาน
-            ระบบจะทดสอบคีย์ก่อนบันทึกและเลือกเส้นทางที่พร้อมใช้ให้อัตโนมัติ
+            เพิ่มและตรวจสอบ Credential ของ Provider ที่ต้องการเชื่อมต่อ
+            ส่วนหน้าสร้างจะเป็นผู้เลือกว่าจะใช้ Provider ใดกับแต่ละงาน
           </p>
         </div>
 
         <div className={styles.headerSummary}>
           <div className={styles.summaryItem}>
-            <span>การเชื่อมต่อที่พร้อม</span>
+            <span className={styles.summaryLabel}>
+              การเชื่อมต่อที่พร้อม
+              <InfoTip label="การเชื่อมต่อที่พร้อม">
+                Provider ที่เปิดใช้งานและผ่านการทดสอบ Credential แล้ว
+              </InfoTip>
+            </span>
             <strong>{connectedCount}</strong>
             <small>จากทั้งหมด {connections.length}</small>
           </div>
           <div className={styles.summaryItem}>
-            <span>สายงานที่พร้อม</span>
+            <span>ประเภทที่เชื่อมแล้ว</span>
             <strong>{readyStageCount}/4</strong>
-            <small>ขั้นตอนการผลิต</small>
+            <small>ประเภท Connection</small>
           </div>
           <div className={styles.securitySummary}>
             <span className={styles.summaryIcon}>
               <Icon name="shield" />
             </span>
             <span>
-              <strong>เข้ารหัสบนเซิร์ฟเวอร์</strong>
+              <strong className={styles.summaryLabel}>
+                เข้ารหัสบนเซิร์ฟเวอร์
+                <InfoTip label="การจัดเก็บ Credential">
+                  คีย์เต็มถูกเข้ารหัสและใช้งานเฉพาะบนเซิร์ฟเวอร์
+                </InfoTip>
+              </strong>
               <small>คีย์เต็มจะไม่ส่งกลับมาที่เบราว์เซอร์</small>
             </span>
           </div>
@@ -449,10 +494,10 @@ export default function ApiConnectionsPage() {
       <section className={styles.workflowPanel} aria-labelledby="workflow-title">
         <div className={styles.sectionHeading}>
           <div>
-            <span className={styles.eyebrow}>WORKFLOW ROUTING</span>
-            <h2 id="workflow-title">เลือกขั้นตอนที่ต้องการตั้งค่า</h2>
+            <span className={styles.eyebrow}>CONNECTION CATEGORIES</span>
+            <h2 id="workflow-title">เลือกประเภทที่ต้องการเชื่อมต่อ</h2>
           </div>
-          <p>หนึ่งขั้นตอนมี Provider ได้หลายราย และกำหนดค่าเริ่มต้นได้หนึ่งรายการ</p>
+          <p>แต่ละประเภทเชื่อมได้หลาย Provider หน้าสร้างจะเลือกตัวที่ใช้กับงานจริง</p>
         </div>
 
         <div className={styles.stageRail}>
@@ -479,7 +524,9 @@ export default function ApiConnectionsPage() {
                   }`}
                 >
                   <i aria-hidden="true" />
-                  {stage?.ready ? stage.activeProvider : stage?.optional ? "เสริม" : "ยังไม่เชื่อม"}
+                  {stage?.connectionCount
+                    ? `${stage.connectionCount} Connection${stage.connectionCount > 1 ? "s" : ""}`
+                    : "ยังไม่เชื่อม"}
                 </span>
                 {index < KIND_ORDER.length - 1 ? (
                   <span className={styles.stageArrow} aria-hidden="true">
@@ -519,7 +566,7 @@ export default function ApiConnectionsPage() {
                 {activeMeta.stage} · {activeMeta.label}
               </span>
               <h2 id="provider-title">เลือกผู้ให้บริการ</h2>
-              <p>{activeRoute?.descriptionTh ?? activeMeta.short}</p>
+              <p>{activeMeta.short}</p>
             </div>
             <span className={styles.countPill}>{visibleProviders.length} Providers</span>
           </div>
@@ -718,28 +765,24 @@ export default function ApiConnectionsPage() {
         <aside className={`${styles.panel} ${styles.connectionsPanel}`}>
           <div className={styles.panelHeader}>
             <div>
-              <span className={styles.panelKicker}>ACTIVE CONNECTIONS</span>
+              <span className={styles.panelKicker}>CONNECTED PROVIDERS</span>
               <h2>การเชื่อมต่อในสายนี้</h2>
-              <p>รายการที่เปิดใช้งานจะถูกส่งให้ Workflow ตามลำดับค่าเริ่มต้น</p>
+              <p>คลัง Provider ที่พร้อมให้ผู้ใช้เลือกจากหน้าสร้าง</p>
             </div>
             <span className={styles.countPill}>{activeConnections.length}</span>
           </div>
 
           <div className={styles.routeSummary}>
             <span className={styles.routeIcon}>
-              <Icon name="route" />
+              <Icon name="plug" />
             </span>
             <span>
-              <small>เส้นทางปัจจุบัน</small>
-              <strong>
-                {activeRoute?.ready
-                  ? `${activeRoute.activeProvider} · พร้อมรับงาน`
-                  : "ยังไม่มีการเชื่อมต่อที่พร้อม"}
-              </strong>
+              <small>พร้อมให้หน้าสร้างเลือก</small>
+              <strong>{activeReadyCount ? `${activeReadyCount} Provider พร้อมใช้งาน` : "ยังไม่มี Provider ที่พร้อม"}</strong>
             </span>
             <span
               className={`${styles.routeIndicator} ${
-                activeRoute?.ready ? styles.routeIndicatorReady : ""
+                activeReadyCount ? styles.routeIndicatorReady : ""
               }`}
             />
           </div>
@@ -803,7 +846,7 @@ export default function ApiConnectionsPage() {
                         {connection.isDefault ? (
                           <span className={styles.defaultFlag}>
                             <Icon name="check" size={13} />
-                            ค่าเริ่มต้น
+                            ตัวสำรองอัตโนมัติ
                           </span>
                         ) : (
                           <button
@@ -812,7 +855,7 @@ export default function ApiConnectionsPage() {
                               void patchConnection(connection.id, { isDefault: true })
                             }
                           >
-                            ตั้งเป็นค่าเริ่มต้น
+                            ตั้งเป็นตัวสำรอง
                           </button>
                         )}
                       </div>
@@ -854,10 +897,10 @@ export default function ApiConnectionsPage() {
               <span className={styles.emptyIcon}>
                 <Icon name="plug" size={24} />
               </span>
-              <h3>ยังไม่มีการเชื่อมต่อในสาย {activeMeta.stage}</h3>
+              <h3>ยังไม่มีการเชื่อมต่อในประเภท {activeMeta.stage}</h3>
               <p>
                 เลือก Provider ทางซ้าย วาง Credential แล้วกด “ทดสอบและเชื่อมต่อ”
-                รายการที่ผ่านจะมาแสดงตรงนี้ทันที
+                รายการที่ผ่านจะพร้อมให้ผู้ใช้เลือกจากหน้าสร้างทันที
               </p>
               <ol>
                 <li>
