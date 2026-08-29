@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import AppShell from "@/components/app-shell";
 import HelpHintNormalizer from "@/components/help-hint-normalizer";
 import SingleEpisodePreferences from "@/components/single-episode-preferences";
+import SingleEpisodeLayoutV8 from "@/components/single-episode-layout-v8";
 import "./globals.css";
 import "./standards.css";
 import "./legacy-theme-overrides.css";
@@ -18,6 +19,7 @@ import "./single-episode-options-v2.css";
 import "./settings-system-v1.css";
 import "./help-system-v2.css";
 import "./single-episode-row-balance-v7.css";
+import "./single-episode-layout-v8.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://scnva.com"),
@@ -75,6 +77,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body>
         <HelpHintNormalizer />
         <SingleEpisodePreferences />
+        <SingleEpisodeLayoutV8 />
         <AppShell>{children}</AppShell>
       </body>
     </html>
