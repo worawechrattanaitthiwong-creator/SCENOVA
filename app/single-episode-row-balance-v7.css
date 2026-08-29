@@ -22,10 +22,12 @@
 }
 
 /* Desktop: every control in the first setup row is exactly one quarter.
-   The second row is exactly 50/50: story on the left, timing/scenes on the right. */
+   The second row stays 50/50 in width, but the timing/scenes block must keep
+   its natural compact height instead of stretching to match the story textarea. */
 @media (min-width: 981px) {
   #setup [class*="single-episode-studio_setupGrid"] {
     grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    align-items: start !important;
   }
 
   #setup [class*="single-episode-studio_setupGrid"] > [class*="single-episode-studio_field"]:nth-child(-n+4) {
@@ -38,5 +40,8 @@
 
   #setup [class*="single-episode-studio_episodeTiming"] {
     grid-column: 3 / 5 !important;
+    align-self: start !important;
+    height: max-content !important;
+    min-height: 0 !important;
   }
 }
