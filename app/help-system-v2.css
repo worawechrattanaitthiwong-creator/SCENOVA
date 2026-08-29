@@ -1,0 +1,140 @@
+/* SCENOVA Help System V2
+   Canonical help affordance based on /profile/api InfoTip:
+   compact purple info control + themed popover with a bold label and Thai explanation.
+   The popover is rendered at document.body level by HelpHintNormalizer so it is not
+   clipped by cards, drawers, rails, or overflow containers. */
+
+.sc-system-info-trigger {
+  --sc-help-accent: var(--accent, var(--purple, var(--sc-purple, #7d43bf)));
+  --sc-help-text: var(--text, var(--sc-text, #261d2e));
+  --sc-help-panel: var(--panel, var(--sc-panel, #ffffff));
+  --sc-help-line: var(--line, var(--sc-line, rgba(99, 68, 122, .16)));
+  width: 22px;
+  height: 22px;
+  margin-inline-start: 5px;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 22px;
+  vertical-align: middle;
+  border: 1px solid color-mix(in srgb, var(--sc-help-accent) 30%, var(--sc-help-line));
+  border-radius: 50%;
+  color: var(--sc-help-accent);
+  background: var(--sc-help-panel);
+  cursor: help;
+  line-height: 1;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 140ms ease, background 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.sc-system-info-trigger > svg {
+  width: 15px;
+  height: 15px;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.sc-system-info-trigger:hover,
+.sc-system-info-trigger:focus-visible,
+.sc-system-info-trigger[data-open="true"] {
+  border-color: var(--sc-help-accent);
+  outline: none;
+  background: color-mix(in srgb, var(--sc-help-accent) 9%, var(--sc-help-panel));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sc-help-accent) 10%, transparent);
+}
+
+.sc-system-info-trigger:active { transform: scale(.96); }
+
+.sc-system-info-popover {
+  --sc-help-accent: var(--accent, var(--purple, var(--sc-purple, #7d43bf)));
+  --sc-help-text: var(--text, var(--sc-text, #261d2e));
+  --sc-help-muted: var(--muted, var(--sc-muted, #6e6477));
+  --sc-help-panel: var(--panel, var(--sc-panel, #ffffff));
+  --sc-help-line: var(--line, var(--sc-line, rgba(99, 68, 122, .16)));
+  position: fixed;
+  z-index: 2147483000;
+  top: 0;
+  left: 0;
+  width: max-content;
+  min-width: 190px;
+  max-width: min(300px, calc(100vw - 24px));
+  padding: 9px 11px;
+  border: 1px solid color-mix(in srgb, var(--sc-help-accent) 30%, var(--sc-help-line));
+  border-radius: 9px;
+  color: var(--sc-help-text);
+  background: var(--sc-help-panel);
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--sc-help-text) 16%, transparent);
+  font-size: 11px;
+  font-weight: 450;
+  line-height: 1.55;
+  opacity: 0;
+  transform: translateY(-3px);
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 140ms ease, transform 140ms ease, visibility 140ms ease;
+}
+
+.sc-system-info-popover[data-open="true"] {
+  opacity: 1;
+  transform: translateY(0);
+  visibility: visible;
+}
+
+.sc-system-info-popover strong {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--sc-help-text);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.sc-system-info-popover span {
+  display: block;
+  color: var(--sc-help-muted);
+  overflow-wrap: anywhere;
+}
+
+/* A linked help source remains visible as the concise supporting line, exactly
+   like the security summary on the API Connections page. The i control carries
+   the same explanation for hover/focus/touch access. */
+.sc-help-source-linked { text-shadow: none !important; }
+
+/* Keep title + i visually together without forcing headings into a new layout. */
+.sc-help-anchor > .sc-system-info-trigger { position: relative; top: -1px; }
+
+html[data-theme="dark"] .sc-system-info-trigger,
+html[data-theme="dark"] .sc-system-info-popover {
+  --sc-help-text: var(--sc-text, #f8f3ff);
+  --sc-help-muted: var(--sc-muted, #aea3ba);
+  --sc-help-panel: var(--sc-panel, #0e0917);
+  --sc-help-line: var(--sc-line, rgba(190,112,255,.22));
+  --sc-help-accent: var(--sc-purple, #b866ff);
+}
+
+html[data-theme="light"] .sc-system-info-trigger,
+html[data-theme="light"] .sc-system-info-popover {
+  --sc-help-text: var(--sc-text, #291f31);
+  --sc-help-muted: var(--sc-muted, #716578);
+  --sc-help-panel: var(--sc-panel, #ffffff);
+  --sc-help-line: var(--sc-line, rgba(104,68,128,.16));
+  --sc-help-accent: var(--sc-purple, #8546c3);
+}
+
+@media (max-width: 640px) {
+  .sc-system-info-popover {
+    min-width: 0;
+    max-width: calc(100vw - 24px);
+    font-size: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sc-system-info-trigger,
+  .sc-system-info-popover { transition: none !important; }
+}
