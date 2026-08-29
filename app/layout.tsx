@@ -24,6 +24,7 @@ import "./theme-audit-v5.css";
 import "./theme-audit-cinematic-v1.css";
 import "./agent-workspace-v1.css";
 import "./theme-audit-admin-v1.css";
+import "./public-theme-v1.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://scnva.com"),
