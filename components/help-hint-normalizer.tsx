@@ -18,7 +18,13 @@ const HELP_SELECTOR = [
   "[class*='_Help__']",
   "[class*='_hint__']",
   "[class*='_Hint__']",
+  "[class*='_helper__']",
+  "[class*='_Helper__']",
+  "[class*='_description__']",
+  "[class*='_Description__']",
   "[class*='panelHeader'] > p",
+  "[class*='cardHead'] p",
+  "[class*='cardTitle'] p",
   "[class*='sectionHead'] p",
   "[class*='sectionHeading'] > p",
   "[class*='menuCopy'] > span:last-child",
@@ -27,10 +33,19 @@ const HELP_SELECTOR = [
 const SKIP_SELECTOR = [
   "[data-keep-small]",
   "[data-sc-help-ignore]",
+  "[data-sc-sidebar]",
+  "[data-sc-topbar]",
   ".sc-system-info-trigger",
   ".sc-system-info-popover",
   "[class*='brand']",
   "[class*='metric']",
+  "[class*='badge']",
+  "[class*='status']",
+  "[class*='meta']",
+  "[class*='tag']",
+  "[class*='timestamp']",
+  "[class*='date']",
+  "[class*='price']",
   "[class*='logRow']",
   "[class*='profileCopy']",
   "[class*='creditShortcut']",
@@ -114,6 +129,10 @@ function findAnchor(element: HTMLElement) {
   if (heading && heading !== element && !heading.contains(element)) return heading;
 
   return element;
+}
+
+function alreadyHasDirectInfo(anchor: HTMLElement) {
+  return Array.from(anchor.children).some((child) => child.classList.contains("sc-system-info-trigger"));
 }
 
 export default function HelpHintNormalizer() {
@@ -200,7 +219,8 @@ export default function HelpHintNormalizer() {
       if (!description || description.length < 4) return;
 
       const label = labelFor(element, description);
-      const anchor = findAnchor(element);
+      let anchor = findAnchor(element);
+      if (alreadyHasDirectInfo(anchor)) anchor = element;
       const trigger = makeInfoIcon();
 
       trigger.setAttribute("aria-label", `คำอธิบาย: ${label}`);
