@@ -1,6 +1,6 @@
 /* SCENOVA Help System V2
    Canonical help affordance based on /profile/api InfoTip:
-   compact purple info control + themed popover with a bold label and Thai explanation.
+   one clean purple info icon + themed popover with a bold label and Thai explanation.
    The popover is rendered at document.body level by HelpHintNormalizer so it is not
    clipped by cards, drawers, rails, or overflow containers. */
 
@@ -9,28 +9,29 @@
   --sc-help-text: var(--text, var(--sc-text, #261d2e));
   --sc-help-panel: var(--panel, var(--sc-panel, #ffffff));
   --sc-help-line: var(--line, var(--sc-line, rgba(99, 68, 122, .16)));
-  width: 22px;
-  height: 22px;
-  margin-inline-start: 5px;
+  width: 18px;
+  height: 18px;
+  margin-inline-start: 4px;
   padding: 0;
   display: inline-grid;
   place-items: center;
-  flex: 0 0 22px;
+  flex: 0 0 18px;
   vertical-align: middle;
-  border: 1px solid color-mix(in srgb, var(--sc-help-accent) 30%, var(--sc-help-line));
-  border-radius: 50%;
+  border: 0;
+  border-radius: 0;
   color: var(--sc-help-accent);
-  background: var(--sc-help-panel);
+  background: transparent;
+  box-shadow: none;
   cursor: help;
   line-height: 1;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
-  transition: border-color 140ms ease, background 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+  transition: color 140ms ease, opacity 140ms ease, transform 140ms ease;
 }
 
 .sc-system-info-trigger > svg {
-  width: 15px;
-  height: 15px;
+  width: 16px;
+  height: 16px;
   display: block;
   fill: none;
   stroke: currentColor;
@@ -43,10 +44,18 @@
 .sc-system-info-trigger:hover,
 .sc-system-info-trigger:focus-visible,
 .sc-system-info-trigger[data-open="true"] {
-  border-color: var(--sc-help-accent);
+  border: 0;
   outline: none;
-  background: color-mix(in srgb, var(--sc-help-accent) 9%, var(--sc-help-panel));
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sc-help-accent) 10%, transparent);
+  background: transparent;
+  box-shadow: none;
+  color: color-mix(in srgb, var(--sc-help-accent) 84%, white 16%);
+  transform: scale(1.08);
+}
+
+html[data-theme="light"] .sc-system-info-trigger:hover,
+html[data-theme="light"] .sc-system-info-trigger:focus-visible,
+html[data-theme="light"] .sc-system-info-trigger[data-open="true"] {
+  color: color-mix(in srgb, var(--sc-help-accent) 88%, black 12%);
 }
 
 .sc-system-info-trigger:active { transform: scale(.96); }
@@ -100,13 +109,16 @@
   overflow-wrap: anywhere;
 }
 
-/* A linked help source remains visible as the concise supporting line, exactly
-   like the security summary on the API Connections page. The i control carries
-   the same explanation for hover/focus/touch access. */
+/* A linked help source remains visible as the concise supporting line. */
 .sc-help-source-linked { text-shadow: none !important; }
 
-/* Keep title + i visually together without forcing headings into a new layout. */
-.sc-help-anchor > .sc-system-info-trigger { position: relative; top: -1px; }
+/* Canonical placement: immediately after its label, vertically centered. */
+.sc-help-anchor > .sc-system-info-trigger {
+  position: static;
+  top: auto;
+  margin-inline-start: 4px;
+  vertical-align: middle;
+}
 
 html[data-theme="dark"] .sc-system-info-trigger,
 html[data-theme="dark"] .sc-system-info-popover {
@@ -127,7 +139,7 @@ html[data-theme="light"] .sc-system-info-popover {
 }
 
 /* Single Episode / Global Locks only.
-   Retire the legacy ? affordance and keep the API-style i centered beside each title. */
+   Retire the legacy ? affordance and keep the canonical i centered beside each title. */
 [class*="single-episode-studio_lockGrid"] .sc-lock-help {
   min-height: 38px !important;
   padding: 7px 8px !important;
@@ -155,22 +167,25 @@ html[data-theme="light"] .sc-system-info-popover {
   min-width: 0 !important;
   display: inline-flex !important;
   align-items: center !important;
-  gap: 5px !important;
+  gap: 4px !important;
   line-height: 1.2 !important;
 }
 
 [class*="single-episode-studio_lockGrid"] .sc-lock-help > span > b.sc-help-anchor > .sc-system-info-trigger {
-  width: 18px !important;
-  height: 18px !important;
-  flex: 0 0 18px !important;
+  width: 16px !important;
+  height: 16px !important;
+  flex: 0 0 16px !important;
   margin-inline-start: 0 !important;
   position: static !important;
   top: auto !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
 [class*="single-episode-studio_lockGrid"] .sc-lock-help > span > b.sc-help-anchor > .sc-system-info-trigger > svg {
-  width: 13px !important;
-  height: 13px !important;
+  width: 14px !important;
+  height: 14px !important;
 }
 
 @media (max-width: 640px) {
