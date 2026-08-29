@@ -93,6 +93,11 @@ jobs:
             fi
             unset current_api_key_encryption_key
 
+            # Wrangler/Miniflare creates disposable untracked cache files on the VPS.
+            # Remove only that generated cache before switching to the incoming main tree;
+            # otherwise Git refuses checkout when an incoming path collides with the cache.
+            rm -rf .wrangler
+
             git fetch origin main
             git checkout -B main FETCH_HEAD
 
