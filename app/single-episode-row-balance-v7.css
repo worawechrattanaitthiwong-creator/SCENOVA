@@ -1,0 +1,42 @@
+/* Single Episode row balance v7 — equal-width setup rows and compact aspect selector. */
+
+/* Keep the visual ratio frame, but remove the secondary orientation line
+   from the closed selector so its height matches neighboring controls. */
+.sc-ratio-trigger-copy small {
+  display: none !important;
+}
+.sc-ratio-trigger {
+  height: 38px !important;
+  min-height: 38px !important;
+  padding: 3px 8px !important;
+  gap: 8px !important;
+}
+.sc-ratio-frame-shell {
+  width: 40px !important;
+  height: 30px !important;
+  flex-basis: 40px !important;
+}
+.sc-ratio-trigger-copy strong {
+  font-size: 13px !important;
+  line-height: 1.2 !important;
+}
+
+/* Desktop: every control in the first setup row is exactly one quarter.
+   The second row is exactly 50/50: story on the left, timing/scenes on the right. */
+@media (min-width: 981px) {
+  #setup [class*="single-episode-studio_setupGrid"] {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+
+  #setup [class*="single-episode-studio_setupGrid"] > [class*="single-episode-studio_field"]:nth-child(-n+4) {
+    grid-column: auto !important;
+  }
+
+  #setup [class*="single-episode-studio_storyField"] {
+    grid-column: 1 / 3 !important;
+  }
+
+  #setup [class*="single-episode-studio_episodeTiming"] {
+    grid-column: 3 / 5 !important;
+  }
+}
