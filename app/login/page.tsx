@@ -67,6 +67,14 @@ function ScenovaMark() {
   </svg>;
 }
 
+function AccessIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path d="M7.5 10V7.7a4.5 4.5 0 0 1 9 0V10" />
+    <rect x="5" y="10" width="14" height="10" rx="2.5" />
+    <path d="M12 14v2.5" />
+  </svg>;
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -269,24 +277,24 @@ export default function LoginPage() {
   }
 
   return (
-    <main className={`scenova-auth-shell ${styles.shell}`}>
+    <main className={`scenova-auth-shell ${styles.shell}`} data-keep-small>
       <section className={styles.hero}>
         <div className={styles.cinematicBackdrop} aria-hidden="true">
           <div className={styles.cinematicOverlay} />
         </div>
         <div className={styles.brand}>
           <span className={styles.brandMark}><ScenovaMark /></span>
-          <div>
-            <b className={styles.brandName}>SCENOVA</b>
-            <small className={styles.brandSub}>PRODUCTION STUDIO</small>
+          <div className={styles.brandIdentity}>
+            <b className={styles.brandWordmarkText}>SCENOVA</b>
+            <span className={styles.brandStudioText}>AI CINEMATIC PRODUCTION</span>
           </div>
         </div>
 
         <div className={styles.heroCopy}>
-          <span className={styles.eyebrow}>SCENOVA PRODUCTION STUDIO</span>
-          <h1 className={styles.heroTitle}>สร้างโลกภาพยนตร์<br /><em>ให้ต่อเนื่องในทุกฉาก</em></h1>
-          <p className={styles.heroText}>พื้นที่เดียวสำหรับวางเรื่อง ล็อกตัวละครและเสียง กำกับกล้อง แสง และอารมณ์ ก่อนส่งสร้างด้วยโมเดลวิดีโอที่คุณเลือก</p>
-          <div className={styles.heroFeatures}><span>Model Lock</span><span>Character Consistency</span><span>Secure 2FA</span></div>
+          <span className={styles.eyebrow}>PRODUCTION WORKSPACE</span>
+          <h1 className={styles.heroTitle}>ทุกองค์ประกอบของภาพยนตร์<br /><em>อยู่ภายใต้การควบคุมของคุณ</em></h1>
+          <p className={styles.heroText}>จัดการบท ตัวละคร ภาพ เสียง และการสร้างวิดีโอในพื้นที่ทำงานเดียว พร้อมรักษาความต่อเนื่องของผลงานตั้งแต่แนวคิดจนถึงไฟล์พร้อมเผยแพร่</p>
+          <div className={styles.heroFeatures}><span>Unified Workflow</span><span>Consistent Characters</span><span>Protected Access</span></div>
         </div>
 
         <small className={styles.heroFooter}>SCENOVA • SECURE CINEMATIC WORKSPACE</small>
@@ -296,12 +304,16 @@ export default function LoginPage() {
         <div className={styles.card}>
           {stage === "password" ? (
             <form onSubmit={login}>
-              <span className={styles.eyebrow}>SECURE MEMBER ACCESS</span>
-              <h2 className={styles.title}>เข้าสู่ระบบ SCENOVA</h2>
-              <p className={styles.muted}>เข้าสู่ Production Workspace ด้วยบัญชีที่ได้รับจากผู้ดูแลระบบ ไม่มีการเปิดสมัครสมาชิกสาธารณะ</p>
+              <header className={styles.cardHeader}>
+                <span className={styles.accessIcon}><AccessIcon /></span>
+                <div>
+                  <span className={styles.eyebrow}>MEMBER PORTAL</span>
+                  <h2 className={styles.title}>เข้าสู่ระบบ</h2>
+                </div>
+              </header>
 
               <label className={styles.label}>
-                อีเมล <small>Email address</small>
+                อีเมล
                 <input
                   className={styles.input}
                   value={email}
@@ -310,24 +322,31 @@ export default function LoginPage() {
                   autoComplete="email"
                   autoCapitalize="none"
                   spellCheck={false}
+                  placeholder="name@company.com"
                   required
                 />
               </label>
 
               <label className={styles.label}>
-                รหัสผ่าน <small>Password</small>
+                รหัสผ่าน
                 <input
                   className={styles.input}
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   type="password"
                   autoComplete="current-password"
+                  placeholder="กรอกรหัสผ่าน"
                   required
                 />
               </label>
 
               {error ? <ErrorBox text={error} /> : null}
-              <button disabled={loading} className={styles.primary}>{loading ? "กำลังตรวจสอบ..." : "เข้าสู่ Production Studio"}</button>
+              <button disabled={loading} className={styles.primary}>{loading ? "กำลังตรวจสอบ..." : "เข้าสู่ระบบ"}</button>
+              <div className={styles.loginAssurance}>
+                <span>สำหรับสมาชิก SCENOVA</span>
+                <i aria-hidden="true" />
+                <span>รองรับการยืนยันตัวตน 2 ขั้นตอน</span>
+              </div>
             </form>
           ) : null}
 

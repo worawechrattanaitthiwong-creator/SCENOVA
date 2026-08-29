@@ -4,7 +4,7 @@
   --login-line: rgba(190, 101, 255, 0.24);
   min-height: 100dvh;
   display: grid;
-  grid-template-columns: minmax(0, 1.18fr) minmax(420px, 0.82fr);
+  grid-template-columns: minmax(0, 1.12fr) minmax(480px, 0.88fr);
   overflow: hidden;
   color: #f8f5fa;
   background: #040308;
@@ -14,7 +14,7 @@
   position: relative;
   min-width: 0;
   min-height: 100dvh;
-  padding: 42px 48px;
+  padding: 40px clamp(38px, 3.5vw, 62px);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -56,20 +56,20 @@
 .brand {
   display: flex;
   align-items: center;
-  gap: 13px;
+  gap: 18px;
 }
 
 .brandMark {
-  width: 52px;
-  height: 52px;
-  flex: 0 0 52px;
-  padding: 5px;
+  width: 74px;
+  height: 74px;
+  flex: 0 0 74px;
+  padding: 7px;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(229, 184, 62, 0.38);
-  border-radius: 16px;
-  background: radial-gradient(circle at 50% 38%, rgba(242, 201, 76, 0.09), transparent 60%), rgba(7, 6, 6, 0.82);
-  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.34), 0 0 24px rgba(231, 182, 55, 0.08);
+  border: 1px solid rgba(229, 184, 62, 0.34);
+  border-radius: 22px;
+  background: radial-gradient(circle at 50% 38%, rgba(242, 201, 76, 0.1), transparent 62%), rgba(7, 6, 6, 0.86);
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.4), 0 0 30px rgba(231, 182, 55, 0.09), inset 0 1px rgba(255, 255, 255, 0.06);
 }
 
 .brandMark svg {
@@ -77,23 +77,32 @@
   height: 100%;
 }
 
-.brandName {
-  display: block;
-  font-size: 18px;
-  letter-spacing: 0.12em;
+.brandIdentity {
+  min-width: 0;
 }
 
-.brandSub {
+.brandWordmarkText {
   display: block;
-  margin-top: 4px;
-  color: #9b929f;
+  color: #f1d276;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(28px, 2vw, 34px);
+  font-weight: 650;
+  line-height: 1;
+  letter-spacing: 0.13em;
+  text-shadow: 0 5px 24px rgba(216, 166, 59, 0.12);
+}
+
+.brandStudioText {
+  display: block;
+  margin-top: 9px;
+  color: #a59ba8;
   font-size: 9px;
-  font-weight: 750;
-  letter-spacing: 0.18em;
+  font-weight: 800;
+  letter-spacing: 0.22em;
 }
 
 .heroCopy {
-  width: min(650px, 86%);
+  width: min(720px, 90%);
   margin-bottom: 4vh;
 }
 
@@ -105,10 +114,10 @@
 }
 
 .heroTitle {
-  margin: 13px 0 17px;
+  margin: 14px 0 18px;
   color: #fff;
-  font-size: clamp(38px, 4.4vw, 68px);
-  line-height: 1.08;
+  font-size: clamp(38px, 4vw, 62px);
+  line-height: 1.1;
   letter-spacing: -0.045em;
   text-wrap: balance;
 }
@@ -122,7 +131,7 @@
 }
 
 .heroText {
-  max-width: 620px;
+  max-width: 650px;
   margin: 0;
   color: #aaa1ae;
   font-size: 14px;
@@ -137,14 +146,14 @@
 }
 
 .heroFeatures span {
-  min-height: 31px;
-  padding: 0 10px;
+  min-height: 33px;
+  padding: 0 12px;
   display: inline-flex;
   align-items: center;
   border: 1px solid rgba(190, 101, 255, 0.25);
   border-radius: 999px;
-  color: #d8cfdd;
-  background: rgba(19, 10, 28, 0.56);
+  color: #ded6e2;
+  background: rgba(14, 9, 20, 0.68);
   backdrop-filter: blur(12px);
   font-size: 11px;
   font-weight: 700;
@@ -160,14 +169,14 @@
 .authPanel {
   position: relative;
   min-width: 0;
-  padding: 34px;
+  padding: clamp(28px, 3.2vw, 54px);
   display: grid;
   place-items: center;
   overflow: hidden;
   background:
-    radial-gradient(circle at 80% 16%, rgba(135, 42, 202, 0.16), transparent 31%),
-    radial-gradient(circle at 16% 82%, rgba(83, 27, 133, 0.12), transparent 28%),
-    linear-gradient(160deg, #08060d, #040307);
+    radial-gradient(circle at 78% 18%, rgba(117, 47, 164, 0.13), transparent 30%),
+    radial-gradient(circle at 18% 82%, rgba(68, 31, 99, 0.1), transparent 29%),
+    linear-gradient(160deg, #09070d, #050407);
 }
 
 .authPanel::before {
@@ -186,31 +195,61 @@
 .card {
   position: relative;
   z-index: 1;
-  width: min(460px, 100%);
-  padding: clamp(26px, 3vw, 38px);
-  border: 1px solid rgba(185, 94, 240, 0.3);
-  border-radius: 24px;
+  width: min(500px, 100%);
+  padding: clamp(32px, 3.1vw, 46px);
+  border: 1px solid rgba(179, 124, 210, 0.24);
+  border-radius: 22px;
   background:
-    radial-gradient(circle at 92% 3%, rgba(128, 39, 185, 0.17), transparent 31%),
-    linear-gradient(155deg, rgba(17, 11, 25, 0.94), rgba(8, 6, 12, 0.97));
-  box-shadow: 0 32px 90px rgba(0, 0, 0, 0.5), inset 0 1px rgba(255, 255, 255, 0.055);
-  backdrop-filter: blur(22px);
+    radial-gradient(circle at 92% 3%, rgba(128, 58, 171, 0.12), transparent 32%),
+    linear-gradient(155deg, rgba(18, 14, 23, 0.97), rgba(9, 7, 12, 0.98));
+  box-shadow: 0 34px 96px rgba(0, 0, 0, 0.52), inset 0 1px rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(24px);
 }
 
 .card::before {
   content: "";
   position: absolute;
   top: 0;
-  left: 28px;
-  right: 28px;
+  left: 34px;
+  right: 34px;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(222, 144, 255, 0.64), transparent);
+  background: linear-gradient(90deg, transparent, rgba(223, 186, 108, 0.58), rgba(191, 117, 232, 0.45), transparent);
+}
+
+.cardHeader {
+  margin-bottom: 30px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.accessIcon {
+  width: 50px;
+  height: 50px;
+  flex: 0 0 50px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(214, 177, 82, 0.3);
+  border-radius: 14px;
+  color: #e7c76e;
+  background: linear-gradient(145deg, rgba(63, 48, 18, 0.5), rgba(21, 16, 10, 0.42));
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.05);
+}
+
+.accessIcon svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .title {
-  margin: 9px 0 7px;
+  margin: 5px 0 0;
   color: #fff;
-  font-size: clamp(27px, 2.4vw, 34px);
+  font-size: clamp(29px, 2.4vw, 36px);
   line-height: 1.18;
   letter-spacing: -0.035em;
 }
@@ -224,7 +263,7 @@
 
 .label {
   display: block;
-  margin-bottom: 15px;
+  margin-bottom: 18px;
   color: #eee9f0;
   font-size: 13px;
   font-weight: 800;
@@ -239,14 +278,14 @@
 
 .input {
   width: 100%;
-  min-height: 52px;
-  margin-top: 7px;
-  padding: 12px 14px;
-  border: 1px solid rgba(157, 93, 194, 0.25);
-  border-radius: 12px;
+  min-height: 56px;
+  margin-top: 8px;
+  padding: 13px 15px;
+  border: 1px solid rgba(157, 120, 177, 0.25);
+  border-radius: 11px;
   outline: none;
   color: #f8f5fa;
-  background: rgba(5, 4, 8, 0.82);
+  background: rgba(5, 4, 7, 0.9);
   font: inherit;
   font-size: 16px;
   transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
@@ -257,9 +296,23 @@
 }
 
 .input:focus {
-  border-color: #bd69ee;
+  border-color: #b877d9;
   background: rgba(8, 5, 12, 0.94);
-  box-shadow: 0 0 0 3px rgba(183, 89, 234, 0.12), 0 0 28px rgba(155, 57, 213, 0.09);
+  box-shadow: 0 0 0 3px rgba(172, 105, 207, 0.11), 0 0 28px rgba(155, 57, 213, 0.07);
+}
+
+.input::placeholder {
+  color: #625b67;
+  font-weight: 550;
+}
+
+.input:-webkit-autofill,
+.input:-webkit-autofill:hover,
+.input:-webkit-autofill:focus {
+  border-color: rgba(157, 120, 177, 0.34);
+  -webkit-text-fill-color: #f7f3f8;
+  box-shadow: 0 0 0 1000px #09070c inset;
+  caret-color: #fff;
 }
 
 .codeInput {
@@ -275,7 +328,7 @@
   width: 100%;
   min-height: 52px;
   padding: 11px 15px;
-  border-radius: 12px;
+  border-radius: 11px;
   font: inherit;
   font-size: 14px;
   font-weight: 900;
@@ -285,11 +338,29 @@
 }
 
 .primary {
-  margin-top: 5px;
+  margin-top: 7px;
   border: 1px solid #f4d05a;
   color: #090708;
   background: linear-gradient(135deg, #ffe783, #f2c94c 64%, #d9aa30);
   box-shadow: 0 12px 34px rgba(242, 201, 76, 0.16), inset 0 1px rgba(255, 255, 255, 0.46);
+}
+
+.loginAssurance {
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #766e79;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.loginAssurance i {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #70507e;
 }
 
 .primary:not(:disabled):hover {
@@ -414,19 +485,25 @@
     background-position: 63% 42%;
   }
 
+  .brand {
+    gap: 12px;
+  }
+
   .brandMark {
-    width: 44px;
-    height: 44px;
-    flex-basis: 44px;
-    border-radius: 13px;
+    width: 58px;
+    height: 58px;
+    flex-basis: 58px;
+    border-radius: 17px;
   }
 
-  .brandName {
-    font-size: 16px;
+  .brandWordmarkText {
+    font-size: 23px;
   }
 
-  .brandSub {
-    font-size: 8px;
+  .brandStudioText {
+    margin-top: 6px;
+    font-size: 7px;
+    letter-spacing: 0.17em;
   }
 
   .authPanel {
@@ -437,8 +514,12 @@
 
   .card {
     width: 100%;
-    padding: 23px 18px;
+    padding: 27px 20px;
     border-radius: 19px;
+  }
+
+  .cardHeader {
+    margin-bottom: 24px;
   }
 
   .title {
@@ -464,7 +545,17 @@
     padding-inline: 14px;
   }
 
-  .brandSub {
+  .brandStudioText {
+    display: none;
+  }
+
+  .loginAssurance {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .loginAssurance i {
     display: none;
   }
 }
