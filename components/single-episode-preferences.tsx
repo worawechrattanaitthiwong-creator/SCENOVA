@@ -28,14 +28,35 @@ const META: Record<OptionKey, { stage: string; label: string }> = {
   review: { stage: "ก่อน Render", label: "เปิดตรวจความพร้อมก่อนสร้าง" },
 };
 
-const LOCK_HELP: Record<string, string> = {
-  "Character Lock": "คืออะไร: ล็อกอัตลักษณ์ตัวละคร เช่น ใบหน้า รูปร่าง เสื้อผ้า และจุดจำสำคัญ • ใช้ทำอะไร: ช่วยให้ตัวละครเดิมคงรูปลักษณ์สม่ำเสมอเมื่อเปลี่ยนฉากหรือ Shot",
-  "Voice Lock": "คืออะไร: ล็อกเสียงและ Voice Profile ของตัวละคร • ใช้ทำอะไร: ช่วยให้โทนเสียง อายุ น้ำหนักเสียง และบุคลิกการพูดไม่เปลี่ยนระหว่างฉาก",
-  "Visual Style Lock": "คืออะไร: ล็อกภาษาภาพและสไตล์หลักของตอน • ใช้ทำอะไร: ช่วยให้สี ความสมจริง texture และบรรยากาศภาพไปในทิศทางเดียวกันทุกฉาก",
-  "Camera Language Lock": "คืออะไร: ล็อกแนวทางการใช้กล้องหลักของตอน • ใช้ทำอะไร: ช่วยให้ Shot, มุมกล้อง และการเคลื่อนกล้องมีภาษาภาพต่อเนื่อง โดยยังปรับรายละเอียดรายฉากได้",
-  "Lighting Lock": "คืออะไร: ล็อกทิศทางและคุณภาพแสงหลัก • ใช้ทำอะไร: ช่วยลดปัญหาแสงกระโดด สีแสงเปลี่ยน หรือทิศทางเงาไม่ต่อเนื่องระหว่างฉาก",
-  "Location Lock": "คืออะไร: ล็อกรูปลักษณ์ของสถานที่เดิม • ใช้ทำอะไร: ช่วยรักษาโครงสร้าง ฉากหลัง วัตถุ และตำแหน่งสำคัญเมื่อกลับมาใช้สถานที่เดิมอีกครั้ง",
-  "Props Lock": "คืออะไร: ล็อกพร็อพหรือวัตถุสำคัญของเรื่อง • ใช้ทำอะไร: ช่วยรักษารูปร่าง สี ตำแหน่ง และเจ้าของของวัตถุไม่ให้เปลี่ยนเองระหว่าง Shot",
+const LOCK_HELP: Record<string, { what: string; use: string }> = {
+  "Character Lock": {
+    what: "ล็อกอัตลักษณ์ตัวละคร เช่น ใบหน้า รูปร่าง เสื้อผ้า และจุดจำสำคัญให้คงเดิม",
+    use: "ใช้เมื่อต้องการให้ตัวละครคนเดิมมีหน้าตาและรายละเอียดสม่ำเสมอเมื่อเปลี่ยนฉากหรือ Shot",
+  },
+  "Voice Lock": {
+    what: "ล็อกเสียงและ Voice Profile ของตัวละครให้เป็นเสียงเดิม",
+    use: "ใช้เพื่อคงโทนเสียง อายุ น้ำหนักเสียง และบุคลิกการพูดไม่ให้เปลี่ยนระหว่างฉาก",
+  },
+  "Visual Style Lock": {
+    what: "ล็อกภาษาภาพและสไตล์หลักของตอน เช่น ความสมจริง สี texture และบรรยากาศ",
+    use: "ใช้เพื่อให้ทุกฉากอยู่ในโลกภาพเดียวกันและไม่เปลี่ยนสไตล์กลางเรื่อง",
+  },
+  "Camera Language Lock": {
+    what: "ล็อกแนวทางการใช้กล้องหลัก เช่น Shot มุมกล้อง และรูปแบบการเคลื่อนกล้อง",
+    use: "ใช้เพื่อให้ภาษากล้องต่อเนื่องทั้งตอน โดยยังปรับรายละเอียดรายฉากได้",
+  },
+  "Lighting Lock": {
+    what: "ล็อกทิศทาง คุณภาพ และลักษณะแสงหลักของงาน",
+    use: "ใช้เพื่อลดปัญหาแสงกระโดด สีแสงเปลี่ยน หรือทิศทางเงาไม่ต่อเนื่องระหว่างฉาก",
+  },
+  "Location Lock": {
+    what: "ล็อกรูปลักษณ์ของสถานที่เดิม เช่น โครงสร้าง ฉากหลัง และตำแหน่งวัตถุสำคัญ",
+    use: "ใช้เมื่อมีการกลับมาใช้สถานที่เดิมหลายครั้งและต้องการให้ฉากยังเป็นสถานที่เดียวกัน",
+  },
+  "Props Lock": {
+    what: "ล็อกพร็อพหรือวัตถุสำคัญ เช่น รูปร่าง สี รายละเอียด และเจ้าของของวัตถุ",
+    use: "ใช้เพื่อไม่ให้พร็อพเปลี่ยนรูป หายไป หรือสลับรายละเอียดเองระหว่าง Shot",
+  },
 };
 
 function readOptions(): Options {
@@ -82,6 +103,83 @@ function sameHosts(a: Hosts, b: Hosts) {
   return keys.every((key) => a[key] === b[key]);
 }
 
+function closeLockPopover() {
+  document.querySelector<HTMLElement>(".sc-lock-popover")?.remove();
+  document.querySelector<HTMLElement>(".sc-lock-help.is-help-target")?.classList.remove("is-help-target");
+}
+
+function showLockPopover(title: string, anchor: HTMLElement) {
+  const copy = LOCK_HELP[title];
+  if (!copy) return;
+
+  closeLockPopover();
+
+  const card = anchor.closest<HTMLElement>(".sc-lock-help");
+  card?.classList.add("is-help-target");
+
+  const popover = document.createElement("section");
+  popover.className = "sc-lock-popover";
+  popover.setAttribute("role", "dialog");
+  popover.setAttribute("aria-label", `คำอธิบาย ${title}`);
+
+  const head = document.createElement("div");
+  head.className = "sc-lock-popover__head";
+  const heading = document.createElement("strong");
+  heading.textContent = title;
+  const close = document.createElement("button");
+  close.type = "button";
+  close.className = "sc-lock-popover__close";
+  close.textContent = "×";
+  close.setAttribute("aria-label", "ปิดคำอธิบาย");
+  close.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    closeLockPopover();
+  });
+  head.append(heading, close);
+
+  const what = document.createElement("p");
+  const whatLabel = document.createElement("b");
+  whatLabel.textContent = "คืออะไร";
+  what.append(whatLabel, document.createTextNode(` — ${copy.what}`));
+
+  const use = document.createElement("p");
+  use.className = "sc-lock-popover__use";
+  const useLabel = document.createElement("b");
+  useLabel.textContent = "ใช้ทำอะไร";
+  use.append(useLabel, document.createTextNode(` — ${copy.use}`));
+
+  popover.append(head, what, use);
+  document.body.appendChild(popover);
+
+  const targetRect = (card || anchor).getBoundingClientRect();
+  const width = Math.min(330, Math.max(260, window.innerWidth - 24));
+  popover.style.width = `${width}px`;
+
+  const measured = popover.getBoundingClientRect();
+  let left = targetRect.left;
+  left = Math.max(12, Math.min(left, window.innerWidth - measured.width - 12));
+
+  let top = targetRect.top - measured.height - 12;
+  let placement = "top";
+  if (top < 12) {
+    top = targetRect.bottom + 12;
+    placement = "bottom";
+  }
+
+  popover.dataset.placement = placement;
+  popover.style.left = `${Math.round(left)}px`;
+  popover.style.top = `${Math.round(top)}px`;
+
+  const dismiss = (event: PointerEvent) => {
+    const target = event.target as Node;
+    if (popover.contains(target) || anchor.contains(target)) return;
+    closeLockPopover();
+    document.removeEventListener("pointerdown", dismiss, true);
+  };
+  requestAnimationFrame(() => document.addEventListener("pointerdown", dismiss, true));
+}
+
 function enhanceLockCards(main: HTMLElement) {
   const lockGrid = main.querySelector<HTMLElement>('[class*="single-episode-studio_lockGrid"]');
   if (!lockGrid) return;
@@ -92,9 +190,7 @@ function enhanceLockCards(main: HTMLElement) {
     if (!title || !detail) return;
 
     card.classList.add("sc-lock-help");
-    const copy = LOCK_HELP[title];
-    if (copy && detail.textContent !== copy) detail.textContent = copy;
-    detail.setAttribute("role", "note");
+    detail.setAttribute("aria-hidden", "true");
     if (!detail.id) detail.id = `sc-lock-help-${index}`;
 
     let button = card.querySelector<HTMLButtonElement>(":scope > .sc-lock-help__toggle");
@@ -105,14 +201,10 @@ function enhanceLockCards(main: HTMLElement) {
       button.textContent = "?";
       button.title = `คำอธิบาย ${title}`;
       button.setAttribute("aria-label", `ดูคำอธิบาย ${title}`);
-      button.setAttribute("aria-expanded", "false");
-      button.setAttribute("aria-controls", detail.id);
       button.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
-        const isOpen = card.classList.toggle("is-help-open");
-        button?.setAttribute("aria-expanded", String(isOpen));
-        if (button) button.textContent = isOpen ? "×" : "?";
+        showLockPopover(title, button as HTMLButtonElement);
       });
       card.appendChild(button);
     }
@@ -153,10 +245,10 @@ export default function SingleEpisodePreferences() {
       const main = findMain();
       if (!main) {
         setHosts((current) => Object.keys(current).length ? {} : current);
+        closeLockPopover();
         return;
       }
 
-      // Remove the old all-in-one options bar from the previous layout, if it still exists in the DOM.
       main.querySelectorAll<HTMLElement>(":scope > [data-single-episode-options-host]").forEach((node) => node.remove());
 
       const next: Hosts = {};
@@ -185,9 +277,14 @@ export default function SingleEpisodePreferences() {
     const observer = new MutationObserver(locate);
     observer.observe(document.body, { childList: true, subtree: true });
     window.addEventListener("popstate", locate);
+    window.addEventListener("resize", closeLockPopover);
+    window.addEventListener("scroll", closeLockPopover, true);
     return () => {
       observer.disconnect();
       window.removeEventListener("popstate", locate);
+      window.removeEventListener("resize", closeLockPopover);
+      window.removeEventListener("scroll", closeLockPopover, true);
+      closeLockPopover();
     };
   }, []);
 
@@ -218,29 +315,17 @@ export default function SingleEpisodePreferences() {
     <style>{`
       .sc-lock-help {
         position: relative !important;
-        align-items: flex-start !important;
         min-height: 54px !important;
         padding-right: 46px !important;
         transition: border-color .18s ease, background .18s ease, box-shadow .18s ease;
       }
       .sc-lock-help > span { min-width: 0; }
       .sc-lock-help > span > b { display: block; line-height: 1.25; }
-      .sc-lock-help > span > small {
-        display: none !important;
-        margin-top: 7px !important;
-        padding-top: 7px !important;
-        border-top: 1px solid rgba(171, 109, 230, .18);
-        font-size: 11px !important;
-        font-weight: 500 !important;
-        line-height: 1.55 !important;
-        opacity: .8 !important;
+      .sc-lock-help > span > small { display: none !important; }
+      .sc-lock-help.is-help-target {
+        border-color: rgba(160, 91, 225, .62) !important;
+        box-shadow: 0 0 0 2px rgba(151, 82, 218, .08) !important;
       }
-      .sc-lock-help.is-help-open {
-        min-height: 92px !important;
-        border-color: rgba(154, 87, 226, .48) !important;
-        background: rgba(144, 77, 211, .1) !important;
-      }
-      .sc-lock-help.is-help-open > span > small { display: block !important; }
       .sc-lock-help__toggle {
         position: absolute;
         top: 8px;
@@ -264,24 +349,99 @@ export default function SingleEpisodePreferences() {
         outline: none;
         box-shadow: 0 0 0 3px rgba(151, 82, 218, .12);
       }
-      html[data-theme="light"] .sc-lock-help.is-help-open {
-        border-color: #cda9ef !important;
-        background: linear-gradient(180deg, #fbf7ff, #f5edfc) !important;
-        box-shadow: 0 7px 20px rgba(105, 61, 139, .07);
+      .sc-lock-popover {
+        position: fixed;
+        z-index: 10000;
+        padding: 14px;
+        border: 1px solid rgba(176, 108, 236, .36);
+        border-radius: 16px;
+        background: linear-gradient(180deg, rgba(30, 20, 40, .98), rgba(17, 12, 24, .98));
+        color: #f7f1fb;
+        box-shadow: 0 18px 48px rgba(0, 0, 0, .32), 0 0 0 1px rgba(191, 125, 247, .06) inset;
+        backdrop-filter: blur(18px);
+        animation: scLockPopoverIn .14s ease-out;
       }
-      html[data-theme="light"] .sc-lock-help > span > small {
-        border-top-color: #e4d6f0;
-        color: #62566a;
-        opacity: 1 !important;
+      .sc-lock-popover::after {
+        content: "";
+        position: absolute;
+        left: 28px;
+        width: 12px;
+        height: 12px;
+        background: inherit;
+        border: inherit;
+        transform: rotate(45deg);
+      }
+      .sc-lock-popover[data-placement="top"]::after {
+        bottom: -7px;
+        border-left: 0;
+        border-top: 0;
+      }
+      .sc-lock-popover[data-placement="bottom"]::after {
+        top: -7px;
+        border-right: 0;
+        border-bottom: 0;
+      }
+      .sc-lock-popover__head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 9px;
+      }
+      .sc-lock-popover__head > strong { font-size: 14px; line-height: 1.25; }
+      .sc-lock-popover__close {
+        width: 26px;
+        height: 26px;
+        flex: 0 0 26px;
+        display: grid;
+        place-items: center;
+        border: 0;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, .07);
+        color: inherit;
+        font-size: 18px;
+        line-height: 1;
+        cursor: pointer;
+      }
+      .sc-lock-popover p {
+        margin: 0;
+        font-size: 12px;
+        line-height: 1.58;
+        color: rgba(247, 241, 251, .82);
+      }
+      .sc-lock-popover p b { color: #d4a0ff; }
+      .sc-lock-popover__use {
+        margin-top: 9px !important;
+        padding-top: 9px;
+        border-top: 1px solid rgba(195, 132, 245, .16);
+      }
+      html[data-theme="light"] .sc-lock-help.is-help-target {
+        border-color: #c89ce9 !important;
+        background: #faf6fe !important;
+        box-shadow: 0 0 0 2px rgba(126, 65, 171, .07) !important;
       }
       html[data-theme="light"] .sc-lock-help__toggle {
         border-color: #d8c1ec;
         background: #f4eafb;
         color: #7334ad;
       }
+      html[data-theme="light"] .sc-lock-popover {
+        border-color: #d3b5eb;
+        background: linear-gradient(180deg, rgba(255,255,255,.99), rgba(249,244,253,.99));
+        color: #261b2e;
+        box-shadow: 0 18px 44px rgba(78, 45, 102, .18), 0 0 0 1px rgba(123, 72, 161, .04) inset;
+      }
+      html[data-theme="light"] .sc-lock-popover__close { background: #f1e7f8; color: #634174; }
+      html[data-theme="light"] .sc-lock-popover p { color: #66576e; }
+      html[data-theme="light"] .sc-lock-popover p b { color: #723a9d; }
+      html[data-theme="light"] .sc-lock-popover__use { border-top-color: #e8daf1; }
+      @keyframes scLockPopoverIn {
+        from { opacity: 0; transform: translateY(4px) scale(.985); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+      }
       @media (max-width: 720px) {
         .sc-lock-help { min-height: 50px !important; }
-        .sc-lock-help.is-help-open { min-height: 100px !important; }
+        .sc-lock-popover { max-width: calc(100vw - 24px); }
       }
     `}</style>
     {portals}
