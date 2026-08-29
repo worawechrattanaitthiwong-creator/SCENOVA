@@ -1,0 +1,107 @@
+/* Public routes are outside AppShell but still honor the saved/system appearance. */
+
+/* Login */
+html[data-theme="light"] [class*="login_shell__"] {
+  color:#2b2032 !important;
+  background:#f8f5fb !important;
+  --login-line:rgba(119,72,153,.18);
+}
+html[data-theme="light"] [class*="login_authPanel__"] {
+  background:
+    radial-gradient(circle at 78% 18%, rgba(146,76,194,.10), transparent 30%),
+    radial-gradient(circle at 18% 82%, rgba(109,65,142,.07), transparent 29%),
+    linear-gradient(160deg,#fbf8fd,#f5eff9) !important;
+}
+html[data-theme="light"] [class*="login_card__"] {
+  color:#2b2032 !important;
+  border-color:#e4d8eb !important;
+  background:#fff !important;
+  background-image:radial-gradient(circle at 92% 3%,rgba(131,68,200,.06),transparent 32%) !important;
+  box-shadow:0 24px 70px rgba(67,42,83,.10) !important;
+}
+html[data-theme="light"] [class*="login_title__"],
+html[data-theme="light"] [class*="login_label__"] { color:#2b2032 !important; }
+html[data-theme="light"] [class*="login_muted__"],
+html[data-theme="light"] [class*="login_loginAssurance__"] { color:#756a7d !important; }
+html[data-theme="light"] [class*="login_input__"] {
+  color:#2b2032 !important;
+  border-color:#dfd2e7 !important;
+  background:#fff !important;
+}
+html[data-theme="light"] [class*="login_input__"]::placeholder { color:#9a8fa1 !important; }
+html[data-theme="light"] [class*="login_input__"]:focus {
+  border-color:#8b4bc8 !important;
+  background:#fff !important;
+  box-shadow:0 0 0 3px rgba(139,75,200,.12) !important;
+}
+html[data-theme="light"] [class*="login_secondary__"] {
+  color:#392b43 !important;
+  border-color:#ddd0e6 !important;
+  background:#f7f1fa !important;
+}
+html[data-theme="light"] [class*="login_error__"] {
+  color:#a83249 !important;
+  border-color:rgba(184,56,77,.24) !important;
+  background:#fff2f4 !important;
+}
+html[data-theme="light"] [class*="login_setupBox__"],
+html[data-theme="light"] [class*="login_recoveryCode__"] {
+  color:#4a3c29 !important;
+  border-color:#eadcae !important;
+  background:#fffaf0 !important;
+}
+html[data-theme="light"] [class*="login_setupBox__"] code,
+html[data-theme="light"] [class*="login_recoveryCode__"] { color:#8a6814 !important; }
+
+/* Keep the cinematic image half readable in both appearances, but soften it in Light. */
+html[data-theme="light"] [class*="login_hero__"] {
+  border-color:rgba(119,72,153,.16) !important;
+  background:#f7f1fa !important;
+}
+html[data-theme="light"] [class*="login_cinematicBackdrop__"] {
+  filter:saturate(.82) brightness(1.08);
+  opacity:.86;
+}
+html[data-theme="light"] [class*="login_cinematicOverlay__"] {
+  background:
+    linear-gradient(90deg,rgba(248,245,251,.84) 0%,rgba(248,245,251,.56) 43%,rgba(248,245,251,.08) 77%),
+    linear-gradient(0deg,rgba(248,245,251,.68),transparent 48%) !important;
+  box-shadow:none !important;
+}
+html[data-theme="light"] [class*="login_heroTitle__"] { color:#2b2032 !important; }
+html[data-theme="light"] [class*="login_heroText__"],
+html[data-theme="light"] [class*="login_brandStudioText__"] { color:#6f6477 !important; }
+html[data-theme="light"] [class*="login_heroFeatures__"] span {
+  color:#46364f !important;
+  border-color:#dfd2e7 !important;
+  background:rgba(255,255,255,.74) !important;
+}
+
+/* Public opening / landing */
+html[data-theme="light"] [class*="page_opening__"] {
+  color:#2b2032 !important;
+  background:
+    radial-gradient(circle at 50% 42%,rgba(139,75,200,.13) 0,rgba(139,75,200,.05) 27%,transparent 52%),
+    radial-gradient(ellipse at 50% 105%,rgba(128,55,196,.08),transparent 46%),
+    linear-gradient(160deg,#fff 0%,#f8f4fb 48%,#f1eaf6 100%) !important;
+}
+html[data-theme="light"] [class*="page_opening__"]::before { opacity:.18 !important; }
+html[data-theme="light"] [class*="page_opening__"]::after {
+  box-shadow:inset 0 0 150px 26px rgba(110,72,137,.08) !important;
+}
+html[data-theme="light"] [class*="page_frame__"] { border-color:rgba(130,79,166,.14) !important; }
+html[data-theme="light"] [class*="page_kicker__"],
+html[data-theme="light"] [class*="page_intro__"] { color:#716579 !important; }
+html[data-theme="light"] [class*="page_enter__"] {
+  color:#3b2d43 !important;
+  border-color:#d9c8e5 !important;
+  background:rgba(255,255,255,.78) !important;
+  box-shadow:0 14px 40px rgba(68,42,83,.09) !important;
+}
+html[data-theme="light"] [class*="page_enter__"]:hover,
+html[data-theme="light"] [class*="page_enter__"]:focus-visible {
+  color:#251b2c !important;
+  border-color:#aa79ca !important;
+  background:#fff !important;
+}
+html[data-theme="light"] [class*="page_signature__"] { color:#8b7f91 !important; }
