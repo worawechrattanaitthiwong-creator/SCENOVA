@@ -581,7 +581,6 @@ export default function SingleEpisodeStudio() {
           <div className={styles.timingField}>
             <span>จำนวนฉาก</span>
             <Counter value={scenes.length} min={providerMinScenes} max={totalDuration} onChange={resizeScenes} label="จำนวนฉาก" />
-            <small>ขั้นต่ำ {providerMinScenes} ฉากสำหรับ {model} • เพิ่มได้สูงสุด {totalDuration} ฉาก</small>
           </div>
         </div>
       </div>

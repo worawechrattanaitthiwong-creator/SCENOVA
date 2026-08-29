@@ -25,3 +25,9 @@
 
 /* Single Episode layout v4 */
 .episodeTiming{grid-column:3/5!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:start!important;margin-top:0!important}.timingSummary{grid-column:1/-1!important}.miniLocks{flex-wrap:wrap;align-items:center}.miniLocks>a{display:inline-flex;align-items:center;min-height:31px;border:1px solid var(--border);border-radius:999px;background:var(--surface3);color:var(--accent);padding:6px 10px;text-decoration:none;font-size:10px;font-weight:850}.miniLocks>a:hover{border-color:var(--borderStrong);background:var(--accentSoft)}.timeline button{flex:1 1 0!important;min-width:150px!important;width:auto!important;max-width:none!important;height:68px!important;min-height:68px!important;padding:8px 10px!important}.timeline button.timelineActive{height:68px!important;min-height:68px!important;transform:none!important}.timeline button b,.timeline button span{line-height:1.35}@media(max-width:980px){.episodeTiming{grid-column:1/-1!important}}@media(max-width:680px){.episodeTiming{grid-template-columns:1fr!important}.timingSummary{grid-column:1!important}}
+
+
+/* Single Episode compact timing v6 */
+.episodeTiming{padding:10px!important;gap:8px!important;grid-template-columns:minmax(0,1fr) max-content!important;align-items:start!important}
+.timingField{gap:4px}.secondsInput{gap:6px}.secondsInput input{min-height:40px;padding:7px 9px}.episodeTiming .counter{gap:3px;padding:3px}.episodeTiming .counter button{width:30px;height:30px}.episodeTiming .counter strong{min-width:22px}
+@media(min-width:981px){.setupGrid{grid-template-columns:repeat(12,minmax(0,1fr))}.setupGrid>.field:nth-child(-n+4){grid-column:span 3}.storyField{grid-column:1/8!important}.episodeTiming{grid-column:8/13!important}}
