@@ -50,15 +50,24 @@ function SectionHeading({ title, id, href }: { title: string; id: string; href?:
 export default function PortalPage() {
   return <main className={`${styles.dashboard} ${refine.dashboard}`}>
     <section className={`${styles.hero} ${refine.hero}`} aria-label="SCENOVA AI Film Studio">
-      <img className={`${styles.heroImage} ${refine.heroImage}`} src="/media/scenova-portal-hero.png" alt="" fetchPriority="high" decoding="sync" />
-      <span className={styles.heroScrim} aria-hidden="true" />
+      <div className={refine.heroVisual} aria-hidden="true">
+        <img className={`${styles.heroImage} ${refine.heroImage}`} src="/media/scenova-portal-hero.png" alt="" fetchPriority="high" decoding="sync" />
+        <span className={refine.heroVisualShade} />
+        <span className={refine.heroVisualLabel}>SCENOVA ORIGINAL</span>
+      </div>
+      <span className={`${styles.heroScrim} ${refine.heroScrim}`} aria-hidden="true" />
       <span className={styles.heroClouds} aria-hidden="true" />
       <span className={styles.heroLights} aria-hidden="true" />
       <div className={`${styles.heroContent} ${refine.heroContent}`}>
-        <h1>สร้างโลกของคุณ<br/><em>ให้กลายเป็นภาพยนตร์</em></h1>
+        <span className={refine.heroKicker}>SCENOVA AI FILM STUDIO</span>
+        <h1>เปลี่ยนทุกไอเดีย<br/><em>ให้เป็นภาพยนตร์ของคุณ</em></h1>
+        <p className={refine.heroLead}>วางโครงเรื่อง ออกแบบตัวละคร สร้างฉาก เสียง และวิดีโอในเวิร์กโฟลว์เดียว พร้อมควบคุมทิศทางงานได้ทุกขั้นตอน</p>
         <div className={`${styles.heroActions} ${refine.heroActions}`}>
-          <Link href="/studio" className={styles.heroPrimary}>เริ่มสร้างภาพยนตร์ <Arrow /></Link>
-          <Link href="/guide" className={styles.heroSecondary}><span aria-hidden="true">▶</span> ชมวิธีใช้งาน</Link>
+          <Link href="/studio" className={styles.heroPrimary}>เริ่มโปรเจกต์ใหม่ <Arrow /></Link>
+          <Link href="/guide" className={styles.heroSecondary}><span aria-hidden="true">▶</span> ดูขั้นตอนการทำงาน</Link>
+        </div>
+        <div className={refine.heroCapabilities} aria-label="ความสามารถหลัก">
+          <span>เขียนบท</span><i aria-hidden="true" /><span>สร้างภาพ</span><i aria-hidden="true" /><span>สร้างวิดีโอ</span>
         </div>
       </div>
     </section>
