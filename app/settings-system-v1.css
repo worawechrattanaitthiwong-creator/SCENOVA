@@ -1,0 +1,109 @@
+/* SCENOVA Settings System V1
+   Settings uses a normal row-based hub. Sub-pages own their header and content;
+   the old horizontal AppShell rail is intentionally hidden for this workspace. */
+
+html[data-theme] {
+  --sc-border: var(--sc-line);
+  --sc-gold: #e4b944;
+  --accent: var(--sc-purple);
+}
+
+/* Remove the old horizontal settings cards/backbar. The Settings Home now owns navigation. */
+html[data-theme] [data-sc-workspace]:has([data-workspace="การตั้งค่า"]) [data-sc-topbar],
+html[data-theme] [data-sc-workspace]:has([data-workspace="การตั้งค่า / API & Models"]) [data-sc-topbar],
+html[data-theme] [data-sc-workspace]:has([data-workspace="การตั้งค่า / Security Center"]) [data-sc-topbar],
+html[data-theme] [data-sc-workspace]:has([data-workspace="การตั้งค่า / AI & Cost"]) [data-sc-topbar],
+html[data-theme] [data-sc-workspace]:has([data-workspace="คู่มือระบบ"]) [data-sc-topbar] {
+  display: none !important;
+}
+
+/* Settings pages always inherit the same white/purple or dark/bright-purple palette. */
+html[data-theme] :is(
+  [data-workspace="การตั้งค่า"],
+  [data-workspace="การตั้งค่า / API & Models"],
+  [data-workspace="การตั้งค่า / Security Center"],
+  [data-workspace="การตั้งค่า / AI & Cost"],
+  [data-workspace="คู่มือระบบ"]
+) {
+  --bg: var(--sc-bg);
+  --panel: var(--sc-panel);
+  --panel-2: var(--sc-panel-2);
+  --panel-3: var(--sc-panel-3);
+  --line: var(--sc-line);
+  --line-strong: var(--sc-line-strong);
+  --text: var(--sc-text);
+  --muted: var(--sc-muted);
+  --muted-2: var(--sc-muted-2);
+  --purple: var(--sc-purple);
+  --purple-2: var(--sc-purple-2);
+  color: var(--sc-text) !important;
+  background: var(--sc-bg) !important;
+}
+
+html[data-theme="dark"] :is(
+  [data-workspace="การตั้งค่า"],
+  [data-workspace="การตั้งค่า / API & Models"],
+  [data-workspace="การตั้งค่า / Security Center"],
+  [data-workspace="การตั้งค่า / AI & Cost"],
+  [data-workspace="คู่มือระบบ"]
+) {
+  background-image:
+    radial-gradient(circle at 84% -8%, rgba(160, 69, 245, .12), transparent 32%),
+    linear-gradient(180deg, #08050d, #040307) !important;
+}
+
+html[data-theme="light"] :is(
+  [data-workspace="การตั้งค่า"],
+  [data-workspace="การตั้งค่า / API & Models"],
+  [data-workspace="การตั้งค่า / Security Center"],
+  [data-workspace="การตั้งค่า / AI & Cost"],
+  [data-workspace="คู่มือระบบ"]
+) {
+  background-image:
+    radial-gradient(circle at 84% -8%, rgba(132, 70, 195, .07), transparent 32%),
+    linear-gradient(180deg, #fbf9fd, #f5f0f8) !important;
+}
+
+/* Links and controls that previously inherited old gold/black styles. */
+html[data-theme] :is(
+  [data-workspace="การตั้งค่า"],
+  [data-workspace="การตั้งค่า / API & Models"],
+  [data-workspace="การตั้งค่า / Security Center"],
+  [data-workspace="การตั้งค่า / AI & Cost"],
+  [data-workspace="คู่มือระบบ"]
+) :is(input, select, textarea) {
+  color: var(--sc-text) !important;
+  border-color: var(--sc-line) !important;
+  background-color: var(--sc-panel) !important;
+}
+
+html[data-theme] :is(
+  [data-workspace="การตั้งค่า"],
+  [data-workspace="การตั้งค่า / API & Models"],
+  [data-workspace="การตั้งค่า / Security Center"],
+  [data-workspace="การตั้งค่า / AI & Cost"],
+  [data-workspace="คู่มือระบบ"]
+) :is(h1,h2,h3,h4,h5,h6) {
+  color: var(--sc-text) !important;
+  text-shadow: none !important;
+}
+
+html[data-theme] :is(
+  [data-workspace="การตั้งค่า"],
+  [data-workspace="การตั้งค่า / API & Models"],
+  [data-workspace="การตั้งค่า / Security Center"],
+  [data-workspace="การตั้งค่า / AI & Cost"],
+  [data-workspace="คู่มือระบบ"]
+) :is(p,small,label) {
+  text-shadow: none !important;
+}
+
+@media(max-width:820px){
+  html[data-theme] [data-sc-workspace]:has([data-workspace="การตั้งค่า"]) [data-sc-page],
+  html[data-theme] [data-sc-workspace]:has([data-workspace="การตั้งค่า / API & Models"]) [data-sc-page],
+  html[data-theme] [data-sc-workspace]:has([data-workspace="การตั้งค่า / Security Center"]) [data-sc-page],
+  html[data-theme] [data-sc-workspace]:has([data-workspace="การตั้งค่า / AI & Cost"]) [data-sc-page],
+  html[data-theme] [data-sc-workspace]:has([data-workspace="คู่มือระบบ"]) [data-sc-page] {
+    min-height: calc(100dvh - 69px);
+  }
+}
