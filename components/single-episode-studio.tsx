@@ -29,6 +29,7 @@ import {
   SFX_PRESETS,
   VOICE_PROFILES,
 } from "@/lib/sound-design-options";
+import { getVideoUiCapability } from "@/lib/providers/video-ui-capabilities";
 
 type Character = {
   id: string;
@@ -243,7 +244,7 @@ function normalizeScene(input: Partial<StoryScene>, index: number): StoryScene {
 }
 
 function distributeScenes(current: StoryScene[], count: number, total: number): StoryScene[] {
-  const safeCount = Math.max(1, Math.min(count, Math.min(12, total)));
+  const safeCount = Math.max(1, Math.min(count, total));
   const baseDuration = Math.floor(total / safeCount);
   let remainder = total - baseDuration * safeCount;
   return Array.from({ length: safeCount }, (_, index) => {
@@ -321,8 +322,8 @@ export default function SingleEpisodeStudio() {
       if (Array.isArray(draft.characters) && draft.characters.length) setCharacters(draft.characters.slice(0, 8).map((item, index) => normalizeCharacter(item, index + 1)));
       if (typeof draft.hasAnimals === "boolean") setHasAnimals(draft.hasAnimals);
       if (Array.isArray(draft.animals) && draft.animals.length) setAnimals(draft.animals.slice(0, 4));
-      if (typeof draft.totalDuration === "number") setTotalDuration(Math.max(10, Math.min(180, draft.totalDuration)));
-      if (Array.isArray(draft.scenes) && draft.scenes.length) setScenes(draft.scenes.slice(0, 12).map((scene, index) => normalizeScene(scene, index + 1)));
+      if (typeof draft.totalDuration === "number") setTotalDuration(Math.max(1, Math.min(180, Math.round(draft.totalDuration))));
+      if (Array.isArray(draft.scenes) && draft.scenes.length) setScenes(draft.scenes.slice(0, 180).map((scene, index) => normalizeScene(scene, index + 1)));
       setMessage("เปิดร่างล่าสุดแล้ว");
     } catch {
       localStorage.removeItem(DRAFT_KEY);
@@ -375,6 +376,9 @@ export default function SingleEpisodeStudio() {
   }, [scenes, selectedSceneId]);
 
   const selectedScene = scenes.find((scene) => scene.id === selectedSceneId) || scenes[0];
+  const videoCapability = getVideoUiCapability(model);
+  const providerMaxSeconds = Math.max(...videoCapability.durationSeconds);
+  const providerMinScenes = Math.max(1, Math.ceil(totalDuration / providerMaxSeconds));
   const usedDuration = useMemo(() => scenes.reduce((sum, scene) => sum + scene.duration, 0), [scenes]);
   const remainingDuration = Math.max(0, totalDuration - usedDuration);
   const sceneTimes = useMemo(() => {
@@ -422,13 +426,30 @@ export default function SingleEpisodeStudio() {
   }
 
   function resizeScenes(count: number) {
-    setScenes((current) => distributeScenes(current, count, totalDuration));
+    const safeCount = Math.max(providerMinScenes, Math.min(Math.max(1, Math.round(count)), totalDuration));
+    setScenes((current) => distributeScenes(current, safeCount, totalDuration));
   }
 
   function changeTotalDuration(value: number) {
-    const next = Math.max(10, Math.min(180, value));
+    const next = Math.max(1, Math.min(180, Math.round(value || 1)));
+    const requiredScenes = Math.max(1, Math.ceil(next / providerMaxSeconds));
     setTotalDuration(next);
-    setScenes((current) => fitScenesToTotal(current, next));
+    setScenes((current) => {
+      const nextCount = Math.max(requiredScenes, Math.min(current.length, next));
+      return distributeScenes(current, nextCount, next);
+    });
+  }
+
+  function changeModel(nextModel: string) {
+    const capability = getVideoUiCapability(nextModel);
+    const maxSeconds = Math.max(...capability.durationSeconds);
+    const requiredScenes = Math.max(1, Math.ceil(totalDuration / maxSeconds));
+    setModel(nextModel);
+    setScenes((current) => {
+      const nextCount = Math.max(requiredScenes, Math.min(current.length, totalDuration));
+      const needsRedistribution = current.length !== nextCount || current.some((scene) => scene.duration > maxSeconds);
+      return needsRedistribution ? distributeScenes(current, nextCount, totalDuration) : current;
+    });
   }
 
   function patchCharacter(id: string, patch: Partial<Character>) {
@@ -468,7 +489,7 @@ export default function SingleEpisodeStudio() {
     if (!selectedScene) return;
     setScenes((current) => {
       const other = current.reduce((sum, scene) => sum + (scene.id === selectedScene.id ? 0 : scene.duration), 0);
-      const nextDuration = Math.max(1, Math.min(value, Math.max(1, totalDuration - other)));
+      const nextDuration = Math.max(1, Math.min(value, providerMaxSeconds, Math.max(1, totalDuration - other)));
       return current.map((scene) => scene.id === selectedScene.id ? { ...scene, duration: nextDuration } : scene);
     });
   }
@@ -516,7 +537,7 @@ export default function SingleEpisodeStudio() {
   return <main className={styles.main}>
     <header className={styles.hero}>
       <div>
-        <span className={styles.eyebrow}>SINGLE EPISODE STUDIO</span>
+        <span className={styles.eyebrow}>สตูดิโอสร้างตอนเดียว</span>
         <h1>สร้างตอนเดียวให้จบใน Workspace เดียว</h1>
         <p>โหมดนี้สำหรับหนังสั้น คลิป หรือตอนเดียว ตั้งเรื่อง ตัวละคร ฉาก กล้อง แสง การแสดง เสียง และ Continuity แล้วส่งต่อไป Prompt & Render</p>
       </div>
@@ -527,7 +548,7 @@ export default function SingleEpisodeStudio() {
       </div>
     </header>
 
-    <nav className={styles.flowBar} aria-label="ขั้นตอน Single Episode">
+    <nav className={styles.flowBar} aria-label="ขั้นตอนสร้างตอนเดียว">
       <a href="#setup"><b>1</b><span>ตั้งค่าตอน<small>เรื่อง + โมเดล</small></span></a>
       <a href="#characters"><b>2</b><span>ตัวละคร<small>Identity + Voice Lock</small></span></a>
       <a href="#scenes"><b>3</b><span>กำกับฉาก<small>Camera + Light + Sound</small></span></a>
@@ -536,16 +557,32 @@ export default function SingleEpisodeStudio() {
 
     <section id="setup" className={styles.panel}>
       <div className={styles.sectionHead}>
-        <div><span>EPISODE SETUP — ตั้งค่าตอน</span><h2>กำหนดภาพรวมของตอนเดียว</h2></div>
+        <div><span>ตั้งค่าตอน</span><h2>กำหนดภาพรวมของตอนเดียว</h2></div>
         <p>ค่าชุดนี้เป็น Master Context ของทุกฉาก ถ้าล็อกไว้ Analyzer และ Prompt Compiler ต้องยึดค่ากลางนี้ก่อนค่าที่ AI เสนอ</p>
       </div>
       <div className={styles.setupGrid}>
         <label className={styles.field}><span>ชื่อตอน</span><input value={episodeTitle} onChange={(event) => setEpisodeTitle(event.target.value)} placeholder="เช่น คืนสุดท้ายที่สถานีรถไฟ" /><small>ชื่อสำหรับร่าง งาน Render และ Video Library</small></label>
-        <label className={styles.field}><span>Video Model</span><select value={model} onChange={(event) => setModel(event.target.value)}>{MODELS.map((item) => <option key={item}>{item}</option>)}</select><small>เลือก Provider ที่จะใช้สร้างคลิปจริง</small></label>
-        <label className={styles.field}><span>Aspect Ratio</span><select value={aspect} onChange={(event) => setAspect(event.target.value)}>{ASPECTS.map((item) => <option key={item}>{item}</option>)}</select><small>ใช้สัดส่วนเดียวกันทุกฉากของตอนนี้</small></label>
-        <label className={styles.field}><span>Visual Style</span><select value={visualStyle} onChange={(event) => setVisualStyle(event.target.value)}>{STYLES.map((item) => <option key={item}>{item}</option>)}</select><small>Master Style ของตอนนี้</small></label>
+        <label className={styles.field}><span>โมเดลวิดีโอ</span><select value={model} onChange={(event) => changeModel(event.target.value)}>{MODELS.map((item) => <option key={item}>{item}</option>)}</select><small>เลือก Provider ที่จะใช้สร้างคลิปจริง</small></label>
+        <label className={styles.field}><span>อัตราส่วนภาพ</span><select value={aspect} onChange={(event) => setAspect(event.target.value)}>{ASPECTS.map((item) => <option key={item}>{item}</option>)}</select><small>ใช้สัดส่วนเดียวกันทุกฉากของตอนนี้</small></label>
+        <label className={styles.field}><span>สไตล์ภาพ</span><select value={visualStyle} onChange={(event) => setVisualStyle(event.target.value)}>{STYLES.map((item) => <option key={item}>{item}</option>)}</select><small>Master Style ของตอนนี้</small></label>
         <label className={`${styles.field} ${styles.storyField}`}><span>เรื่อง / เหตุการณ์ของตอน</span><textarea value={story} onChange={(event) => setStory(event.target.value)} placeholder="เล่าว่าใครต้องการอะไร เกิดปัญหาอะไร เหตุการณ์ดำเนินอย่างไร และจบแบบไหน" /><small>เขียนเป็นภาษาธรรมชาติได้ Analyzer จะนำข้อมูลนี้ไปจัดโครง Prompt ภายหลัง</small></label>
-        <label className={`${styles.field} ${styles.negativeField}`}><span>Global Negative Prompt</span><textarea value={globalNegative} onChange={(event) => setGlobalNegative(event.target.value)} /><small>ข้อห้ามระดับทั้งตอน เช่น ห้ามเปลี่ยนหน้า ห้ามเปลี่ยนชุด ห้ามตัวละครซ้ำ ห้ามตัวหนังสือ/ลายน้ำ</small></label>
+        <label className={`${styles.field} ${styles.negativeField}`}><span>ข้อห้ามหลักของตอน</span><textarea value={globalNegative} onChange={(event) => setGlobalNegative(event.target.value)} /><small>ข้อห้ามระดับทั้งตอน เช่น ห้ามเปลี่ยนหน้า ห้ามเปลี่ยนชุด ห้ามตัวละครซ้ำ ห้ามตัวหนังสือ/ลายน้ำ</small></label>
+        <div className={styles.episodeTiming}>
+          <label className={styles.timingField}>
+            <span>ความยาวรวมของตอน</span>
+            <div className={styles.secondsInput}><input type="number" min={1} max={180} step={1} value={totalDuration} onChange={(event) => changeTotalDuration(Number(event.target.value))} /><b>วินาที</b></div>
+            <small>เลือกได้อิสระ 1–180 วินาที (สูงสุด 3 นาที)</small>
+          </label>
+          <div className={styles.timingField}>
+            <span>จำนวนฉาก</span>
+            <Counter value={scenes.length} min={providerMinScenes} max={totalDuration} onChange={resizeScenes} label="จำนวนฉาก" />
+            <small>ขั้นต่ำ {providerMinScenes} ฉากสำหรับ {model} • เพิ่มได้สูงสุด {totalDuration} ฉาก</small>
+          </div>
+          <div className={styles.timingSummary}>
+            <strong>{totalDuration} วินาที • {scenes.length} ฉาก</strong>
+            <span>{model} รองรับสูงสุด {providerMaxSeconds} วินาทีต่อคลิป ระบบเพิ่มฉากให้อัตโนมัติเมื่อเวลารวมยาวกว่าที่ API สร้างได้ต่อครั้ง</span>
+          </div>
+        </div>
       </div>
       <div className={styles.lockGrid}>
         {GLOBAL_LOCKS.map((lock) => <label key={lock.key} className={locks.includes(lock.key) ? styles.lockActive : ""}><input type="checkbox" checked={locks.includes(lock.key)} onChange={() => toggleLock(lock.key)} /><span><b>{lock.label}</b><small>{lock.help}</small></span></label>)}
@@ -554,7 +591,7 @@ export default function SingleEpisodeStudio() {
 
     <section id="characters" className={styles.panel}>
       <div className={styles.sectionHeadRow}>
-        <div className={styles.sectionHead}><div><span>CAST & IDENTITY — ตัวละคร</span><h2>กำหนดตัวตนก่อนกำกับกล้อง</h2></div><p>ตัวละครที่อยู่ใน Scene จะมี Blocking, Action, Emotion และ Eyeline แยกของตัวเอง กล้องสามารถเลือกตามตัวละครคนใดคนหนึ่งได้โดยตรง</p></div>
+        <div className={styles.sectionHead}><div><span>ตัวละครและตัวตน</span><h2>กำหนดตัวตนก่อนกำกับกล้อง</h2></div><p>ตัวละครที่อยู่ใน Scene จะมี Blocking, Action, Emotion และ Eyeline แยกของตัวเอง กล้องสามารถเลือกตามตัวละครคนใดคนหนึ่งได้โดยตรง</p></div>
         <div className={styles.countBox}><span>จำนวนตัวละคร</span><Counter value={characters.length} min={1} max={8} onChange={resizeCharacters} label="จำนวนตัวละคร" /></div>
       </div>
       <div className={styles.characterList}>
@@ -564,7 +601,7 @@ export default function SingleEpisodeStudio() {
             <div className={styles.threeGrid}>
               <label className={styles.field}><span>ชื่อ</span><input value={character.name} onChange={(event) => patchCharacter(character.id, { name: event.target.value })} /></label>
               <label className={styles.field}><span>บทบาท</span><select value={character.role} onChange={(event) => patchCharacter(character.id, { role: event.target.value })}>{ROLES.map((role) => <option key={role}>{role}</option>)}</select></label>
-              <label className={styles.field}><span>Voice Profile</span><select value={character.voice} onChange={(event) => patchCharacter(character.id, { voice: event.target.value })}>{VOICE_PROFILES.map((voice) => <option key={voice}>{voice}</option>)}</select></label>
+              <label className={styles.field}><span>โปรไฟล์เสียง</span><select value={character.voice} onChange={(event) => patchCharacter(character.id, { voice: event.target.value })}>{VOICE_PROFILES.map((voice) => <option key={voice}>{voice}</option>)}</select></label>
             </div>
             <label className={styles.field}><span>รูปลักษณ์ / เสื้อผ้า / บุคลิก / จุดจำ</span><textarea value={character.appearance} onChange={(event) => patchCharacter(character.id, { appearance: event.target.value })} placeholder="ใบหน้า ทรงผม อายุ รูปร่าง เสื้อผ้า เครื่องประดับ บุคลิก และรายละเอียดที่ห้ามเปลี่ยน" /></label>
             <div className={styles.miniLocks}><label className={character.identityLock ? styles.miniLockActive : ""}><input type="checkbox" checked={character.identityLock} onChange={(event) => patchCharacter(character.id, { identityLock: event.target.checked })} />Identity Lock</label><label className={character.voiceLock ? styles.miniLockActive : ""}><input type="checkbox" checked={character.voiceLock} onChange={(event) => patchCharacter(character.id, { voiceLock: event.target.checked })} />Voice Lock</label></div>
@@ -578,61 +615,59 @@ export default function SingleEpisodeStudio() {
     </section>
 
     <section id="scenes" className={styles.panel}>
-      <div className={styles.sectionHeadRow}>
-        <div className={styles.sectionHead}><div><span>SCENE DIRECTOR — กำกับฉาก</span><h2>กำกับทีละฉาก พร้อมกล้องเต็มชุด</h2></div><p>Scene แต่ละฉากมีเวลา Cast Blocking กล้อง เลนส์ แสง Performance Sound Design และ Negative Prompt ของตัวเอง</p></div>
-        <div className={styles.countBox}><span>จำนวนฉาก</span><Counter value={scenes.length} min={1} max={12} onChange={resizeScenes} label="จำนวนฉาก" /></div>
+      <div className={styles.sectionHead}>
+        <div><span>กำกับฉาก</span><h2>กำกับทีละฉาก พร้อมกล้องเต็มชุด</h2></div><p>แต่ละฉากมีเวลา ตัวละคร กล้อง เลนส์ แสง การแสดง เสียง และข้อห้ามของตัวเอง โดยผลรวมต้องไม่เกินเวลาตอนที่ตั้งไว้</p>
       </div>
 
-      <div className={styles.durationPanel}><div><span>เวลารวมของตอน</span><strong>{totalDuration} วินาที</strong></div><input type="range" min={10} max={180} step={5} value={totalDuration} onChange={(event) => changeTotalDuration(Number(event.target.value))} /><small>ใช้แล้ว {usedDuration} วินาที{remainingDuration > 0 ? ` • เหลือ ${remainingDuration} วินาที` : " • จัดเวลาครบ"}</small></div>
-      <div className={styles.timeline}>{scenes.map((scene, index) => <button type="button" key={scene.id} className={scene.id === selectedScene?.id ? styles.timelineActive : ""} onClick={() => setSelectedSceneId(scene.id)} style={{ flexGrow: Math.max(1, scene.duration) }}><b>{index + 1}</b><span>{scene.duration}s</span></button>)}</div>
+      <div className={styles.timeline}>{scenes.map((scene, index) => <button type="button" key={scene.id} className={scene.id === selectedScene?.id ? styles.timelineActive : ""} onClick={() => setSelectedSceneId(scene.id)}><b>ฉาก {index + 1}</b><span>{scene.duration} วินาที</span></button>)}</div>
 
       <div className={styles.sceneWorkspace}>
-        <aside className={styles.sceneList}>{scenes.map((scene, index) => { const time = sceneTimes[index]; return <button type="button" key={scene.id} className={scene.id === selectedScene?.id ? styles.sceneActive : ""} onClick={() => setSelectedSceneId(scene.id)}><b>{String(index + 1).padStart(2, "0")}</b><span><strong>{scene.title}</strong><small>{formatTime(time?.start || 0)}–{formatTime(time?.end || scene.duration)} • {scene.duration}s</small></span></button>; })}</aside>
+        <aside className={styles.sceneList}>{scenes.map((scene, index) => { const time = sceneTimes[index]; return <button type="button" key={scene.id} className={scene.id === selectedScene?.id ? styles.sceneActive : ""} onClick={() => setSelectedSceneId(scene.id)}><b>{String(index + 1).padStart(2, "0")}</b><span><strong>{scene.title}</strong><small>{formatTime(time?.start || 0)}–{formatTime(time?.end || scene.duration)} • {scene.duration} วินาที</small></span></button>; })}</aside>
 
         {selectedScene ? <div className={styles.sceneEditor}>
-          <div className={styles.sceneEditorHead}><div><span>SCENE {String(scenes.findIndex((item) => item.id === selectedScene.id) + 1).padStart(2, "0")}</span><h3>{selectedScene.title}</h3></div><div><button type="button" onClick={copyCameraToAll}>คัดลอกกล้องไปทุกฉาก</button><button type="button" onClick={copyLookToAll}>คัดลอกแสงไปทุกฉาก</button></div></div>
+          <div className={styles.sceneEditorHead}><div><span>ฉาก {String(scenes.findIndex((item) => item.id === selectedScene.id) + 1).padStart(2, "0")}</span><h3>{selectedScene.title}</h3></div><div><button type="button" onClick={copyCameraToAll}>คัดลอกกล้องไปทุกฉาก</button><button type="button" onClick={copyLookToAll}>คัดลอกแสงไปทุกฉาก</button></div></div>
 
           <div className={styles.twoGrid}><label className={styles.field}><span>ชื่อฉาก</span><input value={selectedScene.title} onChange={(event) => patchScene({ title: event.target.value })} /></label><label className={styles.field}><span>สถานที่</span><input list="scenova-locations" value={selectedScene.location} onChange={(event) => patchScene({ location: event.target.value })} placeholder="พิมพ์เองหรือเลือก Preset" /><datalist id="scenova-locations">{LOCATION_PRESETS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</datalist></label></div>
-          <div className={styles.threeGrid}><ChoiceField label="Scene Objective — เป้าหมายฉาก" value={selectedScene.objective} options={OBJECTIVE_PRESETS} onChange={(value) => patchScene({ objective: value })} compact /><ChoiceField label="Story Beat — จังหวะเรื่อง" value={selectedScene.beat} options={SCENE_BEATS} onChange={(value) => patchScene({ beat: value })} compact /><ChoiceField label="Transition — การเปลี่ยนฉาก" value={selectedScene.transition} options={TRANSITIONS} onChange={(value) => patchScene({ transition: value })} compact /></div>
-          <div className={styles.sceneDuration}><div><span>เวลาของฉากนี้</span><strong>{selectedScene.duration} วินาที</strong></div><input type="range" min={1} max={Math.max(1, selectedScene.duration + remainingDuration)} value={selectedScene.duration} onChange={(event) => changeSceneDuration(Number(event.target.value))} /><small>ระบบไม่ให้เวลารวมเกิน {totalDuration} วินาที</small></div>
+          <div className={styles.threeGrid}><ChoiceField label="เป้าหมายฉาก" value={selectedScene.objective} options={OBJECTIVE_PRESETS} onChange={(value) => patchScene({ objective: value })} compact /><ChoiceField label="จังหวะเรื่อง" value={selectedScene.beat} options={SCENE_BEATS} onChange={(value) => patchScene({ beat: value })} compact /><ChoiceField label="การเปลี่ยนฉาก" value={selectedScene.transition} options={TRANSITIONS} onChange={(value) => patchScene({ transition: value })} compact /></div>
+          <div className={styles.sceneDuration}><div><span>เวลาของฉากนี้</span><strong>{selectedScene.duration} วินาที</strong></div><input type="range" min={1} max={Math.max(1, Math.min(providerMaxSeconds, selectedScene.duration + remainingDuration))} value={selectedScene.duration} onChange={(event) => changeSceneDuration(Number(event.target.value))} /><small>ระบบไม่ให้เวลารวมเกิน {totalDuration} วินาที</small></div>
 
           <section className={styles.directorBlock}>
-            <div className={styles.blockHead}><div><span>CAST BLOCKING</span><h4>ตัวละครในฉาก + ตำแหน่งและการแสดงรายคน</h4></div><p>เลือกเฉพาะคนที่อยู่ในฉาก แล้วกำหนด Blocking / Action / Emotion / Eyeline แยกทีละคน</p></div>
+            <div className={styles.blockHead}><div><span>ตัวละครในฉาก</span><h4>ตัวละครในฉาก + ตำแหน่งและการแสดงรายคน</h4></div><p>เลือกเฉพาะคนที่อยู่ในฉาก แล้วกำหนด Blocking / Action / Emotion / Eyeline แยกทีละคน</p></div>
             <div className={styles.presenceChips}>{characters.map((character) => <label key={character.id} className={selectedScene.characterIds.includes(character.id) ? styles.chipActive : ""}><input type="checkbox" checked={selectedScene.characterIds.includes(character.id)} onChange={() => toggleSceneCharacter(character.id)} />{character.name}</label>)}</div>
             {selectedScene.characterIds.length ? <div className={styles.directionList}>{selectedScene.characterIds.map((id) => { const character = characters.find((item) => item.id === id); if (!character) return null; const direction = selectedScene.characterDirections[id] || makeDirection(); return <article key={id} className={styles.directionRow}><div className={styles.directionName}><b>{character.name}</b><small>{character.role}</small></div><label className={styles.field}><span>Blocking / ตำแหน่ง</span><input value={direction.blocking} onChange={(event) => patchCharacterDirection(id, { blocking: event.target.value })} placeholder="ซ้ายเฟรม, หน้าโต๊ะ, เดินเข้าจากขวา..." /></label><label className={styles.field}><span>Action ของคนนี้</span><input value={direction.action} onChange={(event) => patchCharacterDirection(id, { action: event.target.value })} placeholder="เดิน, หยุด, หยิบของ, หันหน้า..." /></label><ChoiceField label="Emotion" value={direction.emotion} options={EMOTIONS} onChange={(value) => patchCharacterDirection(id, { emotion: value })} compact /><label className={styles.field}><span>Eyeline / มองไปที่</span><input value={direction.eyeline} onChange={(event) => patchCharacterDirection(id, { eyeline: event.target.value })} placeholder="มองตัวละคร 2 / กล้อง / ประตู" /></label></article>; })}</div> : <div className={styles.emptyState}>ยังไม่ได้เลือกตัวละครในฉากนี้</div>}
             {hasAnimals ? <div className={styles.presenceSub}><span>สัตว์ / Creature ในฉาก</span><div className={styles.presenceChips}>{animals.map((animal) => <label key={animal.id} className={selectedScene.animalIds.includes(animal.id) ? styles.chipActive : ""}><input type="checkbox" checked={selectedScene.animalIds.includes(animal.id)} onChange={() => toggleSceneAnimal(animal.id)} />{animal.name}</label>)}</div></div> : null}
           </section>
 
           <section className={styles.directorBlock}>
-            <div className={styles.blockHead}><div><span>ACTION & DIALOGUE</span><h4>เหตุการณ์และบทพูด</h4></div><p>เขียน Action รวมของฉาก และระบุชื่อผู้พูดใน Dialogue ให้ตรงกับ Cast</p></div>
+            <div className={styles.blockHead}><div><span>เหตุการณ์และบทพูด</span><h4>เหตุการณ์และบทพูด</h4></div><p>เขียน Action รวมของฉาก และระบุชื่อผู้พูดใน Dialogue ให้ตรงกับ Cast</p></div>
             <label className={styles.field}><span>Action รวมของฉาก</span><textarea className={styles.bigTextarea} value={selectedScene.action} onChange={(event) => patchScene({ action: event.target.value })} placeholder="ฉากเริ่มอย่างไร ใครทำอะไร จุดเปลี่ยนอยู่ตรงไหน และจบด้วยอะไร" /></label>
             <label className={styles.field}><span>Dialogue / บทพูด</span><textarea value={selectedScene.dialogue} onChange={(event) => patchScene({ dialogue: event.target.value })} placeholder={'ตัวละคร 1: ...\nตัวละคร 2: ...'} /><small>ใช้ชื่อเดียวกับ Cast เพื่อให้ Voice Router จับคู่เสียงได้ถูกต้อง</small></label>
           </section>
 
           <section className={styles.directorBlock}>
-            <div className={styles.blockHead}><div><span>CAMERA DIRECTION</span><h4>กล้อง เลนส์ มุม และการเคลื่อนครบชุด</h4></div><p>เลือก “กล้องตามใคร” ก่อน แล้วกำหนดภาษากล้องของ Shot นี้อย่างละเอียด</p></div>
+            <div className={styles.blockHead}><div><span>กำกับกล้อง</span><h4>กล้อง เลนส์ มุม และการเคลื่อนครบชุด</h4></div><p>เลือก “กล้องตามใคร” ก่อน แล้วกำหนดภาษากล้องของ Shot นี้อย่างละเอียด</p></div>
             <label className={styles.field}><span>Camera Subject — กล้องโฟกัส/ตามใคร</span><select value={selectedScene.cameraSubjectId} onChange={(event) => patchScene({ cameraSubjectId: event.target.value })}><option value="">ฉากโดยรวม / Environment</option>{selectedScene.characterIds.map((id) => { const character = characters.find((item) => item.id === id); return character ? <option key={id} value={id}>{character.name}</option> : null; })}</select><small>ถ้าเลือกตัวละคร ระบบ Prompt จะผูก Camera Movement และ Focus กับตัวละครคนนั้นโดยตรง</small></label>
-            <div className={styles.threeGrid}><ChoiceField label="Shot Type — ระยะภาพ" value={selectedScene.shot} options={SHOT_TYPES} onChange={(value) => patchScene({ shot: value })} /><ChoiceField label="Camera Angle — มุมกล้อง" value={selectedScene.angle} options={CAMERA_ANGLES} onChange={(value) => patchScene({ angle: value })} /><ChoiceField label="Lens — เลนส์" value={selectedScene.lens} options={LENSES} onChange={(value) => patchScene({ lens: value })} /></div>
-            <div className={styles.threeGrid}><ChoiceField label="Movement — การเคลื่อนกล้อง" value={selectedScene.movement} options={CAMERA_MOVEMENTS} onChange={(value) => patchScene({ movement: value })} /><ChoiceField label="Camera Height — ความสูงกล้อง" value={selectedScene.height} options={CAMERA_HEIGHTS} onChange={(value) => patchScene({ height: value })} /><ChoiceField label="Camera Speed — ความเร็วกล้อง" value={selectedScene.cameraSpeed} options={CAMERA_SPEEDS} onChange={(value) => patchScene({ cameraSpeed: value })} /></div>
-            <div className={styles.threeGrid}><ChoiceField label="Focus — จุดโฟกัส" value={selectedScene.focus} options={FOCUS_OPTIONS} onChange={(value) => patchScene({ focus: value })} /><ChoiceField label="Depth of Field — ชัดตื้น/ลึก" value={selectedScene.dof} options={DOF_OPTIONS} onChange={(value) => patchScene({ dof: value })} /><ChoiceField label="Composition — องค์ประกอบภาพ" value={selectedScene.composition} options={COMPOSITION_OPTIONS} onChange={(value) => patchScene({ composition: value })} /></div>
+            <div className={styles.threeGrid}><ChoiceField label="ระยะภาพ" value={selectedScene.shot} options={SHOT_TYPES} onChange={(value) => patchScene({ shot: value })} /><ChoiceField label="มุมกล้อง" value={selectedScene.angle} options={CAMERA_ANGLES} onChange={(value) => patchScene({ angle: value })} /><ChoiceField label="เลนส์" value={selectedScene.lens} options={LENSES} onChange={(value) => patchScene({ lens: value })} /></div>
+            <div className={styles.threeGrid}><ChoiceField label="การเคลื่อนกล้อง" value={selectedScene.movement} options={CAMERA_MOVEMENTS} onChange={(value) => patchScene({ movement: value })} /><ChoiceField label="ความสูงกล้อง" value={selectedScene.height} options={CAMERA_HEIGHTS} onChange={(value) => patchScene({ height: value })} /><ChoiceField label="ความเร็วกล้อง" value={selectedScene.cameraSpeed} options={CAMERA_SPEEDS} onChange={(value) => patchScene({ cameraSpeed: value })} /></div>
+            <div className={styles.threeGrid}><ChoiceField label="จุดโฟกัส" value={selectedScene.focus} options={FOCUS_OPTIONS} onChange={(value) => patchScene({ focus: value })} /><ChoiceField label="ระยะชัดลึก" value={selectedScene.dof} options={DOF_OPTIONS} onChange={(value) => patchScene({ dof: value })} /><ChoiceField label="องค์ประกอบภาพ" value={selectedScene.composition} options={COMPOSITION_OPTIONS} onChange={(value) => patchScene({ composition: value })} /></div>
           </section>
 
           <section className={styles.directorBlock}>
-            <div className={styles.blockHead}><div><span>LOOK & PERFORMANCE</span><h4>แสง สี อารมณ์ และการแสดง</h4></div><p>กำหนด Mood ของภาพและระดับการแสดงให้สัมพันธ์กับ Action และ Dialogue</p></div>
-            <div className={styles.twoGrid}><ChoiceField label="Lighting Style — รูปแบบแสง" value={selectedScene.lighting} options={LIGHTING_STYLES} onChange={(value) => patchScene({ lighting: value })} /><ChoiceField label="Color Temperature — อุณหภูมิสี" value={selectedScene.colorTemp} options={COLOR_TEMPERATURES} onChange={(value) => patchScene({ colorTemp: value })} /></div>
-            <div className={styles.twoGrid}><ChoiceField label="Scene Emotion — อารมณ์หลัก" value={selectedScene.emotion} options={EMOTIONS} onChange={(value) => patchScene({ emotion: value })} /><ChoiceField label="Performance — รูปแบบการแสดง" value={selectedScene.performance} options={PERFORMANCE_OPTIONS} onChange={(value) => patchScene({ performance: value })} /></div>
+            <div className={styles.blockHead}><div><span>ภาพและการแสดง</span><h4>แสง สี อารมณ์ และการแสดง</h4></div><p>กำหนด Mood ของภาพและระดับการแสดงให้สัมพันธ์กับ Action และ Dialogue</p></div>
+            <div className={styles.twoGrid}><ChoiceField label="รูปแบบแสง" value={selectedScene.lighting} options={LIGHTING_STYLES} onChange={(value) => patchScene({ lighting: value })} /><ChoiceField label="อุณหภูมิสี" value={selectedScene.colorTemp} options={COLOR_TEMPERATURES} onChange={(value) => patchScene({ colorTemp: value })} /></div>
+            <div className={styles.twoGrid}><ChoiceField label="อารมณ์หลัก" value={selectedScene.emotion} options={EMOTIONS} onChange={(value) => patchScene({ emotion: value })} /><ChoiceField label="รูปแบบการแสดง" value={selectedScene.performance} options={PERFORMANCE_OPTIONS} onChange={(value) => patchScene({ performance: value })} /></div>
           </section>
 
           <section className={styles.directorBlock}>
-            <div className={styles.blockHead}><div><span>SOUND DESIGN</span><h4>Ambience, SFX, Dialogue และ Music</h4></div><p>เสียงจะถูกผูกกับ Timeline ของฉากและ Voice Profile ของตัวละคร</p></div>
-            <div className={styles.twoGrid}><ChoiceField label="Primary Ambience — เสียงบรรยากาศหลัก" value={selectedScene.ambience} options={AMBIENCE_PRESETS} onChange={(value) => patchScene({ ambience: value })} /><ChoiceField label="Secondary Ambience — เสียงพื้นรอง" value={selectedScene.secondaryAmbience} options={AMBIENCE_PRESETS} onChange={(value) => patchScene({ secondaryAmbience: value })} /></div>
-            <div className={styles.twoGrid}><ChoiceField label="SFX Preset — เอฟเฟกต์เสียง" value={selectedScene.sfx} options={SFX_PRESETS} onChange={(value) => patchScene({ sfx: value })} /><ChoiceField label="Music — ดนตรี" value={selectedScene.music} options={MUSIC_PRESETS} onChange={(value) => patchScene({ music: value })} /></div>
+            <div className={styles.blockHead}><div><span>ออกแบบเสียง</span><h4>Ambience, SFX, Dialogue และ Music</h4></div><p>เสียงจะถูกผูกกับ Timeline ของฉากและ Voice Profile ของตัวละคร</p></div>
+            <div className={styles.twoGrid}><ChoiceField label="เสียงบรรยากาศหลัก" value={selectedScene.ambience} options={AMBIENCE_PRESETS} onChange={(value) => patchScene({ ambience: value })} /><ChoiceField label="เสียงพื้นรอง" value={selectedScene.secondaryAmbience} options={AMBIENCE_PRESETS} onChange={(value) => patchScene({ secondaryAmbience: value })} /></div>
+            <div className={styles.twoGrid}><ChoiceField label="เอฟเฟกต์เสียง" value={selectedScene.sfx} options={SFX_PRESETS} onChange={(value) => patchScene({ sfx: value })} /><ChoiceField label="ดนตรี" value={selectedScene.music} options={MUSIC_PRESETS} onChange={(value) => patchScene({ music: value })} /></div>
             <label className={styles.field}><span>SFX Timeline — ระบุจังหวะเสียง</span><textarea value={selectedScene.sfxTimeline} onChange={(event) => patchScene({ sfxTimeline: event.target.value })} placeholder={'00:02.0 ฝีเท้าเริ่ม\n00:05.2 ประตูปิด\n00:07.0 รถวิ่งผ่าน'} /><small>ระบุเวลาให้สัมพันธ์กับ Duration ของฉาก</small></label>
             <div className={styles.mixGrid}>{([['Ambience', 'ambienceLevel'], ['SFX', 'sfxLevel'], ['Dialogue', 'dialogueLevel'], ['Music', 'musicLevel']] as const).map(([label, key]) => <label key={key}><span>{label}<b>{selectedScene[key]}%</b></span><input type="range" min={0} max={100} value={selectedScene[key]} onChange={(event) => patchScene({ [key]: Number(event.target.value) })} /></label>)}</div>
           </section>
 
           <section className={styles.directorBlock}>
-            <div className={styles.blockHead}><div><span>CONTINUITY & SAFETY</span><h4>สิ่งที่ต้องต่อเนื่องและสิ่งที่ห้ามเกิด</h4></div><p>ข้อมูลนี้จะถูกแนบไปกับ Prompt Compiler เพื่อช่วยลด Character Drift และความผิดพลาดระหว่าง Shot</p></div>
+            <div className={styles.blockHead}><div><span>ความต่อเนื่องและข้อห้าม</span><h4>สิ่งที่ต้องต่อเนื่องและสิ่งที่ห้ามเกิด</h4></div><p>ข้อมูลนี้จะถูกแนบไปกับ Prompt Compiler เพื่อช่วยลด Character Drift และความผิดพลาดระหว่าง Shot</p></div>
             <label className={styles.field}><span>Continuity Note — สิ่งที่ต้องต่อจากฉากก่อน</span><textarea value={selectedScene.continuityNote} onChange={(event) => patchScene({ continuityNote: event.target.value })} /></label>
             <label className={styles.field}><span>Scene Negative Prompt — ข้อห้ามเฉพาะฉาก</span><textarea value={selectedScene.negativePrompt} onChange={(event) => patchScene({ negativePrompt: event.target.value })} placeholder="เช่น ห้ามเปลี่ยนเสื้อ, ห้ามเพิ่มคน, ห้ามเปลี่ยนเวลาเป็นกลางวัน" /></label>
           </section>
@@ -641,16 +676,16 @@ export default function SingleEpisodeStudio() {
     </section>
 
     <section id="review" className={styles.reviewPanel}>
-      <div className={styles.readiness}><div><span>PRODUCTION READINESS</span><h2>ความพร้อมของตอนนี้</h2><p>ระบบตรวจเฉพาะข้อมูลสำคัญก่อนส่งไป Analyzer และ Prompt Compiler</p></div><strong>{readiness.score}%</strong></div>
+      <div className={styles.readiness}><div><span>ตรวจความพร้อมก่อนสร้าง</span><h2>ความพร้อมของตอนนี้</h2><p>ระบบตรวจเฉพาะข้อมูลสำคัญก่อนส่งไป Analyzer และ Prompt Compiler</p></div><strong>{readiness.score}%</strong></div>
       <div className={styles.reviewGrid}>
-        <article><b>{scenes.length}</b><span>Scenes</span><small>{usedDuration}/{totalDuration} วินาที</small></article>
-        <article><b>{characters.length}</b><span>Characters</span><small>{locks.length} Locks เปิดอยู่</small></article>
+        <article><b>{scenes.length}</b><span>ฉาก</span><small>{usedDuration}/{totalDuration} วินาที</small></article>
+        <article><b>{characters.length}</b><span>ตัวละคร</span><small>{locks.length} Locks เปิดอยู่</small></article>
         <article><b>{model}</b><span>Video Model</span><small>{aspect}</small></article>
         <article><b>{readiness.missing.length ? readiness.missing.length : "✓"}</b><span>รายการที่ต้องเติม</span><small>{readiness.missing.length ? readiness.missing.join(" • ") : "ข้อมูลหลักครบแล้ว"}</small></article>
       </div>
       <div className={styles.reviewActions}><button type="button" className={styles.secondaryButton} onClick={saveDraft}>บันทึกร่าง</button><Link href="/profile/api" className={styles.apiLink}>ตรวจ API & Models</Link><Link href="/render" className={styles.primaryButton} onClick={saveDraft}>Prompt & Render →</Link></div>
     </section>
 
-    <footer className={styles.stickyFooter}><div><strong>{episodeTitle || "Untitled Episode"}</strong><span>{scenes.length} ฉาก • {characters.length} ตัวละคร • {usedDuration}/{totalDuration}s • Ready {readiness.score}%</span></div><div><button type="button" className={styles.secondaryButton} onClick={saveDraft}>บันทึกร่าง</button><Link href="/render" className={styles.primaryButton} onClick={saveDraft}>Prompt & Render →</Link></div></footer>
+    <footer className={styles.stickyFooter}><div><strong>{episodeTitle || "Untitled Episode"}</strong><span>{scenes.length} ฉาก • {characters.length} ตัวละคร • {usedDuration}/{totalDuration}s • พร้อม {readiness.score}%</span></div><div><button type="button" className={styles.secondaryButton} onClick={saveDraft}>บันทึกร่าง</button><Link href="/render" className={styles.primaryButton} onClick={saveDraft}>Prompt & Render →</Link></div></footer>
   </main>;
 }
