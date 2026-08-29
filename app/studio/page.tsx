@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import SingleEpisodeStudioPolish from "@/components/single-episode-studio-polish";
 
 const SingleEpisodeStudio = dynamic(
   () => import("@/components/single-episode-studio"),
@@ -15,5 +16,8 @@ const SingleEpisodeStudio = dynamic(
 );
 
 export default function StudioPage() {
-  return <SingleEpisodeStudio />;
+  return <>
+    <SingleEpisodeStudio />
+    <SingleEpisodeStudioPolish />
+  </>;
 }
