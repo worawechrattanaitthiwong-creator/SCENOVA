@@ -1,0 +1,54 @@
+/* AI Agent workspace layout: primary sidebar + compact local functional menu. */
+
+[data-workspace="AI Agent"] .sc-agent-local-nav {
+  width:min(1540px,calc(100% - 56px));
+  margin:18px auto 0;
+  display:flex;
+  align-items:center;
+  gap:4px;
+  padding:0 0 9px;
+  overflow-x:auto;
+  border-bottom:1px solid var(--sc-line);
+  scrollbar-width:thin;
+}
+
+[data-workspace="AI Agent"] .sc-agent-local-nav > a {
+  flex:0 0 auto;
+  min-height:34px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:7px 11px;
+  border:0;
+  border-radius:8px;
+  color:var(--sc-muted);
+  background:transparent;
+  text-decoration:none;
+  font-size:11px;
+  font-weight:800;
+  white-space:nowrap;
+  transition:color .15s ease,background-color .15s ease;
+}
+
+[data-workspace="AI Agent"] .sc-agent-local-nav > a:hover,
+[data-workspace="AI Agent"] .sc-agent-local-nav > a:focus-visible {
+  color:var(--sc-text);
+  background:color-mix(in srgb,var(--sc-purple) 10%,transparent);
+}
+
+/* Retire the old four shortcut cards inside AgentControlCenter. */
+[data-workspace="AI Agent"] [class*="agent-control-center_quickFlow"] {
+  display:none !important;
+}
+
+/* Local menu and page content share one visual left/right edge. */
+[data-workspace="AI Agent"] [class*="agent-control-center_page"] {
+  padding-top:12px !important;
+}
+
+@media(max-width:760px){
+  [data-workspace="AI Agent"] .sc-agent-local-nav {
+    width:calc(100% - 28px);
+    margin-top:12px;
+  }
+}
