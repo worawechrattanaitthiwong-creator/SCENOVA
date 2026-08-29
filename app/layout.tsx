@@ -21,6 +21,7 @@ import "./help-system-v2.css";
 import "./single-episode-row-balance-v7.css";
 import "./single-episode-layout-v8.css";
 import "./theme-audit-v5.css";
+import "./theme-audit-cinematic-v1.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://scnva.com"),
