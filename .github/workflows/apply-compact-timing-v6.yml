@@ -1,0 +1,52 @@
+name: Apply Compact Timing V6
+
+on:
+  push:
+    paths:
+      - ".github/workflows/apply-compact-timing-v6.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch-main:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Compact timing and widen story field
+        shell: python
+        run: |
+          from pathlib import Path
+
+          tsx_path = Path("components/single-episode-studio.tsx")
+          tsx = tsx_path.read_text()
+
+          old_scene_help = '''          <div className={styles.timingField}>\n            <span>จำนวนฉาก</span>\n            <Counter value={scenes.length} min={providerMinScenes} max={totalDuration} onChange={resizeScenes} label="จำนวนฉาก" />\n            <small>ขั้นต่ำ {providerMinScenes} ฉากสำหรับ {model} • เพิ่มได้สูงสุด {totalDuration} ฉาก</small>\n          </div>'''
+          new_scene_help = '''          <div className={styles.timingField}>\n            <span>จำนวนฉาก</span>\n            <Counter value={scenes.length} min={providerMinScenes} max={totalDuration} onChange={resizeScenes} label="จำนวนฉาก" />\n          </div>'''
+
+          if old_scene_help not in tsx:
+              raise SystemExit("scene helper block not found")
+          tsx = tsx.replace(old_scene_help, new_scene_help, 1)
+          tsx_path.write_text(tsx)
+
+          css_path = Path("components/single-episode-studio.module.css")
+          css = css_path.read_text()
+          marker = "/* Single Episode compact timing v6 */"
+          if marker not in css:
+              css += '''\n\n/* Single Episode compact timing v6 */\n.episodeTiming{padding:10px!important;gap:8px!important;grid-template-columns:minmax(0,1fr) max-content!important;align-items:start!important}\n.timingField{gap:4px}.secondsInput{gap:6px}.secondsInput input{min-height:40px;padding:7px 9px}.episodeTiming .counter{gap:3px;padding:3px}.episodeTiming .counter button{width:30px;height:30px}.episodeTiming .counter strong{min-width:22px}\n@media(min-width:981px){.setupGrid{grid-template-columns:repeat(12,minmax(0,1fr))}.setupGrid>.field:nth-child(-n+4){grid-column:span 3}.storyField{grid-column:1/8!important}.episodeTiming{grid-column:8/13!important}}\n'''
+              css_path.write_text(css)
+
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add components/single-episode-studio.tsx components/single-episode-studio.module.css
+          git diff --cached --quiet && exit 0
+          git commit -m "Compact episode timing and widen story field"
+          git push origin HEAD:main
