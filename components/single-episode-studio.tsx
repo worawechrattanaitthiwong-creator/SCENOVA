@@ -143,13 +143,13 @@ const STYLES = [
 ];
 const ROLES = ["ตัวละครหลัก", "ตัวละครรอง", "ฝ่ายตรงข้าม", "ตัวละครรับเชิญ"];
 const GLOBAL_LOCKS = [
-  { key: "Character", label: "Character Lock", help: "รักษาหน้าตา รูปร่าง เสื้อผ้า และจุดจำของตัวละครตลอดทั้งตอน" },
-  { key: "Voice", label: "Voice Lock", help: "รักษา Voice Profile และบุคลิกการพูดของแต่ละตัวละคร" },
-  { key: "Visual Style", label: "Visual Style Lock", help: "คุมภาษาภาพ สี และระดับความสมจริงให้เหมือนกันทุกฉาก" },
-  { key: "Camera Language", label: "Camera Language Lock", help: "รักษาภาษากล้องหลัก แต่ยังปรับ Shot ของแต่ละฉากได้" },
-  { key: "Lighting", label: "Lighting Lock", help: "ช่วยรักษาทิศทางและคุณภาพแสงระหว่างฉากที่ต่อเนื่องกัน" },
-  { key: "Location", label: "Location Lock", help: "รักษารูปทรงและรายละเอียดสถานที่เมื่อกลับมาใช้สถานที่เดิม" },
-  { key: "Props", label: "Props Lock", help: "รักษารูปร่าง สี ตำแหน่ง และเจ้าของ Prop สำคัญ" },
+  { key: "Character", label: "ล็อกตัวละคร", help: "รักษาหน้าตา รูปร่าง เสื้อผ้า และจุดจำของตัวละครตลอดทั้งตอน" },
+  { key: "Voice", label: "ล็อกเสียง", help: "รักษาโปรไฟล์เสียงและบุคลิกการพูดของแต่ละตัวละคร" },
+  { key: "Visual Style", label: "ล็อกสไตล์ภาพ", help: "คุมภาษาภาพ สี และระดับความสมจริงให้เหมือนกันทุกฉาก" },
+  { key: "Camera Language", label: "ล็อกภาษากล้อง", help: "รักษาภาษากล้องหลัก แต่ยังปรับระยะภาพของแต่ละฉากได้" },
+  { key: "Lighting", label: "ล็อกแสง", help: "ช่วยรักษาทิศทางและคุณภาพแสงระหว่างฉากที่ต่อเนื่องกัน" },
+  { key: "Location", label: "ล็อกสถานที่", help: "รักษารูปทรงและรายละเอียดสถานที่เมื่อกลับมาใช้สถานที่เดิม" },
+  { key: "Props", label: "ล็อกพร็อพ", help: "รักษารูปร่าง สี ตำแหน่ง และเจ้าของพร็อพสำคัญ" },
 ] as const;
 
 function makeId(prefix: string) {
@@ -348,12 +348,19 @@ export default function SingleEpisodeStudio() {
         identityLock: true,
         voiceLock: true,
       };
-      setCharacters((current) => [imported, ...current.filter((item) => item.id !== imported.id)].slice(0, 8));
+      const targetId = localStorage.getItem("scenova-character-import-target-v1");
+      setCharacters((current) => {
+        if (targetId && current.some((item) => item.id === targetId)) {
+          return current.map((item) => item.id === targetId ? { ...imported, id: targetId } : item);
+        }
+        return [imported, ...current.filter((item) => item.id !== imported.id)].slice(0, 8);
+      });
       setMessage(`นำเข้า ${payload.title} จากคลังแล้ว`);
     } catch {
       setMessage("อ่านตัวละครจากคลังไม่สำเร็จ");
     } finally {
       localStorage.removeItem("scenova-selected-character-v1");
+      localStorage.removeItem("scenova-character-import-target-v1");
     }
   }, []);
 
@@ -550,8 +557,8 @@ export default function SingleEpisodeStudio() {
 
     <nav className={styles.flowBar} aria-label="ขั้นตอนสร้างตอนเดียว">
       <a href="#setup"><b>1</b><span>ตั้งค่าตอน<small>เรื่อง + โมเดล</small></span></a>
-      <a href="#characters"><b>2</b><span>ตัวละคร<small>Identity + Voice Lock</small></span></a>
-      <a href="#scenes"><b>3</b><span>กำกับฉาก<small>Camera + Light + Sound</small></span></a>
+      <a href="#characters"><b>2</b><span>ตัวละคร<small>ล็อกตัวตน + ล็อกเสียง</small></span></a>
+      <a href="#scenes"><b>3</b><span>กำกับฉาก<small>กล้อง + แสง + เสียง</small></span></a>
       <a href="#review"><b>4</b><span>ตรวจความพร้อม<small>ส่ง Prompt & Render</small></span></a>
     </nav>
 
@@ -566,7 +573,6 @@ export default function SingleEpisodeStudio() {
         <label className={styles.field}><span>อัตราส่วนภาพ</span><select value={aspect} onChange={(event) => setAspect(event.target.value)}>{ASPECTS.map((item) => <option key={item}>{item}</option>)}</select><small>ใช้สัดส่วนเดียวกันทุกฉากของตอนนี้</small></label>
         <label className={styles.field}><span>สไตล์ภาพ</span><select value={visualStyle} onChange={(event) => setVisualStyle(event.target.value)}>{STYLES.map((item) => <option key={item}>{item}</option>)}</select><small>Master Style ของตอนนี้</small></label>
         <label className={`${styles.field} ${styles.storyField}`}><span>เรื่อง / เหตุการณ์ของตอน</span><textarea value={story} onChange={(event) => setStory(event.target.value)} placeholder="เล่าว่าใครต้องการอะไร เกิดปัญหาอะไร เหตุการณ์ดำเนินอย่างไร และจบแบบไหน" /><small>เขียนเป็นภาษาธรรมชาติได้ Analyzer จะนำข้อมูลนี้ไปจัดโครง Prompt ภายหลัง</small></label>
-        <label className={`${styles.field} ${styles.negativeField}`}><span>ข้อห้ามหลักของตอน</span><textarea value={globalNegative} onChange={(event) => setGlobalNegative(event.target.value)} /><small>ข้อห้ามระดับทั้งตอน เช่น ห้ามเปลี่ยนหน้า ห้ามเปลี่ยนชุด ห้ามตัวละครซ้ำ ห้ามตัวหนังสือ/ลายน้ำ</small></label>
         <div className={styles.episodeTiming}>
           <label className={styles.timingField}>
             <span>ความยาวรวมของตอน</span>
@@ -604,11 +610,11 @@ export default function SingleEpisodeStudio() {
               <label className={styles.field}><span>โปรไฟล์เสียง</span><select value={character.voice} onChange={(event) => patchCharacter(character.id, { voice: event.target.value })}>{VOICE_PROFILES.map((voice) => <option key={voice}>{voice}</option>)}</select></label>
             </div>
             <label className={styles.field}><span>รูปลักษณ์ / เสื้อผ้า / บุคลิก / จุดจำ</span><textarea value={character.appearance} onChange={(event) => patchCharacter(character.id, { appearance: event.target.value })} placeholder="ใบหน้า ทรงผม อายุ รูปร่าง เสื้อผ้า เครื่องประดับ บุคลิก และรายละเอียดที่ห้ามเปลี่ยน" /></label>
-            <div className={styles.miniLocks}><label className={character.identityLock ? styles.miniLockActive : ""}><input type="checkbox" checked={character.identityLock} onChange={(event) => patchCharacter(character.id, { identityLock: event.target.checked })} />Identity Lock</label><label className={character.voiceLock ? styles.miniLockActive : ""}><input type="checkbox" checked={character.voiceLock} onChange={(event) => patchCharacter(character.id, { voiceLock: event.target.checked })} />Voice Lock</label></div>
+            <div className={styles.miniLocks}><label className={character.identityLock ? styles.miniLockActive : ""}><input type="checkbox" checked={character.identityLock} onChange={(event) => patchCharacter(character.id, { identityLock: event.target.checked })} />ล็อกตัวตน</label><label className={character.voiceLock ? styles.miniLockActive : ""}><input type="checkbox" checked={character.voiceLock} onChange={(event) => patchCharacter(character.id, { voiceLock: event.target.checked })} />ล็อกเสียง</label><Link href="/libraries?tab=characters" onClick={() => localStorage.setItem("scenova-character-import-target-v1", character.id)}>＋ นำเข้าตัวละครจากคลัง</Link></div>
           </div>
         </article>)}
       </div>
-      <div className={styles.castUtilities}><Link href="/libraries?tab=characters">＋ นำเข้าตัวละครจากคลัง</Link><Link href="/libraries?tab=voices">เปิดคลังเสียง</Link></div>
+      <div className={styles.castUtilities}><Link href="/libraries?tab=voices">เปิดคลังเสียง</Link></div>
 
       <div className={styles.animalToggle}><div><strong>มีสัตว์หรือสิ่งมีชีวิตในตอนนี้หรือไม่?</strong><span>เปิดเฉพาะเมื่อจำเป็น เพื่อไม่เพิ่มข้อมูลที่ Generator ต้องรักษาโดยไม่จำเป็น</span></div><div><button type="button" className={!hasAnimals ? styles.toggleActive : ""} onClick={() => { setHasAnimals(false); setScenes((current) => current.map((scene) => ({ ...scene, animalIds: [] }))); }}>ไม่มี</button><button type="button" className={hasAnimals ? styles.toggleActive : ""} onClick={() => setHasAnimals(true)}>มี</button></div></div>
       {hasAnimals ? <div className={styles.animalBlock}><div className={styles.animalHead}><b>สัตว์ / Creature</b><div className={styles.countBox}><span>จำนวน</span><Counter value={animals.length} min={1} max={4} onChange={resizeAnimals} label="จำนวนสัตว์" /></div></div>{animals.map((animal) => <div className={styles.animalRow} key={animal.id}><label className={styles.field}><span>ชื่อ</span><input value={animal.name} onChange={(event) => patchAnimal(animal.id, { name: event.target.value })} /></label><label className={styles.field}><span>ชนิด</span><input value={animal.species} onChange={(event) => patchAnimal(animal.id, { species: event.target.value })} /></label><label className={styles.field}><span>พฤติกรรม</span><input value={animal.behavior} onChange={(event) => patchAnimal(animal.id, { behavior: event.target.value })} /></label><label className={styles.field}><span>รูปลักษณ์</span><input value={animal.appearance} onChange={(event) => patchAnimal(animal.id, { appearance: event.target.value })} /></label></div>)}</div> : null}
