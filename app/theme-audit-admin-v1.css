@@ -1,0 +1,64 @@
+/* Asset Administration still uses legacy inline styles.
+   Important scoped overrides map its structural UI to SCENOVA theme tokens while
+   preserving semantic green/red status controls and actual uploaded media. */
+
+html[data-theme] [data-workspace="Asset Administration"] > main {
+  color:var(--sc-text) !important;
+  background:transparent !important;
+}
+
+html[data-theme] [data-workspace="Asset Administration"] > main > header h1,
+html[data-theme] [data-workspace="Asset Administration"] > main :is(h2,h3,h4) {
+  color:var(--sc-text) !important;
+}
+
+html[data-theme] [data-workspace="Asset Administration"] > main p {
+  color:var(--sc-muted) !important;
+}
+
+html[data-theme] [data-workspace="Asset Administration"] > main [style*="letter-spacing"] {
+  color:var(--sc-purple) !important;
+}
+
+html[data-theme] [data-workspace="Asset Administration"] > main > div > section {
+  color:var(--sc-text) !important;
+  border-color:var(--sc-line) !important;
+  background:var(--sc-panel) !important;
+  box-shadow:0 12px 34px color-mix(in srgb,var(--sc-text) 5%,transparent) !important;
+}
+
+html[data-theme] [data-workspace="Asset Administration"] > main div[style*="background"]:not([role="img"]) {
+  border-color:var(--sc-line) !important;
+  background:var(--sc-panel-2) !important;
+}
+
+html[data-theme] [data-workspace="Asset Administration"] > main div[style*="border-bottom"] {
+  border-color:var(--sc-line) !important;
+}
+
+html[data-theme] [data-workspace="Asset Administration"] > main :is(input,textarea,select) {
+  color:var(--sc-text) !important;
+  border-color:var(--sc-line) !important;
+  background:var(--sc-panel) !important;
+}
+
+html[data-theme] [data-workspace="Asset Administration"] > main :is(input,textarea)::placeholder {
+  color:var(--sc-muted-2) !important;
+}
+
+html[data-theme] [data-workspace="Asset Administration"] > main > header a:first-of-type {
+  color:var(--sc-text) !important;
+  border-color:var(--sc-line) !important;
+  background:var(--sc-panel-2) !important;
+}
+
+html[data-theme] [data-workspace="Asset Administration"] > main > header a:last-of-type,
+html[data-theme] [data-workspace="Asset Administration"] > main form > button:not([type="button"]) {
+  color:#fff !important;
+  border-color:var(--sc-purple) !important;
+  background:linear-gradient(135deg,var(--sc-purple-2),var(--sc-purple)) !important;
+}
+
+html[data-theme="light"] [data-workspace="Asset Administration"] > main small:not([style*="color: rgb(139"]):not([style*="color: rgb(225"]) {
+  color:var(--sc-muted) !important;
+}
