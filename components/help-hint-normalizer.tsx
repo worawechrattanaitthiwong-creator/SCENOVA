@@ -41,6 +41,7 @@ const SKIP_SELECTOR = [
 ].join(",");
 
 const LABEL_SELECTOR = "h1,h2,h3,h4,h5,h6,strong,b,summary,label";
+const POPOVER_ID = "sc-system-info-popover";
 
 function compactText(value: string | null | undefined) {
   return (value || "").replace(/\s+/g, " ").trim();
@@ -118,6 +119,7 @@ function findAnchor(element: HTMLElement) {
 export default function HelpHintNormalizer() {
   useEffect(() => {
     const popover = document.createElement("div");
+    popover.id = POPOVER_ID;
     popover.className = "sc-system-info-popover";
     popover.setAttribute("role", "tooltip");
     popover.setAttribute("aria-hidden", "true");
@@ -129,7 +131,6 @@ export default function HelpHintNormalizer() {
     document.body.appendChild(popover);
 
     let activeTrigger: HTMLElement | null = null;
-    let activeSource: HTMLElement | null = null;
 
     function positionPopover() {
       if (!activeTrigger || popover.dataset.open !== "true") return;
@@ -166,7 +167,6 @@ export default function HelpHintNormalizer() {
       popover.dataset.open = "false";
       popover.setAttribute("aria-hidden", "true");
       activeTrigger = null;
-      activeSource = null;
     }
 
     function showPopover(trigger: HTMLElement, source: HTMLElement) {
@@ -180,7 +180,6 @@ export default function HelpHintNormalizer() {
       }
 
       activeTrigger = trigger;
-      activeSource = source;
       popoverTitle.textContent = label;
       popoverDescription.textContent = description;
       trigger.dataset.open = "true";
@@ -203,11 +202,9 @@ export default function HelpHintNormalizer() {
       const label = labelFor(element, description);
       const anchor = findAnchor(element);
       const trigger = makeInfoIcon();
-      const tooltipId = `sc-help-${Math.random().toString(36).slice(2, 10)}`;
 
-      popover.id = tooltipId;
       trigger.setAttribute("aria-label", `คำอธิบาย: ${label}`);
-      trigger.setAttribute("aria-describedby", tooltipId);
+      trigger.setAttribute("aria-describedby", POPOVER_ID);
       trigger.setAttribute("aria-expanded", "false");
 
       element.dataset.scHelpReady = "1";
