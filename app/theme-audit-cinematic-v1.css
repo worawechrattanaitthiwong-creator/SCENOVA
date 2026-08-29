@@ -1,0 +1,95 @@
+/* SCENOVA Cinematic Direction theme bridge.
+   Director Pro has its own token names; Camera/Dialogue/Reference still use legacy
+   global classes. Map both systems to the canonical SCENOVA light/dark tokens. */
+
+html[data-theme] [data-workspace="Cinematic Direction"] [class*="director-console_page__"] {
+  --story-bg: var(--sc-bg);
+  --story-surface: var(--sc-panel);
+  --story-surface-2: var(--sc-panel-2);
+  --story-line: var(--sc-line);
+  --story-line-strong: var(--sc-line-strong);
+  --story-text: var(--sc-text);
+  --story-muted: var(--sc-muted);
+  --story-purple: var(--sc-purple);
+  color: var(--sc-text) !important;
+  background: var(--sc-bg) !important;
+}
+
+html[data-theme] [data-workspace="Cinematic Direction"] :is(
+  [class*="director-console_setupBar__"],
+  [class*="director-console_shotSidebar__"],
+  [class*="director-console_editor__"],
+  [class*="director-console_timelineSection__"],
+  [class*="director-console_quickSummary__"] > div
+) {
+  color: var(--sc-text) !important;
+  border-color: var(--sc-line) !important;
+  background: var(--sc-panel) !important;
+}
+
+html[data-theme] [data-workspace="Cinematic Direction"] :is(
+  [class*="director-console_setupBar__"] select,
+  [class*="director-console_formGrid__"] input,
+  [class*="director-console_formGrid__"] textarea,
+  [class*="director-console_splitGroup__"] button,
+  [class*="director-console_shotItem__"],
+  [class*="director-console_shotActive__"]
+) {
+  color: var(--sc-text) !important;
+  border-color: var(--sc-line) !important;
+  background: var(--sc-panel-2) !important;
+}
+
+html[data-theme] [data-workspace="Cinematic Direction"] [class*="director-console_shotActive__"] {
+  border-color: var(--sc-line-strong) !important;
+  background: color-mix(in srgb, var(--sc-purple) 12%, var(--sc-panel-2)) !important;
+}
+
+/* Camera Lab / Dialogue / Reference use legacy global primitives from globals.css. */
+html[data-theme] [data-workspace="Cinematic Direction"] :is(
+  .card,
+  .action-panel,
+  .style-card,
+  .character-card,
+  .segment-card,
+  .model-card,
+  .shot-card
+) {
+  color: var(--sc-text) !important;
+  border-color: var(--sc-line) !important;
+  background: var(--sc-panel) !important;
+  background-image: none !important;
+}
+
+html[data-theme] [data-workspace="Cinematic Direction"] :is(
+  .input,
+  .select,
+  .textarea,
+  .prompt-box,
+  .timeline-track
+) {
+  color: var(--sc-text) !important;
+  border-color: var(--sc-line) !important;
+  background: var(--sc-panel-2) !important;
+}
+
+html[data-theme] [data-workspace="Cinematic Direction"] :is(.label,.page-head h1,.card-title h2,.card-title h3) {
+  color: var(--sc-text) !important;
+}
+html[data-theme] [data-workspace="Cinematic Direction"] :is(.help,.page-head p,.card-title p,.muted) {
+  color: var(--sc-muted) !important;
+}
+html[data-theme] [data-workspace="Cinematic Direction"] :is(.btn,.btn-ghost) {
+  color: var(--sc-text) !important;
+  border-color: var(--sc-line) !important;
+  background: var(--sc-panel-2) !important;
+}
+
+/* Keep media/art previews intentionally cinematic. */
+html[data-theme] [data-workspace="Cinematic Direction"] :is(
+  [class*="director-console_preview__"],
+  [class*="director-console_thumb__"],
+  .preview-tile
+) {
+  color-scheme: dark;
+}
