@@ -1,0 +1,157 @@
+/* SCENOVA Theme Audit V5
+   Final cross-workspace compatibility layer.
+   Goal: every authenticated page consumes one light/dark token system even when
+   legacy components still reference older token names. Creative preview media is
+   intentionally excluded from structural background overrides. */
+
+html[data-theme] [data-sc-shell],
+html[data-theme] [data-sc-page] {
+  --sc-border: var(--sc-line);
+  --sc-border-strong: var(--sc-line-strong);
+  --sc-focus: var(--sc-purple);
+  --surface: var(--sc-panel);
+  --surface2: var(--sc-panel-2);
+  --surface3: var(--sc-panel-3);
+  --input: var(--sc-panel);
+  --border: var(--sc-line);
+  --borderStrong: var(--sc-line-strong);
+  --accent: var(--sc-purple);
+  --accent2: var(--sc-purple-2);
+  --accentSoft: color-mix(in srgb, var(--sc-purple) 12%, var(--sc-panel));
+  --text: var(--sc-text);
+  --muted: var(--sc-muted);
+  --muted2: var(--sc-muted-2);
+  --panel: var(--sc-panel);
+  --panel-2: var(--sc-panel-2);
+  --panel-3: var(--sc-panel-3);
+  --line: var(--sc-line);
+  --line-strong: var(--sc-line-strong);
+  --purple: var(--sc-purple);
+  --purple-2: var(--sc-purple-2);
+}
+
+/* AI Agent owns its navigation inside the page; do not repeat the AppShell rail. */
+[data-sc-workspace]:has([data-workspace="AI Agent"]) {
+  grid-template-rows: minmax(0, 1fr) !important;
+}
+[data-sc-workspace]:has([data-workspace="AI Agent"]) > [data-sc-topbar] {
+  display: none !important;
+}
+
+/* Authenticated page foundations. */
+html[data-theme] [data-sc-page] {
+  color: var(--sc-text) !important;
+  background-color: var(--sc-bg) !important;
+}
+html[data-theme] [data-sc-page] :is(h1,h2,h3,h4,h5,h6,strong,b) {
+  text-shadow: none;
+}
+html[data-theme] [data-sc-page] :is(p,small,label,legend,caption) {
+  text-shadow: none;
+}
+
+/* Common structural UI surfaces across Portal, Studio, Series, Director, Library,
+   Agent, Models, Render, Wallet, Settings and Admin. Preview/canvas/media classes
+   are not included here so cinematic artwork keeps its intended appearance. */
+html[data-theme] [data-sc-page] :is(
+  [class*="_panel__"],
+  [class*="_card__"],
+  [class*="_box__"],
+  [class*="_toolbar__"],
+  [class*="_sheet__"],
+  [class*="_drawer__"],
+  [class*="_dialog__"],
+  [class*="_modal__"],
+  [class*="_inspector__"],
+  [class*="_sidebar__"],
+  [class*="_statusBar__"],
+  [class*="_runList__"]
+) {
+  border-color: var(--sc-line) !important;
+}
+
+html[data-theme="light"] [data-sc-page] :is(
+  [class*="_panel__"],
+  [class*="_card__"],
+  [class*="_box__"],
+  [class*="_toolbar__"],
+  [class*="_sheet__"],
+  [class*="_drawer__"],
+  [class*="_dialog__"],
+  [class*="_modal__"],
+  [class*="_inspector__"],
+  [class*="_statusBar__"],
+  [class*="_runList__"]
+) {
+  color: var(--sc-text) !important;
+  background-color: var(--sc-panel) !important;
+}
+
+html[data-theme="dark"] [data-sc-page] :is(
+  [class*="_panel__"],
+  [class*="_card__"],
+  [class*="_box__"],
+  [class*="_toolbar__"],
+  [class*="_sheet__"],
+  [class*="_drawer__"],
+  [class*="_dialog__"],
+  [class*="_modal__"],
+  [class*="_inspector__"],
+  [class*="_statusBar__"],
+  [class*="_runList__"]
+) {
+  color: var(--sc-text) !important;
+}
+
+/* Forms and tables always follow the active theme. */
+html[data-theme] [data-sc-page] :is(input,textarea,select) {
+  color: var(--sc-text) !important;
+  border-color: var(--sc-line) !important;
+  background-color: var(--sc-panel) !important;
+  caret-color: var(--sc-purple-bright);
+}
+html[data-theme] [data-sc-page] :is(input,textarea)::placeholder {
+  color: var(--sc-muted-2) !important;
+}
+html[data-theme] [data-sc-page] :is(input,textarea,select):focus {
+  border-color: var(--sc-purple) !important;
+}
+html[data-theme] [data-sc-page] option {
+  color: var(--sc-text);
+  background: var(--sc-panel);
+}
+html[data-theme] [data-sc-page] :is(table,thead,tbody,tr,th,td) {
+  border-color: var(--sc-line) !important;
+}
+html[data-theme] [data-sc-page] th {
+  color: var(--sc-text) !important;
+  background-color: var(--sc-panel-2) !important;
+}
+html[data-theme] [data-sc-page] td { color: var(--sc-text); }
+
+/* Non-primary controls inherit the current theme. Branded purple primary actions
+   are left untouched. */
+html[data-theme] [data-sc-page] :is(
+  [class*="_secondary__"],
+  [class*="_ghost__"],
+  [class*="_cancel__"],
+  [class*="_closeButton__"],
+  [class*="_backButton__"]
+) {
+  color: var(--sc-text) !important;
+  border-color: var(--sc-line) !important;
+  background-color: var(--sc-panel-2) !important;
+}
+
+/* Semantic status colors remain meaningful in both appearances. */
+html[data-theme="dark"] [data-sc-page] [class*="_success__"] { color:#8aefbc !important; }
+html[data-theme="light"] [data-sc-page] [class*="_success__"] { color:#197b4a !important; }
+html[data-theme="dark"] [data-sc-page] [class*="_warning__"] { color:#ffd47a !important; }
+html[data-theme="light"] [data-sc-page] [class*="_warning__"] { color:#8a5c08 !important; }
+html[data-theme="dark"] [data-sc-page] [class*="_danger__"] { color:#ffb4c7 !important; }
+html[data-theme="light"] [data-sc-page] [class*="_danger__"] { color:#b9384d !important; }
+
+/* Small-screen workspace chrome must remain theme-correct too. */
+@media (max-width:820px) {
+  html[data-theme] [data-sc-page] { padding-bottom:max(86px,env(safe-area-inset-bottom)); }
+}
