@@ -51,7 +51,8 @@ export default function PortalPage() {
   return <main className={`${styles.dashboard} ${refine.dashboard}`}>
     <section className={`${styles.hero} ${refine.hero}`} aria-label="SCENOVA AI Film Studio">
       <div className={refine.heroVisual} aria-hidden="true">
-        <img className={`${styles.heroImage} ${refine.heroImage}`} src="/media/scenova-portal-hero.png" alt="" fetchPriority="high" decoding="sync" />
+        <img className={`${styles.heroImage} ${refine.heroImage} ${refine.heroImageDark}`} src="/media/scenova-portal-hero.png" alt="" fetchPriority="high" decoding="sync" />
+        <img className={`${styles.heroImage} ${refine.heroImage} ${refine.heroImageLight}`} src="/library/styles/warm-golden-hour.png" alt="" decoding="async" />
         <span className={refine.heroVisualShade} />
         <span className={refine.heroVisualLabel}>SCENOVA ORIGINAL</span>
       </div>

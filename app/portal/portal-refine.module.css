@@ -378,6 +378,10 @@
   filter: saturate(.96) contrast(1.04) brightness(.9);
 }
 
+.heroImageLight {
+  display: none;
+}
+
 .heroVisualShade {
   position: absolute;
   z-index: 1;
@@ -495,6 +499,18 @@
     radial-gradient(circle at 8% 8%, rgba(146, 79, 201, .1), transparent 40%),
     linear-gradient(145deg, #fff, var(--portal-surface));
   box-shadow: 0 18px 44px rgba(57, 39, 69, .11);
+}
+
+:global(html[data-theme="light"]) .heroImageDark {
+  display: none;
+}
+
+:global(html[data-theme="light"]) .heroVisual .heroImageLight {
+  display: block;
+  width: 100%;
+  max-width: none;
+  object-position: 52% 50%;
+  filter: saturate(.9) contrast(1.02) brightness(1.04);
 }
 
 :global(html[data-theme="light"]) .heroContent h1 {
