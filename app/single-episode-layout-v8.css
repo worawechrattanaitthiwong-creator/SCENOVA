@@ -1,0 +1,128 @@
+/* Single Episode layout v8 — compact equal-height setup pair + fixed scene tabs. */
+
+/* Story and timing occupy equal columns, but stay compact vertically. */
+@media (min-width: 981px) {
+  #setup [class*="single-episode-studio_setupGrid"] {
+    align-items: start !important;
+  }
+
+  #setup [class*="single-episode-studio_storyField"] {
+    height: 108px !important;
+    min-height: 108px !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  #setup [class*="single-episode-studio_storyField"] > textarea {
+    flex: 1 1 auto !important;
+    height: 82px !important;
+    min-height: 82px !important;
+    resize: none !important;
+  }
+
+  #setup [class*="single-episode-studio_episodeTiming"] {
+    height: 108px !important;
+    min-height: 108px !important;
+    align-self: start !important;
+    grid-template-columns: minmax(0, 1fr) max-content !important;
+    align-items: start !important;
+    gap: 14px !important;
+    padding: 10px 12px !important;
+  }
+
+  #setup [class*="single-episode-studio_timingField"] {
+    justify-content: flex-start !important;
+    gap: 5px !important;
+  }
+
+  #setup [class*="single-episode-studio_secondsInput"] input {
+    min-height: 40px !important;
+    height: 40px !important;
+  }
+
+  #setup [class*="single-episode-studio_episodeTiming"] [class*="single-episode-studio_counter"] {
+    min-height: 40px !important;
+  }
+}
+
+/* Scene tabs: compact fixed size. Selecting a scene changes color only. */
+#scenes [class*="single-episode-studio_timeline"] {
+  justify-content: flex-start !important;
+  align-items: center !important;
+  gap: 7px !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  padding-bottom: 2px !important;
+}
+
+#scenes [class*="single-episode-studio_timeline"] button {
+  flex: 0 0 142px !important;
+  width: 142px !important;
+  min-width: 142px !important;
+  max-width: 142px !important;
+  height: 52px !important;
+  min-height: 52px !important;
+  max-height: 52px !important;
+  padding: 6px 10px !important;
+  border-width: 1px !important;
+  transform: none !important;
+  scale: 1 !important;
+  box-shadow: none !important;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease !important;
+}
+
+#scenes [class*="single-episode-studio_timeline"] button:hover,
+#scenes [class*="single-episode-studio_timeline"] button:active,
+#scenes [class*="single-episode-studio_timeline"] button[class*="timelineActive"] {
+  transform: none !important;
+  scale: 1 !important;
+  width: 142px !important;
+  min-width: 142px !important;
+  max-width: 142px !important;
+  height: 52px !important;
+  min-height: 52px !important;
+  max-height: 52px !important;
+  box-shadow: none !important;
+}
+
+#scenes [class*="single-episode-studio_timeline"] button b,
+#scenes [class*="single-episode-studio_timeline"] button span {
+  line-height: 1.25 !important;
+}
+
+/* Voice library sits with the character/image library controls. */
+.sc-voice-library-inline {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 30px !important;
+  padding: 6px 10px !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 999px !important;
+  background: var(--surface3) !important;
+  color: var(--accent) !important;
+  text-decoration: none !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  white-space: nowrap !important;
+}
+
+.sc-voice-library-inline:hover {
+  border-color: var(--borderStrong) !important;
+  background: var(--accentSoft) !important;
+}
+
+@media (max-width: 980px) {
+  #setup [class*="single-episode-studio_storyField"],
+  #setup [class*="single-episode-studio_episodeTiming"] {
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  #scenes [class*="single-episode-studio_timeline"] button {
+    flex-basis: 124px !important;
+    width: 124px !important;
+    min-width: 124px !important;
+    max-width: 124px !important;
+  }
+}
