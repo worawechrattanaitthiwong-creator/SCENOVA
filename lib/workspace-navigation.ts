@@ -18,6 +18,7 @@ export type WorkspaceRailItem = {
 export const WORKSPACE_NAV: readonly WorkspaceNavItem[] = [
   { href: "/portal", icon: "home", label: "เริ่มต้น", description: "ภาพรวมสตูดิโอ" },
   { href: "/studio", icon: "ai", label: "AI Studio", description: "สร้างและกำกับงาน", badge: "AI" },
+  { href: "/agent", icon: "ai", label: "AI Agent", description: "งานอัตโนมัติ การอนุมัติ ค่าใช้จ่าย และคิวสร้าง", badge: "AG" },
   { href: "/series", icon: "project", label: "Series", description: "ซีรีส์และตอนของคุณ", badge: "EP" },
   { href: "/director", icon: "board", label: "สตอรี่บอร์ด", description: "ฉาก กล้อง และไทม์ไลน์", activePaths: ["/director", "/camera", "/dialogue", "/reference"] },
   { href: "/libraries", icon: "library", label: "คลังทรัพยากร", description: "ตัวละคร เสียง และสไตล์" },
