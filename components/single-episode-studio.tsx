@@ -576,17 +576,12 @@ export default function SingleEpisodeStudio() {
         <div className={styles.episodeTiming}>
           <label className={styles.timingField}>
             <span>ความยาวรวมของตอน</span>
-            <div className={styles.secondsInput}><input type="number" min={1} max={180} step={1} value={totalDuration} onChange={(event) => changeTotalDuration(Number(event.target.value))} /><b>วินาที</b></div>
-            <small>เลือกได้อิสระ 1–180 วินาที (สูงสุด 3 นาที)</small>
+            <div className={styles.secondsInput}><input type="number" min={1} max={180} step={1} value={totalDuration} onChange={(event) => changeTotalDuration(Number(event.target.value))} /><b data-sc-help={`${model} รองรับสูงสุด ${providerMaxSeconds} วินาทีต่อคลิป ระบบเพิ่มฉากให้อัตโนมัติเมื่อเวลารวมยาวกว่าที่ API สร้างได้ต่อครั้ง`} data-sc-help-label="วินาที">วินาที</b></div>
           </label>
           <div className={styles.timingField}>
             <span>จำนวนฉาก</span>
             <Counter value={scenes.length} min={providerMinScenes} max={totalDuration} onChange={resizeScenes} label="จำนวนฉาก" />
             <small>ขั้นต่ำ {providerMinScenes} ฉากสำหรับ {model} • เพิ่มได้สูงสุด {totalDuration} ฉาก</small>
-          </div>
-          <div className={styles.timingSummary}>
-            <strong>{totalDuration} วินาที • {scenes.length} ฉาก</strong>
-            <span>{model} รองรับสูงสุด {providerMaxSeconds} วินาทีต่อคลิป ระบบเพิ่มฉากให้อัตโนมัติเมื่อเวลารวมยาวกว่าที่ API สร้างได้ต่อครั้ง</span>
           </div>
         </div>
       </div>
