@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { resolveSession } from "@/lib/auth-core";
 import { approveAgentRun, enqueueAgentStep, getAgentRunForUser, recordAgentDecision, saveAgentRun } from "@/lib/agent/store";
 import { getAgentPolicy } from "@/lib/agent/policy";
+import { decideLatestHumanCheckpoint } from "@/lib/agent/workflow-store";
 
 export const runtime = "nodejs";
 
@@ -17,6 +18,7 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
 
   const approval = await approveAgentRun(run.id, user.id);
   if (!approval) return NextResponse.json({ error: "PENDING_APPROVAL_NOT_FOUND" }, { status: 409 });
+  await decideLatestHumanCheckpoint(run.id, user.id, "APPROVED");
   run.status = "QUEUED";
   run.stage = "GENERATE";
   run.stopReason = null;

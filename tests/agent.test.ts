@@ -3,6 +3,9 @@ import { decideAgentRecovery } from "@/lib/agent/recovery";
 import { normalizeRunBudget } from "@/lib/agent/policy";
 import { assertAgentToolAllowed } from "@/lib/agent/tools";
 import type { AgentRunRecord } from "@/lib/agent/types";
+import { FILM_WORKFLOW_TASKS, handoffEnvelopeSchema } from "@/lib/agent/contracts";
+import { deterministicRoleArtifact } from "@/lib/agent/role-runtime";
+import type { Project } from "@/lib/domain";
 
 function run(overrides: Partial<AgentRunRecord> = {}): AgentRunRecord {
   const now = new Date();
@@ -39,5 +42,46 @@ describe("agent recovery policy", () => {
     const result = decideAgentRecovery({ error: new Error("provider timeout"), attempt: 1, maxRetries: 2, providerSwitches: 0, maxProviderSwitches: 1 });
     expect(result.action).toBe("RETRY");
     expect(result.delayMs).toBeGreaterThan(0);
+  });
+});
+
+function project(): Project {
+  return {
+    id: "project-1", title: "Test Film", story: "A short test story", genre: "Drama", mood: "Hopeful", aspectRatio: "16:9",
+    episodeCount: 1, mainModelId: "mock-seedance", modelMode: "single", promptMode: "strict", resolution: "720p", styleId: "neo-noir",
+    locks: { project: true, character: true, style: true, voice: false, location: true, prop: false, canon: true, camera: true, lighting: true, motion: false, model: true },
+    projectBible: "The hero never removes the red coat.", canon: ["The coat is red"], characters: [],
+    episodes: [{
+      id: "episode-1", number: 1, title: "Pilot", duration: 10, synopsis: "The hero enters the city.", status: "ready",
+      segments: [{ id: "scene-1", start: 0, end: 10, title: "Arrival", scene: "Night city", location: "Gate", characterIds: [], action: "The hero walks through the gate.", emotion: "determined", lighting: "purple neon", sound: "rain", dialogue: [], cameraShots: [{ id: "shot-1", start: 0, end: 10, shotType: "wide", angle: "eye-level", lensMm: 35, cameraHeight: "eye", movement: "dolly-in", movementSpeed: "slow", focus: "hero", depthOfField: "deep", composition: "centered", foregroundOcclusion: "rain" }] }],
+    }],
+  };
+}
+
+describe("multi-agent workflow contracts", () => {
+  it("assigns one owner and artifact contract to every production stage", () => {
+    const stages = FILM_WORKFLOW_TASKS.map((task) => task.stage);
+    expect(new Set(stages).size).toBe(stages.length);
+    expect(FILM_WORKFLOW_TASKS.map((task) => task.agentKey)).toContain("SCRIPT_EDITOR");
+    expect(FILM_WORKFLOW_TASKS.map((task) => task.artifactType)).toContain("FINAL_QUALITY_REPORT");
+  });
+
+  it("validates explicit handoff envelopes", () => {
+    const parsed = handoffEnvelopeSchema.parse({
+      runId: "run-1", workflowId: "workflow-1", fromTaskId: "writer", toTaskId: "editor",
+      artifactId: "artifact-1", artifactType: "SCRIPT_DRAFT", artifactVersion: 2, scopeKey: "episode:0",
+    });
+    expect(parsed.contractVersion).toBe(1);
+    expect(parsed.artifactType).toBe("SCRIPT_DRAFT");
+  });
+
+  it("creates deterministic specialist artifacts when LLM is unavailable", () => {
+    const input = project();
+    const script = deterministicRoleArtifact("SCRIPT_WRITER", input, input.episodes[0]);
+    const camera = deterministicRoleArtifact("CINEMATOGRAPHER", input, input.episodes[0]);
+    expect(script.verdict).toBe("PASS");
+    expect(Array.isArray(script.payload.scenes)).toBe(true);
+    expect(camera.verdict).toBe("PASS");
+    expect(Array.isArray(camera.payload.shots)).toBe(true);
   });
 });

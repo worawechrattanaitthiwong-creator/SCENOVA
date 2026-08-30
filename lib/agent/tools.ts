@@ -4,11 +4,19 @@ import type { AgentRunRecord, AgentToolName } from "@/lib/agent/types";
 
 const TOOLS_BY_STAGE: Record<string, AgentToolName[]> = {
   PLAN_STORY: ["plan_episode", "pause_run"],
+  STORY_ARCHITECT: ["architect_story", "pause_run"],
+  SCRIPT_WRITE: ["write_script", "pause_run"],
+  SCRIPT_EDIT: ["edit_script", "pause_run"],
+  DIRECT_SCENES: ["direct_scenes", "pause_run"],
+  PLAN_CINEMATOGRAPHY: ["plan_cinematography", "pause_run"],
   SELECT_STYLE: ["select_style", "pause_run"],
   BUILD_PROMPTS: ["improve_prompt", "request_approval", "pause_run"],
+  STORYBOARD: ["create_storyboard", "request_approval", "pause_run"],
   AWAIT_APPROVAL: ["request_approval", "pause_run"],
   GENERATE: ["generate_video", "switch_provider", "pause_run"],
   VERIFY_CONTINUITY: ["verify_continuity", "pause_run"],
+  POST_PRODUCTION: ["plan_post_production", "pause_run"],
+  FINAL_QUALITY: ["quality_check", "pause_run"],
   NEXT_EPISODE: ["plan_episode", "pause_run"],
 };
 

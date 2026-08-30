@@ -18,11 +18,19 @@ export type AgentBrainDecision = {
 
 const DEFAULT_TOOL: Record<string, AgentToolName> = {
   PLAN_STORY: "plan_episode",
+  STORY_ARCHITECT: "architect_story",
+  SCRIPT_WRITE: "write_script",
+  SCRIPT_EDIT: "edit_script",
+  DIRECT_SCENES: "direct_scenes",
+  PLAN_CINEMATOGRAPHY: "plan_cinematography",
   SELECT_STYLE: "select_style",
   BUILD_PROMPTS: "improve_prompt",
+  STORYBOARD: "create_storyboard",
   AWAIT_APPROVAL: "request_approval",
   GENERATE: "generate_video",
   VERIFY_CONTINUITY: "verify_continuity",
+  POST_PRODUCTION: "plan_post_production",
+  FINAL_QUALITY: "quality_check",
   NEXT_EPISODE: "plan_episode",
 };
 
@@ -35,10 +43,18 @@ function fallback(run: AgentRunRecord, reason: string): AgentBrainDecision {
 function toolSchema(name: AgentToolName): FunctionTool {
   const descriptions: Record<AgentToolName, string> = {
     plan_episode: "Plan the next production step for the current episode while preserving canon and locks.",
+    architect_story: "Create the story structure, beats and character arcs while preserving canon.",
+    write_script: "Write the episode script from the approved story plan.",
+    edit_script: "Review the script and return a pass, revision or blocker verdict.",
+    direct_scenes: "Create performance, pacing and scene-direction decisions from the approved script.",
+    plan_cinematography: "Create a shot and camera plan from the director plan.",
     select_style: "Choose or confirm the visual style. Never override a user style lock.",
     improve_prompt: "Build or improve the production prompt without changing locked user choices.",
+    create_storyboard: "Create a storyboard manifest for approval before paid rendering.",
     generate_video: "Proceed to video generation only when the deterministic budget, approval, wallet, and security guards allow it.",
     verify_continuity: "Check character, canon, location, prop, camera and lighting continuity before continuing.",
+    plan_post_production: "Create the edit, audio and transition plan from completed render outputs.",
+    quality_check: "Validate final technical and creative delivery requirements.",
     switch_provider: "Request an alternate configured provider when the current provider is unavailable or repeatedly failing.",
     request_approval: "Ask for human approval before spending beyond the configured approval threshold or changing a material production decision.",
     pause_run: "Pause the run when human clarification or a safe stop is preferable.",

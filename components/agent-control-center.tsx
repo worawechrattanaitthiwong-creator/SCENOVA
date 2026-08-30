@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./agent-control-center.module.css";
+import teamStyles from "./agent-team-workflow.module.css";
 
 type Run = {
   id: string; status: string; stage: string; mode: string; budgetThb: number; estimatedSpendThb: number; actualSpendThb: number;
@@ -12,16 +13,30 @@ type Decision = { id: string; stage: string; action: string; reason: string; pro
 type Approval = { id: string; status: string; estimatedCostThb: string | number; summary: string; requestedAt: string };
 type Job = { id: string; status: string; attempts: number; maxAttempts: number; lockedBy?: string | null; lastError?: string | null; createdAt: string };
 type LlmUsage = { id: string; modelId: string; category: string; inputTokens: number; outputTokens: number; costThb: string | number; createdAt: string };
-type Details = { run: Run; decisions: Decision[]; approvals: Approval[]; jobs: Job[]; llmUsage: LlmUsage[] };
+type AgentTask = { id: string; agentKey: string; stage: string; scopeKey: string; status: string; sequence: number; attempt: number; maxAttempts: number; lastError?: string | null };
+type AgentArtifact = { id: string; taskId: string; type: string; version: number; status: string; summary: string; createdAt: string };
+type AgentHandoff = { id: string; fromTaskId: string; toTaskId: string; status: string; createdAt: string };
+type HumanCheckpoint = { id: string; kind: string; status: string; summary: string; requestedAt: string };
+type Workflow = { id: string; status: string; workflowKey: string; version: number; tasks: AgentTask[]; artifacts: AgentArtifact[]; handoffs: AgentHandoff[]; checkpoints: HumanCheckpoint[] };
+type Details = { run: Run; decisions: Decision[]; approvals: Approval[]; jobs: Job[]; llmUsage: LlmUsage[]; workflow?: Workflow | null };
 
-const STAGES = ["PLAN_STORY", "SELECT_STYLE", "BUILD_PROMPTS", "AWAIT_APPROVAL", "GENERATE", "VERIFY_CONTINUITY", "NEXT_EPISODE", "COMPLETED"];
+const STAGES = ["PLAN_STORY", "STORY_ARCHITECT", "SCRIPT_WRITE", "SCRIPT_EDIT", "DIRECT_SCENES", "PLAN_CINEMATOGRAPHY", "SELECT_STYLE", "BUILD_PROMPTS", "STORYBOARD", "AWAIT_APPROVAL", "GENERATE", "VERIFY_CONTINUITY", "POST_PRODUCTION", "FINAL_QUALITY", "NEXT_EPISODE", "COMPLETED"];
 const STAGE_LABELS: Record<string, string> = {
-  PLAN_STORY: "วางแผนเรื่อง",
+  PLAN_STORY: "Producer วางแผน",
+  STORY_ARCHITECT: "วางโครงเรื่อง",
+  SCRIPT_WRITE: "เขียนบท",
+  SCRIPT_EDIT: "ตรวจบท",
+  DIRECT_SCENES: "กำกับฉาก",
+  PLAN_CINEMATOGRAPHY: "ออกแบบภาพ",
   SELECT_STYLE: "เลือกแนวภาพ",
   BUILD_PROMPTS: "เตรียม Prompt",
+  STORYBOARD: "Storyboard",
   AWAIT_APPROVAL: "รออนุมัติ",
   GENERATE: "กำลังสร้าง",
+  GENERATE_SHOT: "เรนเดอร์ Shot",
   VERIFY_CONTINUITY: "ตรวจความต่อเนื่อง",
+  POST_PRODUCTION: "หลังการผลิต",
+  FINAL_QUALITY: "ตรวจคุณภาพ",
   NEXT_EPISODE: "เตรียมตอนถัดไป",
   COMPLETED: "เสร็จสมบูรณ์",
 };
@@ -33,6 +48,26 @@ const STATUS_LABELS: Record<string, string> = {
   COMPLETED: "เสร็จแล้ว",
   FAILED: "ต้องตรวจสอบ",
   CANCELLED: "ยกเลิกแล้ว",
+  PENDING: "รอข้อมูลต้นทาง",
+  READY: "พร้อมรับงาน",
+  WAITING_REVIEW: "รอตรวจ",
+  WAITING_USER: "รอผู้ใช้",
+  RETURNED: "ส่งกลับแก้",
+};
+
+const AGENT_LABELS: Record<string, string> = {
+  AI_PRODUCER: "AI Producer",
+  STORY_ARCHITECT: "Story Architect",
+  SCRIPT_WRITER: "Script Writer",
+  SCRIPT_EDITOR: "Script Editor",
+  AI_DIRECTOR: "AI Director",
+  CINEMATOGRAPHER: "Cinematographer",
+  PROMPT_COMPOSER: "Prompt Composer",
+  STORYBOARD_ARTIST: "Storyboard Artist",
+  RENDER_OPERATOR: "Render Operator",
+  CONTINUITY_SUPERVISOR: "Continuity Supervisor",
+  POST_PRODUCTION_SUPERVISOR: "Post-production",
+  QUALITY_CONTROLLER: "Quality Controller",
 };
 
 function money(value: unknown) { return Number(value || 0).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 4 }); }
@@ -89,6 +124,10 @@ export default function AgentControlCenter() {
   const currentStageIndex = run ? STAGES.indexOf(run.stage) : -1;
   const llmCost = useMemo(() => (details?.llmUsage || []).reduce((sum, item) => sum + Number(item.costThb || 0), 0), [details]);
   const pendingApproval = details?.approvals?.find((approval) => approval.status === "PENDING");
+  const workflowTasks = details?.workflow?.tasks || [];
+  const primaryTasks = workflowTasks.filter((task) => task.stage !== "GENERATE_SHOT");
+  const shotTasks = workflowTasks.filter((task) => task.stage === "GENERATE_SHOT");
+  const workflowArtifacts = details?.workflow?.artifacts || [];
 
   return <main className={styles.page}>
     <header className={styles.hero}><div><span>SCENOVA AI AGENT</span><h1>AI Agent — ศูนย์ควบคุมงานอัตโนมัติ</h1><p>ดูงานที่ AI กำลังทำ ตรวจจุดที่ต้องอนุมัติ ติดตามค่าใช้จ่าย และไปต่อยังคิวสร้างวิดีโอได้จากหน้าเดียว</p></div><Link href="/studio">เริ่มงานใน Studio →</Link></header>
@@ -109,6 +148,20 @@ export default function AgentControlCenter() {
         <div className={styles.statusBar}><div><small>สถานะ</small><strong>{statusLabel(run.status)}</strong></div><div><small>ขั้นตอนปัจจุบัน</small><strong>{stageLabel(run.stage)}</strong></div><div><small>วงเงินสูงสุด</small><strong>฿{money(run.budgetThb)}</strong></div><div><small>คาดการณ์ / ใช้จริง</small><strong>฿{money(run.estimatedSpendThb)} / ฿{money(run.actualSpendThb)}</strong></div><div><small>ค่า AI วางแผน</small><strong>฿{money(llmCost)}</strong></div></div>
 
         <div className={styles.timeline}>{STAGES.map((stage, index) => <div key={stage} className={index < currentStageIndex || run.stage === "COMPLETED" ? styles.done : index === currentStageIndex ? styles.current : ""}><i>{index < currentStageIndex || run.stage === "COMPLETED" ? "✓" : index + 1}</i><span>{stageLabel(stage)}</span></div>)}</div>
+
+        {details.workflow ? <article className={teamStyles.teamPanel}>
+          <div className={teamStyles.panelTitle}><div><h2>ทีมผลิตภาพยนตร์ AI</h2><p>แต่ละฝ่ายรับ Artifact จากงานก่อนหน้า ตรวจตามหน้าที่ แล้วส่งต่อผ่าน Handoff ที่ตรวจสอบย้อนหลังได้</p></div><span>{workflowArtifacts.length} Artifacts · {details.workflow.handoffs.length} Handoffs</span></div>
+          <div className={teamStyles.agentGrid}>{primaryTasks.map((task) => {
+            const artifacts = workflowArtifacts.filter((artifact) => artifact.taskId === task.id);
+            const latest = artifacts.at(-1);
+            return <div key={task.id} className={teamStyles.agentCard} data-state={task.status}>
+              <div><i>{task.sequence.toString().padStart(2, "0")}</i><span><b>{AGENT_LABELS[task.agentKey] || task.agentKey}</b><small>{stageLabel(task.stage)}</small></span><em>{statusLabel(task.status)}</em></div>
+              <p>{latest?.summary || (task.status === "PENDING" ? "รอรับ Artifact จาก Agent ก่อนหน้า" : "เตรียมดำเนินงานตามสัญญาส่งมอบ")}</p>
+              <footer><span>{latest ? `${artifacts.length} Artifact · v${latest.version}` : "ยังไม่มี Artifact"}</span><span>{task.attempt ? `ทำงาน ${task.attempt}/${task.maxAttempts}` : "ยังไม่เริ่ม"}</span></footer>
+            </div>;
+          })}</div>
+          {shotTasks.length ? <div className={teamStyles.shotRail}><div><b>Render Shot Tasks</b><span>{shotTasks.filter((task) => task.status === "COMPLETED").length}/{shotTasks.length} สำเร็จ</span></div><div>{shotTasks.map((task) => <span key={task.id} data-state={task.status} title={`${task.scopeKey} · ${statusLabel(task.status)}`}>{task.scopeKey.split(":").at(-1)}</span>)}</div></div> : null}
+        </article> : null}
 
         {pendingApproval ? <div className={styles.approval} id="approvals"><span>ต้องการการอนุมัติจากคุณ</span><h2>AI พร้อมทำขั้นตอนถัดไป แต่จะยังไม่ใช้ทรัพยากรจนกว่าคุณจะอนุมัติ</h2><p>{pendingApproval.summary}</p><strong>ประมาณ ฿{money(pendingApproval.estimatedCostThb)}</strong><small>วงเงินงานสูงสุด ฿{money(run.budgetThb)} · AI ไม่สามารถเพิ่มวงเงินเองได้</small><div><button disabled={busy} onClick={() => void action("approve")}>อนุมัติและทำต่อ</button><button disabled={busy} className={styles.danger} onClick={() => void action("reject")}>ไม่อนุมัติ</button></div></div> : <div id="approvals" />}
 

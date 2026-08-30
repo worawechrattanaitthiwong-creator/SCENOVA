@@ -2,6 +2,7 @@ import type { Project } from "@/lib/domain";
 import { assertEmergencyCapability, enforceEmergencyRateLimit } from "@/lib/emergency-security";
 import { getAgentPolicy, normalizeRunBudget } from "@/lib/agent/policy";
 import { countActiveAgentRunsForUser, createAgentRun, enqueueAgentStep, recordAgentDecision, saveAgentRun } from "@/lib/agent/store";
+import { ensureEpisodeWorkflow } from "@/lib/agent/workflow-store";
 
 export async function startAgentRun(input: { userId: string; project: Project; episodeIndex?: number; maxEpisodes?: number; budgetThb?: number; mode?: string }) {
   await assertEmergencyCapability("agent");
@@ -34,6 +35,14 @@ export async function startAgentRun(input: { userId: string; project: Project; e
     generationAttempts: {},
   };
   await saveAgentRun(run);
+  const episode = input.project.episodes[episodeIndex];
+  await ensureEpisodeWorkflow({
+    runId: run.id,
+    projectId: input.project.id,
+    episodeId: episode.id,
+    episodeIndex,
+    maxAttempts: policy.maxRetriesPerStep + 1,
+  });
   await recordAgentDecision({
     runId: run.id,
     stage: run.stage,

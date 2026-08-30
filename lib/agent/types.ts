@@ -1,16 +1,40 @@
 export type AgentStage =
   | "PLAN_STORY"
+  | "STORY_ARCHITECT"
+  | "SCRIPT_WRITE"
+  | "SCRIPT_EDIT"
+  | "DIRECT_SCENES"
+  | "PLAN_CINEMATOGRAPHY"
   | "SELECT_STYLE"
   | "BUILD_PROMPTS"
+  | "STORYBOARD"
   | "AWAIT_APPROVAL"
   | "GENERATE"
   | "VERIFY_CONTINUITY"
+  | "POST_PRODUCTION"
+  | "FINAL_QUALITY"
   | "NEXT_EPISODE"
   | "COMPLETED"
   | "FAILED";
 
 export type AgentRunStatus = "QUEUED" | "RUNNING" | "WAITING_APPROVAL" | "PAUSED" | "COMPLETED" | "FAILED" | "CANCELLED";
-export type AgentToolName = "plan_episode" | "select_style" | "improve_prompt" | "generate_video" | "verify_continuity" | "switch_provider" | "request_approval" | "pause_run";
+export type AgentToolName =
+  | "plan_episode"
+  | "architect_story"
+  | "write_script"
+  | "edit_script"
+  | "direct_scenes"
+  | "plan_cinematography"
+  | "select_style"
+  | "improve_prompt"
+  | "create_storyboard"
+  | "generate_video"
+  | "verify_continuity"
+  | "plan_post_production"
+  | "quality_check"
+  | "switch_provider"
+  | "request_approval"
+  | "pause_run";
 
 export type AgentRunRecord = {
   id: string;

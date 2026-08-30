@@ -10,6 +10,7 @@ import {
   resumeAgentRun,
 } from "@/lib/agent/store";
 import { getAgentPolicy } from "@/lib/agent/policy";
+import { cancelWorkflow } from "@/lib/agent/workflow-store";
 
 type PersistedOutput = {
   providerId?: string;
@@ -52,6 +53,7 @@ export async function rejectPendingRunApproval(run: AgentRunRecord, userId: stri
   run.stopReason = "ผู้ใช้ไม่อนุมัติงบประมาณของ Agent Run";
   run.finishedAt = new Date();
   const updated = await cancelAgentRun(run, run.stopReason);
+  await cancelWorkflow(run.id);
   await recordAgentDecision({ runId: run.id, stage: "AWAIT_APPROVAL", action: "USER_REJECTED", reason: run.stopReason });
   return updated;
 }
@@ -77,6 +79,7 @@ export async function cancelRunByUser(run: AgentRunRecord) {
   }
 
   const updated = await cancelAgentRun(run, "ผู้ใช้ยกเลิก Agent Run");
+  await cancelWorkflow(run.id);
   await recordAgentDecision({ runId: run.id, stage: run.stage, action: "USER_CANCELLED", reason: "ผู้ใช้ยกเลิกงาน ระบบพยายาม Cancel Provider Task และคืน Reservation ที่ยังไม่ settle", metadata: { cancellations } });
   return updated;
 }

@@ -18,51 +18,51 @@ enum UserRole {
 }
 
 model User {
-  id                     String    @id @default(cuid())
-  email                  String    @unique
+  id                     String               @id @default(cuid())
+  email                  String               @unique
   displayName            String?
   passwordHash           String
-  role                   UserRole  @default(MEMBER)
-  active                 Boolean   @default(true)
+  role                   UserRole             @default(MEMBER)
+  active                 Boolean              @default(true)
   lastLoginAt            DateTime?
-  twoFactorEnabled       Boolean   @default(false)
+  twoFactorEnabled       Boolean              @default(false)
   twoFactorSecret        String?
   twoFactorConfirmedAt   DateTime?
   twoFactorRecoveryCodes Json?
-  createdAt              DateTime  @default(now())
-  updatedAt              DateTime  @updatedAt
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
   projects               Project[]
   wallet                 Wallet?
   jobs                   GenerationJob[]
-  auditLogs               AuditLog[]
-  agentRuns               AgentRun[]
+  auditLogs              AuditLog[]
+  agentRuns              AgentRun[]
   llmUsageEvents         LlmUsageEvent[]
   creditReservations     CreditReservation[]
-  costQuotes              CostQuote[]
-  costUsageEvents         CostUsageEvent[]
+  costQuotes             CostQuote[]
+  costUsageEvents        CostUsageEvent[]
   promptExportUnlocks    PromptExportUnlock[]
 }
 
 model Project {
-  id            String   @id @default(cuid())
+  id            String          @id @default(cuid())
   userId        String
   title         String
-  story         String   @db.Text
+  story         String          @db.Text
   genre         String
   mood          String
   aspectRatio   String
   episodeCount  Int?
-  openEnded     Boolean  @default(false)
+  openEnded     Boolean         @default(false)
   mainModelId   String
   modelMode     String
   promptMode    String
   resolution    String
   stylePresetId String?
-  projectBible  String   @db.Text
+  projectBible  String          @db.Text
   locksJson     Json
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   characters    Character[]
   locations     Location[]
   props         Prop[]
@@ -75,21 +75,21 @@ model Project {
 }
 
 model Character {
-  id           String   @id @default(cuid())
+  id           String               @id @default(cuid())
   projectId    String
   externalKey  String
   name         String
   kind         String
-  description  String   @db.Text
-  appearance   String   @db.Text
-  outfit       String   @db.Text
-  personality  String   @db.Text
+  description  String               @db.Text
+  appearance   String               @db.Text
+  outfit       String               @db.Text
+  personality  String               @db.Text
   voiceProfile String?
-  lockEnabled  Boolean  @default(true)
-  version      Int      @default(1)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  lockEnabled  Boolean              @default(true)
+  version      Int                  @default(1)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  project      Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
   references   CharacterReference[]
 
   @@unique([projectId, externalKey])
@@ -143,19 +143,19 @@ model CanonFact {
 }
 
 model Episode {
-  id          String   @id @default(cuid())
+  id          String            @id @default(cuid())
   projectId   String
   number      Int
   title       String
   durationSec Int
-  synopsis    String   @db.Text
+  synopsis    String            @db.Text
   status      String
-  locked      Boolean  @default(false)
+  locked      Boolean           @default(false)
   endState    Json?
   lastFrame   String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  project     Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
   segments    TimelineSegment[]
   jobs        GenerationJob[]
 
@@ -163,22 +163,22 @@ model Episode {
 }
 
 model TimelineSegment {
-  id           String   @id @default(cuid())
+  id           String         @id @default(cuid())
   episodeId    String
   startSec     Float
   endSec       Float
   title        String
-  scene        String   @db.Text
+  scene        String         @db.Text
   locationKey  String?
-  action       String   @db.Text
+  action       String         @db.Text
   emotion      String
-  lighting     String   @db.Text
-  sound        String   @db.Text
+  lighting     String         @db.Text
+  sound        String         @db.Text
   modelId      String?
   characterIds Json
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  episode      Episode  @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  episode      Episode        @relation(fields: [episodeId], references: [id], onDelete: Cascade)
   cameraShots  CameraShot[]
   dialogue     DialogueBeat[]
 
@@ -216,7 +216,7 @@ model DialogueBeat {
 }
 
 model Asset {
-  id          String   @id @default(cuid())
+  id          String               @id @default(cuid())
   projectId   String
   kind        String
   storageKey  String
@@ -224,8 +224,8 @@ model Asset {
   sizeBytes   Int
   durationSec Float?
   metadata    Json?
-  createdAt   DateTime @default(now())
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt   DateTime             @default(now())
+  project     Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
   references  CharacterReference[]
 }
 
@@ -262,13 +262,13 @@ model GenerationJob {
 }
 
 model Wallet {
-  id            String   @id @default(cuid())
-  userId        String   @unique
-  paidBalance   Int      @default(0)
-  bonusBalance  Int      @default(0)
-  reserved      Int      @default(0)
-  updatedAt     DateTime @updatedAt
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id            String              @id @default(cuid())
+  userId        String              @unique
+  paidBalance   Int                 @default(0)
+  bonusBalance  Int                 @default(0)
+  reserved      Int                 @default(0)
+  updatedAt     DateTime            @updatedAt
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   ledgerEntries WalletLedger[]
   reservations  CreditReservation[]
 }
@@ -290,41 +290,41 @@ model WalletLedger {
 }
 
 model CreditReservation {
-  id             String   @id
+  id             String    @id
   walletId       String
   userId         String
-  status         String   @default("reserved")
+  status         String    @default("reserved")
   credits        Int
-  chargedCredits Int      @default(0)
+  chargedCredits Int       @default(0)
   purpose        String
   category       String
   referenceId    String
-  idempotencyKey String   @unique
+  idempotencyKey String    @unique
   metadata       Json?
   expiresAt      DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @default(now()) @updatedAt
-  wallet         Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @default(now()) @updatedAt
+  wallet         Wallet    @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
   @@index([status, expiresAt])
 }
 
 model CostQuote {
-  id               String   @id
+  id               String           @id
   userId           String
   referenceType    String
   referenceId      String
-  status           String   @default("PREVIEW")
+  status           String           @default("PREVIEW")
   estimatedCredits Int
   maxCredits       Int
-  actualCredits    Int      @default(0)
+  actualCredits    Int              @default(0)
   itemsJson        Json
   expiresAt        DateTime?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @default(now()) @updatedAt
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @default(now()) @updatedAt
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   usageEvents      CostUsageEvent[]
 
   @@index([userId, createdAt])
@@ -428,52 +428,214 @@ model AuditLog {
 }
 
 model AgentRun {
-  id                   String   @id
+  id                   String             @id
   userId               String
   mode                 String
-  status               String   @default("QUEUED")
-  stage                String   @default("PLAN_STORY")
+  status               String             @default("QUEUED")
+  stage                String             @default("PLAN_STORY")
   inputJson            Json
   planJson             Json?
-  stateJson            Json     @default("{}")
-  budgetThb            Decimal  @db.Decimal(12, 4)
-  estimatedSpendThb    Decimal  @default(0) @db.Decimal(12, 4)
-  actualSpendThb       Decimal  @default(0) @db.Decimal(12, 4)
-  approvalThresholdThb Decimal  @db.Decimal(12, 4)
-  maxEpisodes          Int      @default(1)
+  stateJson            Json               @default("{}")
+  budgetThb            Decimal            @db.Decimal(12, 4)
+  estimatedSpendThb    Decimal            @default(0) @db.Decimal(12, 4)
+  actualSpendThb       Decimal            @default(0) @db.Decimal(12, 4)
+  approvalThresholdThb Decimal            @db.Decimal(12, 4)
+  maxEpisodes          Int                @default(1)
   stopReason           String?
   startedAt            DateTime?
   finishedAt           DateTime?
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @default(now()) @updatedAt
-  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @default(now()) @updatedAt
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   queueJobs            AgentQueueJob[]
   decisions            AgentDecisionLog[]
   approvals            AgentApproval[]
   llmUsageEvents       LlmUsageEvent[]
+  workflow             AgentWorkflow?
+  agentTasks           AgentTask[]
+  agentArtifacts       AgentArtifact[]
+  agentHandoffs        AgentHandoff[]
+  agentReviews         AgentReview[]
+  humanCheckpoints     HumanCheckpoint[]
 
   @@index([userId, createdAt])
   @@index([status, stage])
 }
 
-model AgentQueueJob {
-  id             String   @id
+model AgentDefinition {
+  key                String      @id
+  nameTh             String
+  nameEn             String
+  description        String      @db.Text
+  modelTier          String      @default("balanced")
+  instructionVersion Int         @default(1)
+  inputTypes         Json        @default("[]")
+  outputType         String
+  toolsJson          Json        @default("[]")
+  enabled            Boolean     @default(true)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @default(now()) @updatedAt
+  tasks              AgentTask[]
+}
+
+model AgentWorkflow {
+  id             String         @id
+  runId          String         @unique
+  workflowKey    String         @default("SCENOVA_FILM_PRODUCTION")
+  version        Int            @default(1)
+  status         String         @default("ACTIVE")
+  definitionJson Json
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @default(now()) @updatedAt
+  run            AgentRun       @relation(fields: [runId], references: [id], onDelete: Cascade)
+  tasks          AgentTask[]
+  handoffs       AgentHandoff[]
+
+  @@index([status, updatedAt])
+}
+
+model AgentTask {
+  id             String            @id
+  workflowId     String
   runId          String
-  kind           String   @default("AGENT_STEP")
-  status         String   @default("QUEUED")
-  payloadJson    Json     @default("{}")
-  attempts       Int      @default(0)
-  maxAttempts    Int      @default(3)
-  availableAt    DateTime @default(now())
+  agentKey       String
+  stage          String
+  scopeKey       String
+  status         String            @default("PENDING")
+  sequence       Int
+  attempt        Int               @default(0)
+  maxAttempts    Int               @default(3)
+  inputJson      Json              @default("{}")
+  outputJson     Json?
+  idempotencyKey String            @unique
+  startedAt      DateTime?
+  completedAt    DateTime?
+  lastError      String?           @db.Text
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @default(now()) @updatedAt
+  workflow       AgentWorkflow     @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  run            AgentRun          @relation(fields: [runId], references: [id], onDelete: Cascade)
+  agent          AgentDefinition   @relation(fields: [agentKey], references: [key], onDelete: Restrict)
+  artifacts      AgentArtifact[]
+  outgoing       AgentHandoff[]    @relation("HandoffSourceTask")
+  incoming       AgentHandoff[]    @relation("HandoffTargetTask")
+  reviews        AgentReview[]
+  checkpoints    HumanCheckpoint[]
+
+  @@unique([runId, stage, scopeKey])
+  @@index([workflowId, status, sequence])
+  @@index([runId, scopeKey, sequence])
+  @@index([agentKey, status])
+}
+
+model AgentArtifact {
+  id            String            @id
+  runId         String
+  taskId        String
+  type          String
+  scopeKey      String
+  version       Int               @default(1)
+  schemaVersion Int               @default(1)
+  status        String            @default("DRAFT")
+  summary       String
+  contentJson   Json
+  lineageJson   Json              @default("[]")
+  checksum      String?
+  createdAt     DateTime          @default(now())
+  run           AgentRun          @relation(fields: [runId], references: [id], onDelete: Cascade)
+  task          AgentTask         @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  handoffs      AgentHandoff[]
+  reviews       AgentReview[]
+  checkpoints   HumanCheckpoint[]
+
+  @@unique([runId, type, scopeKey, version])
+  @@index([runId, scopeKey, createdAt])
+  @@index([taskId, createdAt])
+}
+
+model AgentHandoff {
+  id              String        @id
+  workflowId      String
+  runId           String
+  fromTaskId      String
+  toTaskId        String
+  artifactId      String
+  status          String        @default("CREATED")
+  contractVersion Int           @default(1)
+  payloadJson     Json
+  acceptedAt      DateTime?
+  rejectedAt      DateTime?
+  rejectionReason String?       @db.Text
+  createdAt       DateTime      @default(now())
+  workflow        AgentWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  run             AgentRun      @relation(fields: [runId], references: [id], onDelete: Cascade)
+  fromTask        AgentTask     @relation("HandoffSourceTask", fields: [fromTaskId], references: [id], onDelete: Cascade)
+  toTask          AgentTask     @relation("HandoffTargetTask", fields: [toTaskId], references: [id], onDelete: Cascade)
+  artifact        AgentArtifact @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+
+  @@unique([fromTaskId, toTaskId, artifactId])
+  @@index([runId, status, createdAt])
+  @@index([toTaskId, status])
+}
+
+model AgentReview {
+  id               String         @id
+  runId            String
+  taskId           String
+  artifactId       String?
+  reviewerAgentKey String
+  verdict          String
+  score            Int?
+  summary          String
+  issuesJson       Json           @default("[]")
+  createdAt        DateTime       @default(now())
+  run              AgentRun       @relation(fields: [runId], references: [id], onDelete: Cascade)
+  task             AgentTask      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  artifact         AgentArtifact? @relation(fields: [artifactId], references: [id], onDelete: SetNull)
+
+  @@index([runId, createdAt])
+  @@index([artifactId, verdict])
+}
+
+model HumanCheckpoint {
+  id              String         @id
+  runId           String
+  taskId          String?
+  artifactId      String?
+  kind            String
+  status          String         @default("PENDING")
+  required        Boolean        @default(true)
+  summary         String
+  payloadJson     Json           @default("{}")
+  requestedAt     DateTime       @default(now())
+  expiresAt       DateTime?
+  decidedAt       DateTime?
+  decidedByUserId String?
+  run             AgentRun       @relation(fields: [runId], references: [id], onDelete: Cascade)
+  task            AgentTask?     @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  artifact        AgentArtifact? @relation(fields: [artifactId], references: [id], onDelete: SetNull)
+
+  @@index([runId, status, requestedAt])
+}
+
+model AgentQueueJob {
+  id             String    @id
+  runId          String
+  kind           String    @default("AGENT_STEP")
+  status         String    @default("QUEUED")
+  payloadJson    Json      @default("{}")
+  attempts       Int       @default(0)
+  maxAttempts    Int       @default(3)
+  availableAt    DateTime  @default(now())
   lockedAt       DateTime?
   lockedBy       String?
   heartbeatAt    DateTime?
   leaseExpiresAt DateTime?
-  idempotencyKey String   @unique
+  idempotencyKey String    @unique
   lastError      String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @default(now()) @updatedAt
-  run            AgentRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @default(now()) @updatedAt
+  run            AgentRun  @relation(fields: [runId], references: [id], onDelete: Cascade)
 
   @@index([status, availableAt])
   @@index([status, leaseExpiresAt])
@@ -511,22 +673,22 @@ model AgentApproval {
 }
 
 model SystemSecurityState {
-  id                        String   @id
-  lockdownEnabled           Boolean  @default(false)
-  maintenanceMode           Boolean  @default(false)
-  generationDisabled        Boolean  @default(false)
-  agentDisabled             Boolean  @default(false)
-  llmDisabled               Boolean  @default(false)
-  paymentDisabled           Boolean  @default(false)
-  newLoginRestricted        Boolean  @default(false)
-  queuePaused               Boolean  @default(false)
-  emergencyRateLimitEnabled Boolean  @default(false)
-  disabledProviderIds       Json     @default("[]")
+  id                        String    @id
+  lockdownEnabled           Boolean   @default(false)
+  maintenanceMode           Boolean   @default(false)
+  generationDisabled        Boolean   @default(false)
+  agentDisabled             Boolean   @default(false)
+  llmDisabled               Boolean   @default(false)
+  paymentDisabled           Boolean   @default(false)
+  newLoginRestricted        Boolean   @default(false)
+  queuePaused               Boolean   @default(false)
+  emergencyRateLimitEnabled Boolean   @default(false)
+  disabledProviderIds       Json      @default("[]")
   sessionInvalidBefore      DateTime?
   reason                    String?
   updatedByUserId           String?
-  createdAt                 DateTime @default(now())
-  updatedAt                 DateTime @default(now()) @updatedAt
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @default(now()) @updatedAt
 }
 
 model EmergencyRateLimitBucket {

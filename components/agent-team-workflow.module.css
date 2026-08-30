@@ -1,0 +1,179 @@
+.teamPanel {
+  margin: 12px 0;
+  padding: 15px;
+  border: 1px solid rgba(171, 120, 255, 0.16);
+  border-radius: 15px;
+  background: linear-gradient(145deg, rgba(17, 12, 24, 0.98), rgba(10, 8, 16, 0.98));
+}
+
+.panelTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.panelTitle h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.panelTitle p {
+  margin: 4px 0 0;
+  color: var(--sc-muted-2);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.panelTitle > span {
+  color: var(--sc-muted-2);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.agentGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 13px;
+}
+
+.agentCard {
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid rgba(171, 120, 255, 0.12);
+  border-radius: 12px;
+  background: #0b0810;
+}
+
+.agentCard[data-state="RUNNING"],
+.agentCard[data-state="READY"] {
+  border-color: rgba(190, 105, 255, 0.55);
+  box-shadow: inset 3px 0 #944ad7;
+}
+
+.agentCard[data-state="COMPLETED"] {
+  border-color: rgba(93, 199, 145, 0.28);
+  background: rgba(24, 57, 43, 0.12);
+}
+
+.agentCard[data-state="RETURNED"],
+.agentCard[data-state="FAILED"] {
+  border-color: rgba(255, 123, 156, 0.38);
+}
+
+.agentCard > div {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.agentCard > div > i {
+  width: 27px;
+  height: 27px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: rgba(104, 44, 145, 0.19);
+  color: #d88aff;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.agentCard b,
+.agentCard small {
+  display: block;
+}
+
+.agentCard b {
+  color: #ece7f1;
+  font-size: 11px;
+}
+
+.agentCard small {
+  margin-top: 2px;
+  color: var(--sc-muted-2);
+  font-size: 9px;
+}
+
+.agentCard em {
+  color: #d88aff;
+  font-size: 9px;
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.agentCard p {
+  min-height: 32px;
+  margin: 9px 0;
+  color: #a9a0af;
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.agentCard footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(171, 120, 255, 0.08);
+  color: #716979;
+  font-size: 9px;
+}
+
+.shotRail {
+  margin-top: 10px;
+  padding: 11px;
+  border: 1px solid rgba(171, 120, 255, 0.1);
+  border-radius: 11px;
+  background: #09070d;
+}
+
+.shotRail > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  color: #bcaec7;
+  font-size: 10px;
+}
+
+.shotRail > div:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.shotRail > div:last-child span {
+  width: 25px;
+  height: 25px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(171, 120, 255, 0.15);
+  border-radius: 7px;
+  background: #15101d;
+  color: #8f8498;
+  font-size: 9px;
+}
+
+.shotRail span[data-state="RUNNING"] {
+  border-color: #bd73ef;
+  color: #e0baff;
+}
+
+.shotRail span[data-state="COMPLETED"] {
+  border-color: rgba(93, 199, 145, 0.45);
+  background: rgba(26, 91, 62, 0.2);
+  color: #80d8aa;
+}
+
+@media (max-width: 1180px) {
+  .agentGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 760px) {
+  .agentGrid { grid-template-columns: 1fr; }
+  .panelTitle { align-items: flex-start; flex-direction: column; }
+  .panelTitle > span { white-space: normal; }
+}
