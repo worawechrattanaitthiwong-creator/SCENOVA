@@ -14,5 +14,22 @@ module.exports = {
       },
       time: true,
     },
+    {
+      name: "scenova-agent-worker",
+      cwd: "/home/scenova/app",
+      script: "node_modules/tsx/dist/cli.mjs",
+      args: "scripts/agent-worker.ts",
+      interpreter: "node",
+      exec_mode: "fork",
+      instances: 1,
+      autorestart: true,
+      restart_delay: 2000,
+      max_memory_restart: "1000M",
+      env: {
+        NODE_ENV: "production",
+        AGENT_WORKER_CONCURRENCY: "2",
+      },
+      time: true,
+    },
   ],
 };

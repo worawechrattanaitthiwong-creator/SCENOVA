@@ -93,13 +93,21 @@ jobs:
             fi
             unset current_api_key_encryption_key
 
-            # Wrangler/Miniflare creates disposable untracked cache files on the VPS.
-            # Remove only that generated cache before switching to the incoming main tree;
-            # otherwise Git refuses checkout when an incoming path collides with the cache.
+            # Wrangler/Miniflare creates disposable cache files and the VPS build temporarily
+            # rewrites Prisma's tracked runtime. Clean only those known generated changes before
+            # switching to the incoming tree; unrelated server edits must still block deployment.
             rm -rf .wrangler
+            git restore --source=HEAD --staged --worktree -- prisma/schema.prisma 2>/dev/null || true
 
             git fetch origin main
             git checkout -B main FETCH_HEAD
+
+            # Always restore the repository schema when this deployment exits, including failures.
+            # The generated Prisma client remains valid for the Node.js runtime used by PM2.
+            restore_runtime_schema() {
+              git restore --source=HEAD --staged --worktree -- prisma/schema.prisma 2>/dev/null || true
+            }
+            trap restore_runtime_schema EXIT
 
             node scripts/prepare-vps-runtime.mjs
             npm ci
@@ -112,7 +120,7 @@ jobs:
             # This helper loads it through @next/env without exposing secrets.
             node scripts/deploy-production-migrations.mjs
 
-            pm2 reload ecosystem.config.cjs --update-env
+            pm2 startOrReload ecosystem.config.cjs --update-env
             pm2 save
 
             sleep 2

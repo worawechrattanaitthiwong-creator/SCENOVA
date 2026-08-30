@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import styles from "./single-episode-studio.module.css";
+import { buildStudioAgentProject } from "@/lib/agent/studio-project";
 import {
   CAMERA_ANGLES,
   CAMERA_HEIGHTS,
@@ -111,6 +113,7 @@ type DraftPayload = {
   animals?: Animal[];
   totalDuration?: number;
   scenes?: Partial<StoryScene>[];
+  agentBudgetThb?: number;
 };
 
 type SelectedCharacterPayload = {
@@ -292,6 +295,7 @@ function ChoiceField({ label, value, options, onChange, compact = false }: { lab
 }
 
 export default function SingleEpisodeStudio() {
+  const router = useRouter();
   const [episodeTitle, setEpisodeTitle] = useState("Untitled Episode");
   const [model, setModel] = useState("Seedance 2.5");
   const [aspect, setAspect] = useState("16:9 — Widescreen");
@@ -306,6 +310,8 @@ export default function SingleEpisodeStudio() {
   const [scenes, setScenes] = useState<StoryScene[]>(() => distributeScenes([], 3, 30));
   const [selectedSceneId, setSelectedSceneId] = useState("");
   const [message, setMessage] = useState("พร้อมสร้างตอนเดียว");
+  const [agentBudgetThb, setAgentBudgetThb] = useState(500);
+  const [agentSubmitting, setAgentSubmitting] = useState(false);
 
   useEffect(() => {
     const raw = localStorage.getItem(DRAFT_KEY);
@@ -324,6 +330,7 @@ export default function SingleEpisodeStudio() {
       if (Array.isArray(draft.animals) && draft.animals.length) setAnimals(draft.animals.slice(0, 4));
       if (typeof draft.totalDuration === "number") setTotalDuration(Math.max(1, Math.min(180, Math.round(draft.totalDuration))));
       if (Array.isArray(draft.scenes) && draft.scenes.length) setScenes(draft.scenes.slice(0, 180).map((scene, index) => normalizeScene(scene, index + 1)));
+      if (typeof draft.agentBudgetThb === "number") setAgentBudgetThb(Math.max(1, Math.min(2000, Math.round(draft.agentBudgetThb))));
       setMessage("เปิดร่างล่าสุดแล้ว");
     } catch {
       localStorage.removeItem(DRAFT_KEY);
@@ -518,8 +525,8 @@ export default function SingleEpisodeStudio() {
     setLocks((current) => current.includes(key) ? current.filter((item) => item !== key) : [...current, key]);
   }
 
-  function saveDraft() {
-    const payload = {
+  function currentDraft() {
+    return {
       schemaVersion: 2,
       mode: "single-episode",
       episodeTitle,
@@ -534,11 +541,67 @@ export default function SingleEpisodeStudio() {
       animals: hasAnimals ? animals : [],
       totalDuration,
       scenes,
+      agentBudgetThb,
       readiness: readiness.score,
       updatedAt: new Date().toISOString(),
     };
+  }
+
+  function saveDraft() {
+    const payload = currentDraft();
     localStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
     setMessage("บันทึกร่าง Single Episode แล้ว");
+  }
+
+  async function sendToAgent() {
+    if (agentSubmitting) return;
+    if (!story.trim()) {
+      setMessage("กรุณาใส่เรื่องหรือเหตุการณ์ของตอนก่อนส่งให้ทีม AI");
+      document.querySelector("#setup")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    if (readiness.score < 100 && !window.confirm(`ข้อมูลพร้อม ${readiness.score}% และยังขาด: ${readiness.missing.join(" • ")}\n\nต้องการส่งให้ทีม AI ช่วยทำงานต่อหรือไม่?`)) return;
+
+    setAgentSubmitting(true);
+    setMessage("กำลังส่ง Storyboard ให้ทีม AI...");
+    const draft = currentDraft();
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+
+    try {
+      const project = buildStudioAgentProject({
+        episodeTitle,
+        model,
+        aspect,
+        visualStyle,
+        story,
+        globalNegative,
+        locks,
+        characters,
+        hasAnimals,
+        animals: hasAnimals ? animals : [],
+        totalDuration,
+        scenes,
+      }, crypto.randomUUID());
+      const response = await fetch("/api/agent/runs", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project, episodeIndex: 0, maxEpisodes: 1, budgetThb: agentBudgetThb, mode: "STUDIO_STORYBOARD" }),
+      });
+      const data = await response.json() as { runId?: string; error?: string };
+      if (!response.ok || !data.runId) {
+        const friendly = data.error === "AGENT_USER_CONCURRENCY_LIMIT"
+          ? "มีงาน Agent กำลังทำครบจำนวนแล้ว กรุณารอหรือยกเลิกงานเดิมก่อน"
+          : data.error || "ส่งงานให้ทีม AI ไม่สำเร็จ";
+        throw new Error(friendly);
+      }
+      localStorage.setItem("scenova-last-agent-run-v1", data.runId);
+      setMessage("ส่งงานให้ทีม AI แล้ว กำลังเปิดศูนย์ควบคุม...");
+      router.push(`/agent?run=${encodeURIComponent(data.runId)}`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "ส่งงานให้ทีม AI ไม่สำเร็จ");
+      setAgentSubmitting(false);
+    }
   }
 
   return <main className={styles.main}>
@@ -551,7 +614,8 @@ export default function SingleEpisodeStudio() {
       <div className={styles.heroActions}>
         <span className={styles.status}>{message}</span>
         <button type="button" className={styles.secondaryButton} onClick={saveDraft}>บันทึกร่าง</button>
-        <Link href="/render" className={styles.primaryButton} onClick={saveDraft}>Prompt & Render →</Link>
+        <Link href="/render" className={styles.secondaryButton} onClick={saveDraft}>ดูคิวเรนเดอร์</Link>
+        <button type="button" className={styles.primaryButton} onClick={() => void sendToAgent()} disabled={agentSubmitting}>{agentSubmitting ? "กำลังส่งงาน..." : "ส่งให้ทีม AI ผลิต →"}</button>
       </div>
     </header>
 
@@ -559,7 +623,7 @@ export default function SingleEpisodeStudio() {
       <a href="#setup"><b>1</b><span>ตั้งค่าตอน<small>เรื่อง + โมเดล</small></span></a>
       <a href="#characters"><b>2</b><span>ตัวละคร<small>ล็อกตัวตน + ล็อกเสียง</small></span></a>
       <a href="#scenes"><b>3</b><span>กำกับฉาก<small>กล้อง + แสง + เสียง</small></span></a>
-      <a href="#review"><b>4</b><span>ตรวจความพร้อม<small>ส่ง Prompt & Render</small></span></a>
+      <a href="#review"><b>4</b><span>ตรวจความพร้อม<small>ส่ง Storyboard ให้ทีม AI</small></span></a>
     </nav>
 
     <section id="setup" className={styles.panel}>
@@ -683,9 +747,15 @@ export default function SingleEpisodeStudio() {
         <article><b>{model}</b><span>Video Model</span><small>{aspect}</small></article>
         <article><b>{readiness.missing.length ? readiness.missing.length : "✓"}</b><span>รายการที่ต้องเติม</span><small>{readiness.missing.length ? readiness.missing.join(" • ") : "ข้อมูลหลักครบแล้ว"}</small></article>
       </div>
-      <div className={styles.reviewActions}><button type="button" className={styles.secondaryButton} onClick={saveDraft}>บันทึกร่าง</button><Link href="/profile/api" className={styles.apiLink}>ตรวจ API & Models</Link><Link href="/render" className={styles.primaryButton} onClick={saveDraft}>Prompt & Render →</Link></div>
+      <div className={styles.reviewActions}>
+        <label className={styles.agentBudget}><span>วงเงินสูงสุดของงาน</span><span><input type="number" min={1} max={2000} step={50} value={agentBudgetThb} onChange={(event) => setAgentBudgetThb(Math.max(1, Math.min(2000, Number(event.target.value) || 1)))} /><b>บาท</b></span></label>
+        <button type="button" className={styles.secondaryButton} onClick={saveDraft}>บันทึกร่าง</button>
+        <Link href="/profile/api" className={styles.apiLink}>ตรวจ API & Models</Link>
+        <Link href="/render" className={styles.secondaryButton} onClick={saveDraft}>ดูคิวเรนเดอร์</Link>
+        <button type="button" className={styles.primaryButton} onClick={() => void sendToAgent()} disabled={agentSubmitting}>{agentSubmitting ? "กำลังส่งงาน..." : "ส่ง Storyboard ให้ทีม AI →"}</button>
+      </div>
     </section>
 
-    <footer className={styles.stickyFooter}><div><strong>{episodeTitle || "Untitled Episode"}</strong><span>{scenes.length} ฉาก • {characters.length} ตัวละคร • {usedDuration}/{totalDuration}s • พร้อม {readiness.score}%</span></div><div><button type="button" className={styles.secondaryButton} onClick={saveDraft}>บันทึกร่าง</button><Link href="/render" className={styles.primaryButton} onClick={saveDraft}>Prompt & Render →</Link></div></footer>
+    <footer className={styles.stickyFooter}><div><strong>{episodeTitle || "Untitled Episode"}</strong><span>{scenes.length} ฉาก • {characters.length} ตัวละคร • {usedDuration}/{totalDuration}s • พร้อม {readiness.score}% • วงเงิน ฿{agentBudgetThb.toLocaleString("th-TH")}</span></div><div><button type="button" className={styles.secondaryButton} onClick={saveDraft}>บันทึกร่าง</button><Link href="/render" className={styles.secondaryButton} onClick={saveDraft}>คิวเรนเดอร์</Link><button type="button" className={styles.primaryButton} onClick={() => void sendToAgent()} disabled={agentSubmitting}>{agentSubmitting ? "กำลังส่งงาน..." : "ส่งให้ทีม AI ผลิต →"}</button></div></footer>
   </main>;
 }

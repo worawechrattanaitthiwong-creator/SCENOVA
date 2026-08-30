@@ -8,6 +8,7 @@ import teamStyles from "./agent-team-workflow.module.css";
 type Run = {
   id: string; status: string; stage: string; mode: string; budgetThb: number; estimatedSpendThb: number; actualSpendThb: number;
   approvalThresholdThb: number; maxEpisodes: number; stopReason?: string | null; createdAt: string; updatedAt: string; stateJson?: Record<string, unknown>;
+  inputJson?: { project?: { title?: string; episodes?: Array<{ title?: string }> } };
 };
 type Decision = { id: string; stage: string; action: string; reason: string; providerId?: string | null; metadata?: unknown; createdAt: string };
 type Approval = { id: string; status: string; estimatedCostThb: string | number; summary: string; requestedAt: string };
@@ -74,6 +75,7 @@ function money(value: unknown) { return Number(value || 0).toLocaleString("th-TH
 function time(value: string) { return new Date(value).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" }); }
 function stageLabel(value: string) { return STAGE_LABELS[value] || value; }
 function statusLabel(value: string) { return STATUS_LABELS[value] || value; }
+function runTitle(run: Run) { return run.inputJson?.project?.episodes?.[0]?.title || run.inputJson?.project?.title || "งาน AI"; }
 
 export default function AgentControlCenter() {
   const [runs, setRuns] = useState<Run[]>([]);
@@ -87,7 +89,11 @@ export default function AgentControlCenter() {
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "โหลดงาน AI ไม่สำเร็จ");
     setRuns(data.runs || []);
-    setSelectedId((current) => current || data.runs?.[0]?.id || "");
+    setSelectedId((current) => {
+      if (current) return current;
+      const requestedId = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("run") : null;
+      return data.runs?.some((run: Run) => run.id === requestedId) ? requestedId || "" : data.runs?.[0]?.id || "";
+    });
   }, []);
 
   const loadDetails = useCallback(async (id: string) => {
@@ -142,7 +148,7 @@ export default function AgentControlCenter() {
     {message ? <div className={styles.message}>{message}</div> : null}
 
     <div className={styles.layout} id="runs">
-      <aside className={styles.runList}><div className={styles.runTitle}><div><b>งาน AI</b><small>{runs.length} รายการ</small></div><button onClick={() => void loadRuns()} aria-label="รีเฟรชงาน AI">↻</button></div>{runs.length ? runs.map((item) => <button key={item.id} className={item.id === selectedId ? styles.selected : ""} onClick={() => setSelectedId(item.id)}><span><b>{stageLabel(item.stage)}</b><i data-status={item.status}>{statusLabel(item.status)}</i></span><small>{time(item.createdAt)} · สูงสุด {item.maxEpisodes} ตอน</small></button>) : <div className={styles.emptyState}><span>✦</span><h2>ยังไม่มีงาน AI</h2><p>เริ่มสร้างงานจาก Studio ก่อน เมื่อมี Agent Run งานจะมาแสดงที่นี่อัตโนมัติ</p><Link href="/studio">เปิด Studio</Link></div>}</aside>
+      <aside className={styles.runList}><div className={styles.runTitle}><div><b>งาน AI</b><small>{runs.length} รายการ</small></div><button onClick={() => void loadRuns()} aria-label="รีเฟรชงาน AI">↻</button></div>{runs.length ? runs.map((item) => <button key={item.id} className={item.id === selectedId ? styles.selected : ""} onClick={() => setSelectedId(item.id)}><span><b>{runTitle(item)}</b><i data-status={item.status}>{statusLabel(item.status)}</i></span><small>{stageLabel(item.stage)} · {time(item.createdAt)}</small></button>) : <div className={styles.emptyState}><span>✦</span><h2>ยังไม่มีงาน AI</h2><p>เริ่มสร้างงานจาก Studio ก่อน เมื่อมี Agent Run งานจะมาแสดงที่นี่อัตโนมัติ</p><Link href="/studio">เปิด Studio</Link></div>}</aside>
 
       <section className={styles.main}>{!run ? <div className={styles.welcomePanel}><span>AI AGENT WORKSPACE</span><h2>เลือกงาน AI เพื่อดูรายละเอียด</h2><p>เมื่อมีงาน ระบบจะแสดงขั้นตอน ค่าใช้จ่าย จุดรออนุมัติ และสถานะคิวแบบอัปเดตต่อเนื่อง</p><div><Link href="/studio">เริ่มจาก Studio</Link><Link href="/wallet">ดูเครดิต</Link></div></div> : <>
         <div className={styles.statusBar}><div><small>สถานะ</small><strong>{statusLabel(run.status)}</strong></div><div><small>ขั้นตอนปัจจุบัน</small><strong>{stageLabel(run.stage)}</strong></div><div><small>วงเงินสูงสุด</small><strong>฿{money(run.budgetThb)}</strong></div><div><small>คาดการณ์ / ใช้จริง</small><strong>฿{money(run.estimatedSpendThb)} / ฿{money(run.actualSpendThb)}</strong></div><div><small>ค่า AI วางแผน</small><strong>฿{money(llmCost)}</strong></div></div>
