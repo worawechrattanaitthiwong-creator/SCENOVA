@@ -98,24 +98,6 @@ type StoryScene = {
   negativePrompt: string;
 };
 
-type DraftPayload = {
-  schemaVersion?: number;
-  mode?: string;
-  episodeTitle?: string;
-  model?: string;
-  aspect?: string;
-  visualStyle?: string;
-  story?: string;
-  globalNegative?: string;
-  locks?: string[];
-  characters?: Partial<Character>[];
-  hasAnimals?: boolean;
-  animals?: Animal[];
-  totalDuration?: number;
-  scenes?: Partial<StoryScene>[];
-  agentBudgetThb?: number;
-};
-
 type SelectedCharacterPayload = {
   id?: string;
   title?: string;
@@ -129,7 +111,6 @@ type SelectedCharacterPayload = {
   };
 };
 
-const DRAFT_KEY = "scenova-story-draft-v1";
 const MODELS = ["Seedance 2.5", "Kling", "Veo", "Runway", "Wan"];
 const ASPECTS = ["16:9 — Widescreen", "9:16 — Vertical", "1:1 — Square", "4:5 — Portrait"];
 const STYLES = [
@@ -312,31 +293,6 @@ export default function SingleEpisodeStudio() {
   const [message, setMessage] = useState("พร้อมสร้างตอนเดียว");
   const [agentBudgetThb, setAgentBudgetThb] = useState(500);
   const [agentSubmitting, setAgentSubmitting] = useState(false);
-
-  useEffect(() => {
-    const raw = localStorage.getItem(DRAFT_KEY);
-    if (!raw) return;
-    try {
-      const draft = JSON.parse(raw) as DraftPayload;
-      if (draft.episodeTitle) setEpisodeTitle(draft.episodeTitle);
-      if (draft.model && MODELS.includes(draft.model)) setModel(draft.model);
-      if (draft.aspect && ASPECTS.includes(draft.aspect)) setAspect(draft.aspect);
-      if (draft.visualStyle && STYLES.includes(draft.visualStyle)) setVisualStyle(draft.visualStyle);
-      if (typeof draft.story === "string") setStory(draft.story);
-      if (typeof draft.globalNegative === "string") setGlobalNegative(draft.globalNegative);
-      if (Array.isArray(draft.locks)) setLocks(draft.locks);
-      if (Array.isArray(draft.characters) && draft.characters.length) setCharacters(draft.characters.slice(0, 8).map((item, index) => normalizeCharacter(item, index + 1)));
-      if (typeof draft.hasAnimals === "boolean") setHasAnimals(draft.hasAnimals);
-      if (Array.isArray(draft.animals) && draft.animals.length) setAnimals(draft.animals.slice(0, 4));
-      if (typeof draft.totalDuration === "number") setTotalDuration(Math.max(1, Math.min(180, Math.round(draft.totalDuration))));
-      if (Array.isArray(draft.scenes) && draft.scenes.length) setScenes(draft.scenes.slice(0, 180).map((scene, index) => normalizeScene(scene, index + 1)));
-      if (typeof draft.agentBudgetThb === "number") setAgentBudgetThb(Math.max(1, Math.min(2000, Math.round(draft.agentBudgetThb))));
-      setMessage("เปิดร่างล่าสุดแล้ว");
-    } catch {
-      localStorage.removeItem(DRAFT_KEY);
-      setMessage("ร่างเดิมเสียหาย ระบบเริ่มร่างใหม่ให้แล้ว");
-    }
-  }, []);
 
   useEffect(() => {
     const raw = localStorage.getItem("scenova-selected-character-v1");
@@ -525,34 +481,6 @@ export default function SingleEpisodeStudio() {
     setLocks((current) => current.includes(key) ? current.filter((item) => item !== key) : [...current, key]);
   }
 
-  function currentDraft() {
-    return {
-      schemaVersion: 2,
-      mode: "single-episode",
-      episodeTitle,
-      model,
-      aspect,
-      visualStyle,
-      story,
-      globalNegative,
-      locks,
-      characters,
-      hasAnimals,
-      animals: hasAnimals ? animals : [],
-      totalDuration,
-      scenes,
-      agentBudgetThb,
-      readiness: readiness.score,
-      updatedAt: new Date().toISOString(),
-    };
-  }
-
-  function saveDraft() {
-    const payload = currentDraft();
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
-    setMessage("บันทึกร่าง Single Episode แล้ว");
-  }
-
   async function sendToAgent() {
     if (agentSubmitting) return;
     if (!story.trim()) {
@@ -564,9 +492,6 @@ export default function SingleEpisodeStudio() {
 
     setAgentSubmitting(true);
     setMessage("กำลังส่ง Storyboard ให้ทีม AI...");
-    const draft = currentDraft();
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-
     try {
       const project = buildStudioAgentProject({
         episodeTitle,
@@ -613,8 +538,6 @@ export default function SingleEpisodeStudio() {
       </div>
       <div className={styles.heroActions}>
         <span className={styles.status}>{message}</span>
-        <button type="button" className={styles.secondaryButton} onClick={saveDraft}>บันทึกร่าง</button>
-        <Link href="/render" className={styles.secondaryButton} onClick={saveDraft}>ดูคิวเรนเดอร์</Link>
         <button type="button" className={styles.primaryButton} onClick={() => void sendToAgent()} disabled={agentSubmitting}>{agentSubmitting ? "กำลังส่งงาน..." : "ส่งให้ทีม AI ผลิต →"}</button>
       </div>
     </header>
@@ -749,13 +672,11 @@ export default function SingleEpisodeStudio() {
       </div>
       <div className={styles.reviewActions}>
         <label className={styles.agentBudget}><span>วงเงินสูงสุดของงาน</span><span><input type="number" min={1} max={2000} step={50} value={agentBudgetThb} onChange={(event) => setAgentBudgetThb(Math.max(1, Math.min(2000, Number(event.target.value) || 1)))} /><b>บาท</b></span></label>
-        <button type="button" className={styles.secondaryButton} onClick={saveDraft}>บันทึกร่าง</button>
         <Link href="/profile/api" className={styles.apiLink}>ตรวจ API & Models</Link>
-        <Link href="/render" className={styles.secondaryButton} onClick={saveDraft}>ดูคิวเรนเดอร์</Link>
         <button type="button" className={styles.primaryButton} onClick={() => void sendToAgent()} disabled={agentSubmitting}>{agentSubmitting ? "กำลังส่งงาน..." : "ส่ง Storyboard ให้ทีม AI →"}</button>
       </div>
     </section>
 
-    <footer className={styles.stickyFooter}><div><strong>{episodeTitle || "Untitled Episode"}</strong><span>{scenes.length} ฉาก • {characters.length} ตัวละคร • {usedDuration}/{totalDuration}s • พร้อม {readiness.score}% • วงเงิน ฿{agentBudgetThb.toLocaleString("th-TH")}</span></div><div><button type="button" className={styles.secondaryButton} onClick={saveDraft}>บันทึกร่าง</button><Link href="/render" className={styles.secondaryButton} onClick={saveDraft}>คิวเรนเดอร์</Link><button type="button" className={styles.primaryButton} onClick={() => void sendToAgent()} disabled={agentSubmitting}>{agentSubmitting ? "กำลังส่งงาน..." : "ส่งให้ทีม AI ผลิต →"}</button></div></footer>
+    <footer className={styles.stickyFooter}><div><strong>{episodeTitle || "Untitled Episode"}</strong><span>{scenes.length} ฉาก • {characters.length} ตัวละคร • {usedDuration}/{totalDuration}s • พร้อม {readiness.score}% • วงเงิน ฿{agentBudgetThb.toLocaleString("th-TH")}</span></div><div><button type="button" className={styles.primaryButton} onClick={() => void sendToAgent()} disabled={agentSubmitting}>{agentSubmitting ? "กำลังส่งงาน..." : "ส่งให้ทีม AI ผลิต →"}</button></div></footer>
   </main>;
 }
