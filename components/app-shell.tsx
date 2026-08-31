@@ -76,11 +76,6 @@ function targetMatchesCurrent(href: string, pathname: string, search: SearchStat
   return true;
 }
 
-function childMatchesCurrent(href: string, pathname: string) {
-  const target = new URL(href, "https://scenova.local").pathname;
-  return pathname === target || pathname.startsWith(target + "/");
-}
-
 function WorkspaceShell({ children, pathname }: { children: React.ReactNode; pathname: string }) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -174,17 +169,7 @@ function WorkspaceShell({ children, pathname }: { children: React.ReactNode; pat
       </Link>
 
       <nav className={styles.mainNav} data-sc-main-nav aria-label="เมนูหลัก">
-        {WORKSPACE_NAV.flatMap((item) => {
-          const main = navLink(item);
-          const showSettingsChildren = item.href === "/profile" && settingsScope && item.children?.length;
-          const children = showSettingsChildren ? <div key={`${item.href}-children`} className={targetedStyles.settingsSubnav} aria-label="เมนูย่อยการตั้งค่า">
-            {item.children?.filter((child) => !child.adminOnly || me.role === "ADMIN").map((child) => {
-              const active = childMatchesCurrent(child.href, pathname);
-              return <Link key={child.href} href={child.href} prefetch={false} className={active ? targetedStyles.settingsSubActive : ""} aria-current={active ? "page" : undefined}>{child.label}</Link>;
-            })}
-          </div> : null;
-          return [main, children];
-        })}
+        {WORKSPACE_NAV.map((item) => navLink(item))}
       </nav>
 
       <div className={`${styles.sidebarBottom} ${targetedStyles.sidebarBottomRefined}`}>
