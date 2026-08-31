@@ -5,6 +5,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { getWorkspaceContext, getWorkspaceRail, isWorkspaceNavActive, WORKSPACE_NAV, type WorkspaceNavItem } from "@/lib/workspace-navigation";
 import styles from "./app-shell.module.css";
+import targetedStyles from "./app-shell-targeted.module.css";
 
 type Me = { authenticated: boolean; name?: string; email?: string; role?: "ADMIN" | "MEMBER"; twoFactorEnabled?: boolean };
 type Balance = { paid: number; bonus: number; reserved: number; available: number };
@@ -75,6 +76,11 @@ function targetMatchesCurrent(href: string, pathname: string, search: SearchStat
   return true;
 }
 
+function childMatchesCurrent(href: string, pathname: string) {
+  const target = new URL(href, "https://scenova.local").pathname;
+  return pathname === target || pathname.startsWith(target + "/");
+}
+
 function WorkspaceShell({ children, pathname }: { children: React.ReactNode; pathname: string }) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -133,7 +139,8 @@ function WorkspaceShell({ children, pathname }: { children: React.ReactNode; pat
   const rawRail = useMemo(() => getWorkspaceRail(pathname), [pathname]);
   const rail = useMemo(() => rawRail.filter((item) => !item.adminOnly || me.role === "ADMIN"), [rawRail, me.role]);
   const context = useMemo(() => getWorkspaceContext(pathname), [pathname]);
-  const hideTopbar = pathname === "/studio";
+  const settingsScope = pathname.startsWith("/profile") || pathname.startsWith("/admin/security") || pathname.startsWith("/admin/ai-costs") || pathname.startsWith("/guide");
+  const hideTopbar = pathname === "/studio" || pathname.startsWith("/models") || pathname.startsWith("/wallet") || settingsScope;
   const showApiBackbar = pathname === "/profile/api";
   const activeRailIndex = useMemo(() => {
     const exact = rail.findIndex((item) => targetMatchesCurrent(item.href, pathname, searchParams, hash));
@@ -166,20 +173,40 @@ function WorkspaceShell({ children, pathname }: { children: React.ReactNode; pat
         <small data-keep-small>STUDIO</small>
       </Link>
 
-      <nav className={styles.mainNav} data-sc-main-nav aria-label="เมนูหลัก">{WORKSPACE_NAV.map(navLink)}</nav>
+      <nav className={styles.mainNav} data-sc-main-nav aria-label="เมนูหลัก">
+        {WORKSPACE_NAV.flatMap((item) => {
+          const main = navLink(item);
+          const showSettingsChildren = item.href === "/profile" && settingsScope && item.children?.length;
+          const children = showSettingsChildren ? <div key={`${item.href}-children`} className={targetedStyles.settingsSubnav} aria-label="เมนูย่อยการตั้งค่า">
+            {item.children?.filter((child) => !child.adminOnly || me.role === "ADMIN").map((child) => {
+              const active = childMatchesCurrent(child.href, pathname);
+              return <Link key={child.href} href={child.href} prefetch={false} className={active ? targetedStyles.settingsSubActive : ""} aria-current={active ? "page" : undefined}>{child.label}</Link>;
+            })}
+          </div> : null;
+          return [main, children];
+        })}
+      </nav>
 
-      <div className={styles.sidebarBottom}>
+      <div className={`${styles.sidebarBottom} ${targetedStyles.sidebarBottomRefined}`}>
         <div className="sc-theme-switch" role="group" aria-label="ธีมหน้าจอ">
           <button type="button" data-active={theme === "light"} aria-pressed={theme === "light"} onClick={() => applyTheme("light")}>☀ ขาว</button>
           <button type="button" data-active={theme === "dark"} aria-pressed={theme === "dark"} onClick={() => applyTheme("dark")}>☾ มืด</button>
         </div>
-        <Link href="/wallet" prefetch={false} className={styles.creditShortcut} data-sc-credit>
-          <small>เครดิตของคุณ</small>
-          <strong>{formatCredits(balance?.available)}</strong>
-          <span>เครดิต</span>
-          <b>เติมเครดิต</b>
-        </Link>
-        <Link href="/profile" prefetch={false} className={styles.profileCard} data-sc-profile>
+
+        <div className={targetedStyles.creditPanel} data-sc-credit>
+          <Link href="/wallet" prefetch={false} className={targetedStyles.creditSummary}>
+            <small>เครดิตของคุณ</small>
+            <strong>{formatCredits(balance?.available)}</strong>
+            <span className={targetedStyles.creditUnit}>เครดิต</span>
+          </Link>
+          <div className={targetedStyles.creditActions}>
+            <Link href="/wallet" prefetch={false}>ยอดเครดิต</Link>
+            <Link href="/wallet#activity" prefetch={false}>ประวัติการใช้</Link>
+          </div>
+          <Link href="/wallet" prefetch={false} className={targetedStyles.topUpShortcut}>เติมเครดิต</Link>
+        </div>
+
+        <Link href="/profile" prefetch={false} className={`${styles.profileCard} ${targetedStyles.profileCardRefined}`} data-sc-profile>
           <span className={styles.profileAvatar}><Icon name="profile" /></span>
           <span className={styles.profileCopy}><b>{me.name || "SCENOVA"}</b><small>{me.role === "ADMIN" ? "Administrator" : "สมาชิก SCENOVA"}</small></span>
           <span className={styles.profileArrow}><Icon name="arrow" /></span>
