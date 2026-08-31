@@ -1,3 +1,9 @@
+export type WorkspaceNavChild = {
+  href: string;
+  label: string;
+  adminOnly?: boolean;
+};
+
 export type WorkspaceNavItem = {
   href: string;
   icon: "home" | "project" | "ai" | "board" | "library" | "settings" | "help";
@@ -5,6 +11,7 @@ export type WorkspaceNavItem = {
   description: string;
   badge?: string;
   activePaths?: readonly string[];
+  children?: readonly WorkspaceNavChild[];
 };
 
 export type WorkspaceRailItem = {
@@ -18,10 +25,25 @@ export type WorkspaceRailItem = {
 export const WORKSPACE_NAV: readonly WorkspaceNavItem[] = [
   { href: "/portal", icon: "home", label: "เริ่มต้น", description: "ภาพรวมสตูดิโอ" },
   { href: "/studio", icon: "ai", label: "AI Studio", description: "สร้างและกำกับงาน", badge: "AI" },
+  { href: "/models", icon: "board", label: "โมเดล & เรทราคา", description: "เปรียบเทียบโมเดล ความสามารถ และราคา" },
   { href: "/agent", icon: "ai", label: "AI Agent", description: "งานอัตโนมัติ การอนุมัติ ค่าใช้จ่าย และคิวสร้าง", badge: "AG" },
   { href: "/series", icon: "project", label: "Series Studio", description: "ซีรีส์ ตอน และ Storyboard", badge: "EP", activePaths: ["/series", "/director", "/camera", "/dialogue", "/reference"] },
   { href: "/libraries", icon: "library", label: "คลังทรัพยากร", description: "ตัวละคร เสียง และสไตล์" },
-  { href: "/profile", icon: "settings", label: "การตั้งค่า", description: "บัญชี API 2FA ความปลอดภัย และระบบ", activePaths: ["/profile", "/admin"] },
+  {
+    href: "/profile",
+    icon: "settings",
+    label: "การตั้งค่า",
+    description: "บัญชี API 2FA ความปลอดภัย และระบบ",
+    activePaths: ["/profile", "/admin/security", "/admin/ai-costs", "/guide"],
+    children: [
+      { href: "/profile/account", label: "บัญชี" },
+      { href: "/profile/api", label: "API & Models" },
+      { href: "/profile/2fa", label: "2FA" },
+      { href: "/admin/security", label: "Security Center", adminOnly: true },
+      { href: "/admin/ai-costs", label: "AI & Cost", adminOnly: true },
+      { href: "/guide", label: "คู่มือการใช้งาน" },
+    ],
+  },
   { href: "/portal#guide", icon: "help", label: "ช่วยเหลือ", description: "เมนูผู้ดูแลระบบ", activePaths: [] },
 ] as const;
 
