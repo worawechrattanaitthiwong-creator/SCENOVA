@@ -11,7 +11,6 @@ export default function ModelsPage() {
         <div><span className={styles.eyebrow}>MODEL CENTER</span><h1>โมเดล & เรทราคา</h1><p>เปรียบเทียบโมเดลก่อนใช้งาน ดูความยาวสูงสุด ความละเอียด Audio, Reference และระดับราคา แล้วกลับไปเลือกใน Studio</p></div>
         <Link href="/studio#setup" className={styles.primaryLink}>กลับ Studio</Link>
       </header>
-      <div className={styles.notice}>ยังไม่ใช้ Pricing API สด จึงแสดง “ระดับราคา” แทนตัวเลขตายตัวเพื่อไม่ให้ข้อมูลล้าสมัย เมื่อเชื่อม Provider ระบบจะคำนวณราคา/วินาทีและเครดิตจาก Server ก่อนยืนยันทุกครั้ง</div>
       <div className={styles.grid}>
         {VIDEO_MODELS.map((model) => <article key={model.id} className={styles.card}>
           <div className={styles.cardTop}><div><b>{model.name}</b><span className={styles.provider}>{model.provider}</span></div><span className={styles.price}>{priceLabel(model.priceLevel)}</span></div>
