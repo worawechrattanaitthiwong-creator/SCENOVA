@@ -39,6 +39,18 @@ type ContinuityInsight = {
   provider: string;
   costThb: number;
 };
+type SceneAnalysisInsight = {
+  summary: string;
+  narrative: string;
+  emotion: string;
+  camera: string;
+  lighting: string;
+  audio: string;
+  characterDirection: string;
+  provider: string;
+  costThb: number;
+  patch: Partial<SeriesScene>;
+};
 type SeriesScene = {
   id: string;
   title: string;
@@ -254,6 +266,8 @@ export default function SeriesManagerV3(){
   const [agentSubmitting,setAgentSubmitting]=useState(false);
   const [continuityAnalyzing,setContinuityAnalyzing]=useState(false);
   const [continuityInsight,setContinuityInsight]=useState<ContinuityInsight|null>(null);
+  const [sceneAnalyzing,setSceneAnalyzing]=useState(false);
+  const [sceneInsight,setSceneInsight]=useState<SceneAnalysisInsight|null>(null);
   const [message,setMessage]=useState("Series Workspace พร้อมใช้งาน — เริ่มจาก Series Bible แล้วทำทีละ Episode");
 
   useEffect(()=>{try{
@@ -282,6 +296,7 @@ export default function SeriesManagerV3(){
     window.addEventListener("hashchange",syncTab);
     return()=>window.removeEventListener("hashchange",syncTab);
   },[]);
+  useEffect(()=>{setSceneInsight(null);},[selectedEpisodeId,selectedSceneId]);
 
   const episode=useMemo(()=>series.episodes.find(ep=>ep.id===selectedEpisodeId)??series.episodes[0],[series,selectedEpisodeId]);
   const scene=useMemo(()=>episode.scenes.find(s=>s.id===selectedSceneId)??episode.scenes[0],[episode,selectedSceneId]);
@@ -362,6 +377,90 @@ export default function SeriesManagerV3(){
     }finally{
       setContinuityAnalyzing(false);
     }
+  }
+
+  async function analyzeScene(){
+    if(sceneAnalyzing)return;
+    const sceneIndex=episode.scenes.findIndex(item=>item.id===scene.id);
+    const previousScene=sceneIndex>0?episode.scenes[sceneIndex-1]:null;
+    const nextScene=sceneIndex<episode.scenes.length-1?episode.scenes[sceneIndex+1]:null;
+    setSceneAnalyzing(true);
+    setMessage(`AI กำลังวิเคราะห์ Scene ${String(sceneIndex+1).padStart(2,"0")} จากบท อารมณ์ และความต่อเนื่อง...`);
+    try{
+      const response=await fetch("/api/ai/analyze",{
+        method:"POST",
+        credentials:"same-origin",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          prompt:"วิเคราะห์ Storyboard Scene ปัจจุบันในบริบทของ Series และ Episode ทั้งหมด ตรวจความต่อเนื่องจากฉากก่อนหน้าและการส่งต่อไปฉากถัดไป แล้วเสนอเหตุการณ์ อารมณ์ การกำกับตัวละคร กล้อง แสง และเสียงที่เหมาะสม ห้ามเปลี่ยน Canon หรือ Production Locks และยังไม่ต้องสร้างวิดีโอ",
+          context:{
+            seriesTitle:series.title,
+            seriesPremise:series.premise,
+            characterBible:series.characterBible,
+            canonRules:series.canonRules,
+            visualStyle:series.visualStyle,
+            locks:series.locks,
+            episodeNumber:episode.number,
+            episodeTitle:episode.title,
+            episodeSynopsis:episode.synopsis,
+            continuityIn:episode.continuityStart,
+            continuityOut:episode.endingState,
+            sceneNumber:sceneIndex+1,
+            currentScene:scene,
+            previousScene:previousScene?{title:previousScene.title,action:previousScene.action,emotion:previousScene.emotion,continuityNote:previousScene.continuityNote,camera:`${previousScene.shot} · ${previousScene.angle} · ${previousScene.movement}`,lighting:previousScene.lighting,sound:previousScene.sound}:null,
+            nextScene:nextScene?{title:nextScene.title,action:nextScene.action,objective:nextScene.objective,beat:nextScene.beat}:null,
+          },
+        }),
+      });
+      const data=await response.json() as {analysis?:ProductionAnalysis;provider?:string;usage?:{costThb?:number};error?:string};
+      if(!response.ok||!data.analysis)throw new Error(friendlySystemError(data.error||"ANALYZER_FAILED"));
+      const analysis=data.analysis;
+      const dialogue=analysis.characters.map(item=>item.dialogue?`${item.name}: ${item.dialogue}`:"").filter(Boolean).join("\n");
+      const characterDirection=analysis.characters.length
+        ?analysis.characters.map(item=>`${item.name}: ${item.action} · ${item.emotion}`).join("; ")
+        :"รักษาการกระทำและอารมณ์ตาม Character Bible";
+      const camera=[analysis.camera.shotType,analysis.camera.angle,analysis.camera.lensMm?`${analysis.camera.lensMm}mm`:"",analysis.camera.movement].filter(Boolean).join(" · ");
+      const lighting=[analysis.lighting.style,analysis.lighting.mood].filter(Boolean).join(" · ");
+      const audio=[analysis.audio.ambience,analysis.audio.music,...analysis.audio.soundEffects].filter(Boolean).join(" · ");
+      const continuityNote=[
+        `ผลของฉาก: ${analysis.summaryTh}`,
+        `สถานะตัวละคร: ${characterDirection}`,
+        `ส่งต่อฉากถัดไป: ${nextScene?.objective||nextScene?.action||episode.endingState}`,
+        `รักษา: ${series.locks.join(", ")||"Canon, Character และ Visual Style"}`,
+      ].join("\n");
+      const suggestedPatch:Partial<SeriesScene>={
+        action:analysis.scene.description||scene.action,
+        location:analysis.scene.location||scene.location,
+        shot:analysis.camera.shotType||scene.shot,
+        angle:analysis.camera.angle||scene.angle,
+        lens:analysis.camera.lensMm?`${analysis.camera.lensMm}mm`:scene.lens,
+        movement:analysis.camera.movement||scene.movement,
+        height:analysis.camera.cameraHeight||scene.height,
+        composition:analysis.camera.composition||scene.composition,
+        dof:analysis.camera.depthOfField||scene.dof,
+        lighting:analysis.lighting.style||scene.lighting,
+        emotion:analysis.characters[0]?.emotion||analysis.lighting.mood||scene.emotion,
+        dialogue:dialogue||scene.dialogue,
+        sound:analysis.audio.ambience||scene.sound,
+        music:analysis.audio.music||scene.music,
+        sfx:analysis.audio.soundEffects.join(", ")||scene.sfx,
+        continuityNote,
+      };
+      setSceneInsight({summary:analysis.summaryTh,narrative:analysis.scene.description,emotion:analysis.lighting.mood,camera,lighting,audio,characterDirection,provider:data.provider||"AI Analyzer",costThb:Number(data.usage?.costThb||0),patch:suggestedPatch});
+      setMessage("AI วิเคราะห์ Scene แล้ว ตรวจคำแนะนำก่อนกดนำไปใช้กับ Storyboard");
+    }catch(error){
+      const raw=error instanceof Error?error.message:"ANALYZER_FAILED";
+      setMessage(friendlySystemError(raw));
+    }finally{
+      setSceneAnalyzing(false);
+    }
+  }
+
+  function applySceneAnalysis(){
+    if(!sceneInsight)return;
+    patchScene(sceneInsight.patch);
+    setMessage("นำคำแนะนำ AI ไปใช้กับ Scene แล้ว คุณยังแก้รายละเอียดทุกช่องต่อได้");
+    setSceneInsight(null);
   }
 
   function selectEpisode(item:EpisodeRecord){setSelectedEpisodeId(item.id);setSelectedSceneId(item.scenes[0]?.id||"");}
@@ -498,7 +597,17 @@ export default function SeriesManagerV3(){
       <div className={styles.sectionTitle}><div><span>EP {String(episode.number).padStart(2,"0")} · STORYBOARD & SCENE DIRECTION</span><h2>ออกแบบภาพ กล้อง การแสดง และเสียงรายฉาก</h2></div><div className={styles.timeSummary}><b>{used}/{episode.duration}s</b><span>เหลือ {remaining}s</span></div></div>
       <div className={styles.timeline}>{episode.scenes.map((item,index)=><button key={item.id} className={item.id===scene.id?styles.activeScene:""} onClick={()=>setSelectedSceneId(item.id)} style={{flexGrow:Math.max(1,item.duration)}}><b>{index+1}</b><span>{item.duration}s</span></button>)}</div>
       <div className={styles.storyboardRail}>{episode.scenes.map((item,index)=><button type="button" key={item.id} className={item.id===scene.id?styles.activeBoardCard:""} onClick={()=>setSelectedSceneId(item.id)}><span>SCENE {String(index+1).padStart(2,"0")}</span><strong>{item.title}</strong><p>{item.action||"ยังไม่ได้ระบุเหตุการณ์ของฉาก"}</p><small>{item.shot} · {item.angle} · {item.lens} · {item.duration}s</small></button>)}</div>
-      <div className={styles.sceneTools}><span>Storyboard ทุกฉากบันทึกอัตโนมัติ และใช้ Preset หรือพิมพ์ค่ากำกับเองได้</span><div><Link href="/libraries?tab=ambience">♫ คลังเสียง</Link><button onClick={addScene}>＋ เพิ่ม Scene</button></div></div>
+      <div className={styles.sceneTools}><span>Storyboard ทุกฉากบันทึกอัตโนมัติ และใช้ Preset หรือพิมพ์ค่ากำกับเองได้</span><div><button type="button" className={styles.aiSceneButton} onClick={analyzeScene} disabled={sceneAnalyzing}>{sceneAnalyzing?"กำลังวิเคราะห์...":"✦ วิเคราะห์ Scene ด้วย AI"}</button><Link href="/libraries?tab=ambience">♫ คลังเสียง</Link><button onClick={addScene}>＋ เพิ่ม Scene</button></div></div>
+      {sceneInsight&&<article className={styles.sceneAiCard}>
+        <div className={styles.sceneAiHead}><span className={styles.sceneAiBadge}>AI</span><div><small>AI SCENE ANALYSIS</small><h3>{sceneInsight.summary}</h3><p>{sceneInsight.narrative}</p></div></div>
+        <div className={styles.sceneAiGrid}>
+          <div><span>อารมณ์และตัวละคร</span><strong>{sceneInsight.emotion}</strong><p>{sceneInsight.characterDirection}</p></div>
+          <div><span>กล้อง</span><strong>{sceneInsight.camera||"รักษาทิศทางกล้องเดิม"}</strong></div>
+          <div><span>แสง</span><strong>{sceneInsight.lighting||"รักษาแสงตาม Visual Style"}</strong></div>
+          <div><span>เสียง</span><strong>{sceneInsight.audio||"รักษา Soundscape ต่อเนื่อง"}</strong></div>
+        </div>
+        <div className={styles.sceneAiActions}><small>{sceneInsight.provider}{sceneInsight.costThb>0?` · ฿${sceneInsight.costThb.toFixed(4)}`:" · BYOK"}</small><div><button type="button" onClick={analyzeScene} disabled={sceneAnalyzing}>วิเคราะห์ใหม่</button><button type="button" onClick={applySceneAnalysis}>ใช้คำแนะนำกับ Scene</button></div></div>
+      </article>}
       <div className={styles.sceneWorkspace}>
         <aside>{episode.scenes.map((item,index)=><button key={item.id} className={item.id===scene.id?styles.activeList:""} onClick={()=>setSelectedSceneId(item.id)}><b>{String(index+1).padStart(2,"0")}</b><span><strong>{item.title}</strong><small>{item.shot} • {item.lens}</small></span></button>)}</aside>
         <div className={styles.sceneEditor}>
