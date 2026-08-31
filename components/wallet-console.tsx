@@ -53,7 +53,7 @@ export default function WalletConsole() {
         <h1>เครดิตและค่าใช้จ่าย</h1>
         <p>ดูยอดพร้อมใช้ เครดิตที่ถูกพักไว้ และรายการใช้เครดิตจริงจากงาน AI / Preview / Video ได้จากหน้าเดียว ไม่มีแพ็กเกจรายเดือน</p>
       </div>
-      <div className={styles.heroActions}><Link href="/models">ดูราคาโมเดล</Link><Link href="/render">ดูคิวสร้างวิดีโอ →</Link></div>
+      <div className={styles.heroActions}><Link href="/models">ดูราคาโมเดล</Link></div>
     </header>
 
     <section className={styles.metrics} aria-label="สรุปเครดิต">
