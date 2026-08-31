@@ -1,0 +1,31 @@
+name: Remove Studio Draft And Render Controls
+
+on:
+  push:
+    paths:
+      - "scripts/remove-studio-draft-render.mjs"
+      - ".github/workflows/remove-studio-draft-render.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch-main:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Remove Studio draft and render controls
+        run: node scripts/remove-studio-draft-render.mjs
+      - name: Commit Studio cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add components/single-episode-studio.tsx
+          git diff --cached --quiet && exit 0
+          git commit -m "Remove Studio draft and render queue controls"
+          git push origin HEAD:main
