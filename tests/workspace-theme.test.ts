@@ -7,13 +7,16 @@ const root = process.cwd();
 const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8");
 
 describe("workspace navigation audit", () => {
-  it("keeps every primary product workspace reachable from the main sidebar", () => {
+  it("keeps primary workspaces reachable and groups Storyboard under Series Studio", () => {
     const hrefs = WORKSPACE_NAV.map((item) => item.href);
     expect(hrefs).toContain("/portal");
     expect(hrefs).toContain("/studio");
     expect(hrefs).toContain("/agent");
     expect(hrefs).toContain("/series");
-    expect(hrefs).toContain("/director");
+    expect(hrefs).not.toContain("/director");
+    expect(WORKSPACE_NAV.find((item) => item.href === "/series")?.activePaths).toEqual(
+      expect.arrayContaining(["/series", "/director", "/camera", "/dialogue", "/reference"]),
+    );
     expect(hrefs).toContain("/libraries");
     expect(hrefs).toContain("/profile");
   });

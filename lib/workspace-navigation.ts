@@ -19,8 +19,7 @@ export const WORKSPACE_NAV: readonly WorkspaceNavItem[] = [
   { href: "/portal", icon: "home", label: "เริ่มต้น", description: "ภาพรวมสตูดิโอ" },
   { href: "/studio", icon: "ai", label: "AI Studio", description: "สร้างและกำกับงาน", badge: "AI" },
   { href: "/agent", icon: "ai", label: "AI Agent", description: "งานอัตโนมัติ การอนุมัติ ค่าใช้จ่าย และคิวสร้าง", badge: "AG" },
-  { href: "/series", icon: "project", label: "Series", description: "ซีรีส์และตอนของคุณ", badge: "EP" },
-  { href: "/director", icon: "board", label: "สตอรี่บอร์ด", description: "ฉาก กล้อง และไทม์ไลน์", activePaths: ["/director", "/camera", "/dialogue", "/reference"] },
+  { href: "/series", icon: "project", label: "Series Studio", description: "ซีรีส์ ตอน และ Storyboard", badge: "EP", activePaths: ["/series", "/director", "/camera", "/dialogue", "/reference"] },
   { href: "/libraries", icon: "library", label: "คลังทรัพยากร", description: "ตัวละคร เสียง และสไตล์" },
   { href: "/profile", icon: "settings", label: "การตั้งค่า", description: "บัญชี API 2FA ความปลอดภัย และระบบ", activePaths: ["/profile", "/admin"] },
   { href: "/portal#guide", icon: "help", label: "ช่วยเหลือ", description: "เมนูผู้ดูแลระบบ", activePaths: [] },
@@ -41,10 +40,10 @@ const studioRail: readonly WorkspaceRailItem[] = [
 ] as const;
 
 const seriesRail: readonly WorkspaceRailItem[] = [
-  { href: "/series#history", icon: "EP", label: "ลำดับตอน", description: "จัดการ Episode ทั้งหมด" },
-  { href: "/series#episode-editor", icon: "▣", label: "พื้นที่ทำตอน", description: "แก้เนื้อหาและ Scene" },
-  { href: "/series#continuity", icon: "◇", label: "ความต่อเนื่อง", description: "Canon และ Continuity Lock" },
-  { href: "/libraries?tab=videos", icon: "▶", label: "ตอนที่สร้างแล้ว", description: "เปิดคลังวิดีโอ" },
+  { href: "/series#overview", icon: "◇", label: "ภาพรวมซีรีส์", description: "Series Bible และ Canon" },
+  { href: "/series#episodes", icon: "EP", label: "ตอนและความต่อเนื่อง", description: "จัดการ Episode และ Ending State" },
+  { href: "/series#storyboard", icon: "▤", label: "Storyboard", description: "ฉาก กล้อง เสียง และไทม์ไลน์" },
+  { href: "/series#production", icon: "▶", label: "ส่งผลิต", description: "AI Agent และประวัติวิดีโอ" },
 ] as const;
 
 const directorRail: readonly WorkspaceRailItem[] = [

@@ -27,7 +27,7 @@ function readVideos(): VideoItem[] {
   }
 }
 
-export default function SeriesVideoHistory() {
+export default function SeriesVideoHistory({ embedded = false }: { embedded?: boolean }) {
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [ready, setReady] = useState(false);
 
@@ -68,7 +68,7 @@ export default function SeriesVideoHistory() {
   }
 
   return (
-    <section className={styles.wrap} id="video-history">
+    <section className={`${styles.wrap} ${embedded ? styles.embedded : ""}`} id="video-history">
       <header className={styles.header}>
         <div>
           <span>SERIES VIDEO HISTORY</span>

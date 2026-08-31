@@ -1,8 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import styles from "./series-manager-v3.module.css";
+import SeriesVideoHistory from "./series-video-history";
+import { buildStudioAgentProject } from "@/lib/agent/studio-project";
 import {
   CAMERA_ANGLES,
   CAMERA_HEIGHTS,
@@ -26,6 +29,7 @@ import {
 import { AMBIENCE_PRESETS, MUSIC_PRESETS, SFX_PRESETS } from "@/lib/sound-design-options";
 
 type EpisodeStatus = "draft" | "ready" | "completed";
+type WorkspaceTab = "overview" | "episodes" | "storyboard" | "production";
 type SeriesScene = {
   id: string;
   title: string;
@@ -85,11 +89,8 @@ type SeriesRecord = {
   updatedAt: string;
   episodes: EpisodeRecord[];
 };
-type VideoItem = { id: string; ep: number; epTitle: string; projectTitle: string; duration: number; createdAt: string; url?: string; status: "completed" | "processing" };
-
 const SERIES_KEY = "scenova-series-workspace-v3";
 const LEGACY_KEY = "scenova-series-history-v1";
-const VIDEO_KEY = "scenova-video-library-v1";
 const DURATIONS = [10, 15, 30, 60, 90, 120, 150, 180];
 const MODELS = ["Seedance 2.5", "Kling", "Veo", "Runway", "Wan"];
 const STYLES = [
@@ -235,10 +236,14 @@ function LevelField({label,value,onChange}:{label:string;value:number;onChange:(
 }
 
 export default function SeriesManagerV3(){
+  const router=useRouter();
   const [series,setSeries]=useState<SeriesRecord>(DEFAULT_SERIES);
   const [selectedEpisodeId,setSelectedEpisodeId]=useState(DEFAULT_SERIES.episodes[0].id);
   const [selectedSceneId,setSelectedSceneId]=useState(DEFAULT_SERIES.episodes[0].scenes[0].id);
   const [hydrated,setHydrated]=useState(false);
+  const [activeTab,setActiveTab]=useState<WorkspaceTab>("overview");
+  const [agentSubmitting,setAgentSubmitting]=useState(false);
+  const [agentBudgetThb,setAgentBudgetThb]=useState(500);
   const [message,setMessage]=useState("Series Workspace พร้อมใช้งาน — เริ่มจาก Series Bible แล้วทำทีละ Episode");
 
   useEffect(()=>{try{
@@ -258,6 +263,15 @@ export default function SeriesManagerV3(){
     }
   }catch{setMessage("อ่าน Series History เดิมไม่สำเร็จ จึงเปิด Workspace ใหม่");}finally{setHydrated(true);}},[]);
   useEffect(()=>{if(hydrated)localStorage.setItem(SERIES_KEY,JSON.stringify(series));},[series,hydrated]);
+  useEffect(()=>{
+    const syncTab=()=>{
+      const hash=window.location.hash.replace("#","") as WorkspaceTab;
+      if(["overview","episodes","storyboard","production"].includes(hash))setActiveTab(hash);
+    };
+    syncTab();
+    window.addEventListener("hashchange",syncTab);
+    return()=>window.removeEventListener("hashchange",syncTab);
+  },[]);
 
   const episode=useMemo(()=>series.episodes.find(ep=>ep.id===selectedEpisodeId)??series.episodes[0],[series,selectedEpisodeId]);
   const scene=useMemo(()=>episode.scenes.find(s=>s.id===selectedSceneId)??episode.scenes[0],[episode,selectedSceneId]);
@@ -267,6 +281,8 @@ export default function SeriesManagerV3(){
   const previousEpisode=series.episodes.find(ep=>ep.number===episode.number-1);
   const statusLabel:Record<EpisodeStatus,string>={draft:"กำลังวางแผน",ready:"พร้อม Production",completed:"เสร็จสมบูรณ์"};
   const continuityScore=Math.min(100,[series.premise,series.canonRules,series.characterBible,episode.continuityStart,episode.endingState,...episode.scenes.map(s=>s.continuityNote)].filter(v=>String(v).trim().length>8).length*12);
+  const totalScenes=series.episodes.reduce((sum,item)=>sum+item.scenes.length,0);
+  const totalDuration=series.episodes.reduce((sum,item)=>sum+item.duration,0);
 
   function patchSeries(patch:Partial<SeriesRecord>){setSeries(current=>({...current,...patch,updatedAt:new Date().toISOString()}));}
   function patchEpisode(patch:Partial<EpisodeRecord>){setSeries(current=>({...current,updatedAt:new Date().toISOString(),episodes:current.episodes.map(ep=>ep.id===episode.id?{...ep,...patch,updatedAt:new Date().toISOString()}:ep)}));}
@@ -276,22 +292,95 @@ export default function SeriesManagerV3(){
   function setDuration(value:number){const other=used-scene.duration;patchScene({duration:Math.max(1,Math.min(value,episode.duration-other))});}
   function createNext(){if(lastEpisode.status!=="completed")return setMessage(`ต้อง Complete Episode ${String(lastEpisode.number).padStart(2,"0")} ก่อน จึงสร้างตอนถัดไปได้`);const next=createEpisode(lastEpisode.number+1,lastEpisode);setSeries(current=>({...current,updatedAt:new Date().toISOString(),episodes:[...current.episodes,next]}));setSelectedEpisodeId(next.id);setSelectedSceneId(next.scenes[0].id);setMessage(`สร้าง Episode ${String(next.number).padStart(2,"0")} แล้ว ระบบ Carry Forward Ending State, Camera, Lighting และ Soundscape จากตอนก่อน`);}
   function markReady(){patchEpisode({status:"ready"});setMessage("Episode นี้พร้อม Production แล้ว ตรวจ Continuity, Scene Timing และ Sound Design ก่อน Render");}
-  function complete(){const now=new Date().toISOString();patchEpisode({status:"completed",updatedAt:now});try{const raw=localStorage.getItem(VIDEO_KEY);const items=raw?JSON.parse(raw) as VideoItem[]:[];const video:VideoItem={id:`video_${episode.id}`,ep:episode.number,epTitle:episode.title,projectTitle:series.title,duration:episode.duration,createdAt:now,url:`/api/mock-video?ep=${episode.number}`,status:"completed"};localStorage.setItem(VIDEO_KEY,JSON.stringify([video,...items.filter(i=>i.id!==video.id)]));window.dispatchEvent(new Event("scenova-video-library-updated"));}catch{}setMessage("Episode เสร็จสมบูรณ์ — Ending State ถูกล็อกไว้เพื่อสร้าง Episode ถัดไป และรายการส่งไป Video Library แล้ว");}
+  function complete(){const now=new Date().toISOString();patchEpisode({status:"completed",updatedAt:now});setMessage("ปิดแผน Episode แล้ว — Ending State ถูกล็อกเป็นจุดเริ่มต้นของตอนถัดไป ส่วนวิดีโอจะปรากฏเมื่อ Production สร้างสำเร็จจริง");}
   function aiContinuity(){const previous=previousEpisode?.endingState||series.premise;patchEpisode({continuityStart:`เริ่มจาก Canon เดิม: ${previous}\nรักษา Character / Voice / Soundscape / Costume / Props / Location State และความสัมพันธ์เดิมทั้งหมดก่อนเพิ่มเหตุการณ์ใหม่`,endingState:`บันทึกตอนจบให้ครบ: ตำแหน่งตัวละคร, อารมณ์, ความสัมพันธ์, สิ่งที่ตัวละครรู้, Prop ที่ถืออยู่, Location, Soundscape, เวลาในเรื่อง และ Hook สำหรับ Episode ${String(episode.number+1).padStart(2,"0")}`});setMessage("AI Continuity Assist เติมโครงส่งต่อให้แล้ว กรุณาปรับรายละเอียดให้ตรงกับเนื้อเรื่องจริง");}
 
-  return <main className={styles.main}>
+  function selectEpisode(item:EpisodeRecord){setSelectedEpisodeId(item.id);setSelectedSceneId(item.scenes[0]?.id||"");}
+  function changeTab(tab:WorkspaceTab){setActiveTab(tab);window.history.replaceState(null,"",`#${tab}`);}
+
+  async function sendToAgent(){
+    if(agentSubmitting)return;
+    if(!episode.synopsis.trim()){
+      setMessage("กรุณาใส่สรุปเหตุการณ์ของ Episode ก่อนส่งให้ทีม AI");
+      changeTab("episodes");
+      return;
+    }
+    if(continuityScore<72&&!window.confirm(`Continuity Health อยู่ที่ ${continuityScore}% ข้อมูลบางส่วนอาจยังไม่ครบ\n\nต้องการส่ง Episode นี้ให้ทีม AI ทำงานต่อหรือไม่?`))return;
+    setAgentSubmitting(true);
+    setMessage(`กำลังส่ง Episode ${String(episode.number).padStart(2,"0")} ให้ทีม AI...`);
+    try{
+      const project=buildStudioAgentProject({
+        episodeTitle:`${series.title} — EP ${String(episode.number).padStart(2,"0")}: ${episode.title}`,
+        model:series.model,
+        aspect:series.aspect,
+        visualStyle:series.visualStyle,
+        story:[`Series Premise: ${series.premise}`,`Episode Synopsis: ${episode.synopsis}`,`Continuity Start: ${episode.continuityStart}`,`Ending State: ${episode.endingState}`,`Character Bible: ${series.characterBible}`].join("\n\n"),
+        globalNegative:`Canon Rules: ${series.canonRules}`,
+        locks:series.locks,
+        characters:[],
+        hasAnimals:false,
+        animals:[],
+        totalDuration:episode.duration,
+        scenes:episode.scenes.map((item)=>({
+          id:item.id,title:item.title,duration:item.duration,location:item.location,action:item.action,dialogue:item.dialogue,
+          characterIds:[],cameraSubjectId:item.focus,shot:item.shot,angle:item.angle,lens:item.lens,movement:item.movement,height:item.height,
+          cameraSpeed:item.cameraSpeed,focus:item.focus,dof:item.dof,composition:item.composition,lighting:item.lighting,colorTemp:item.colorTemp,
+          emotion:item.emotion,performance:item.performance,ambience:item.sound,secondaryAmbience:item.secondarySound,sfx:item.sfx,
+          sfxTimeline:item.sfxTimeline,music:item.music,continuityNote:item.continuityNote,negativePrompt:series.canonRules,
+        })),
+      },crypto.randomUUID());
+      const response=await fetch("/api/agent/runs",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({project,episodeIndex:0,maxEpisodes:1,budgetThb:agentBudgetThb,mode:"SERIES_STORYBOARD"})});
+      const data=await response.json() as {runId?:string;error?:string};
+      if(!response.ok||!data.runId){
+        const friendly=data.error==="AGENT_USER_CONCURRENCY_LIMIT"?"มีงาน Agent กำลังทำครบจำนวนแล้ว กรุณารอหรือยกเลิกงานเดิมก่อน":data.error||"ส่งงานให้ทีม AI ไม่สำเร็จ";
+        throw new Error(friendly);
+      }
+      localStorage.setItem("scenova-last-agent-run-v1",data.runId);
+      setMessage("ส่ง Storyboard ให้ทีม AI แล้ว กำลังเปิดศูนย์ควบคุม...");
+      router.push(`/agent?run=${encodeURIComponent(data.runId)}`);
+    }catch(error){
+      setMessage(error instanceof Error?error.message:"ส่งงานให้ทีม AI ไม่สำเร็จ");
+      setAgentSubmitting(false);
+    }
+  }
+
+  return <main className={styles.main} data-sc-help-ignore>
     <header className={styles.hero}>
-      <div><span>SCENOVA SERIES PRODUCTION</span><h1>Series Continuity Workspace — พื้นที่ทำซีรีส์ต่อเนื่อง</h1><p>สำหรับงานหลาย Episode ที่ต้องรักษาเรื่อง ตัวละคร ภาพ เสียง Soundscape และ Camera Language ให้ต่อเนื่อง พร้อมเครื่องมือกำกับ Scene ระดับเดียวกับ Studio</p></div>
-      <div className={styles.heroActions}><Link href="/libraries?tab=videos">Video Library — คลังวิดีโอ</Link><Link href="/libraries?tab=ambience">Sound Library — คลังเสียงฉาก</Link><button onClick={createNext} disabled={lastEpisode.status!=="completed"}>＋ Next Episode — ตอนถัดไป</button></div>
+      <div><span>SCENOVA SERIES STUDIO</span><h1>สร้างซีรีส์และ Storyboard ในที่เดียว</h1><p>วาง Series Bible จัดลำดับตอน คุม Continuity และกำกับทุก Scene ก่อนส่ง Episode ที่เลือกให้ทีม AI ผลิต โดย AI Studio ยังคงแยกสำหรับงานตอนเดียวจบ</p></div>
+      <div className={styles.heroActions}><Link href="/libraries?tab=videos">คลังวิดีโอ</Link><Link href="/libraries?tab=ambience">คลังเสียง</Link><button onClick={createNext} disabled={lastEpisode.status!=="completed"}>＋ สร้างตอนถัดไป</button></div>
     </header>
 
+    <section className={styles.workspaceBar} id="series-workspace">
+      <div className={styles.workspaceStats}>
+        <article><span>ซีรีส์ปัจจุบัน</span><strong>{series.title||"ยังไม่ตั้งชื่อ"}</strong><small>บันทึกอัตโนมัติบนอุปกรณ์นี้</small></article>
+        <article><span>จำนวนตอน</span><strong>{series.episodes.length}</strong><small>{totalScenes} Scenes ทั้งหมด</small></article>
+        <article><span>ความยาวแผน</span><strong>{totalDuration}s</strong><small>Episode ปัจจุบัน {episode.duration}s</small></article>
+        <article><span>Continuity Health</span><strong>{continuityScore}%</strong><small>{statusLabel[episode.status]}</small></article>
+      </div>
+      <nav className={styles.tabs} aria-label="พื้นที่ทำงาน Series">
+        {([
+          ["overview","01","ภาพรวมซีรีส์","Bible, Canon และ Locks"],
+          ["episodes","02","ตอนและความต่อเนื่อง","Synopsis และ Ending State"],
+          ["storyboard","03","Storyboard","Scene, กล้อง ภาพ และเสียง"],
+          ["production","04","ส่งผลิต","AI Agent และประวัติวิดีโอ"],
+        ] as const).map(([key,number,label,description])=><button type="button" key={key} className={activeTab===key?styles.activeTab:""} onClick={()=>changeTab(key)}><b>{number}</b><span><strong>{label}</strong><small>{description}</small></span></button>)}
+      </nav>
+      <div className={styles.workspaceStatus}><span className={hydrated?styles.savedDot:""}/><strong>{message}</strong><small>เลือก Episode ด้านล่างก่อนแก้ Storyboard หรือส่งผลิต</small></div>
+    </section>
+
+    <section id="history" className={styles.history}>
+      <div className={styles.sectionTitle}><div><span>EPISODE NAVIGATOR</span><h2>เลือกตอนที่ต้องการทำงาน</h2></div><span>{series.episodes.length} Episodes • เลือกแล้ว: EP {String(episode.number).padStart(2,"0")}</span></div>
+      <div className={styles.historyRail}>{series.episodes.map(ep=><button type="button" key={ep.id} className={ep.id===episode.id?styles.activeEpisode:""} onClick={()=>selectEpisode(ep)}><span>EPISODE {String(ep.number).padStart(2,"0")}</span><b>{ep.title}</b><small>{ep.scenes.length} Scenes • {ep.duration}s • {statusLabel[ep.status]}</small></button>)}</div>
+    </section>
+
+    {activeTab==="overview"&&<>
     <section className={styles.guide}>
-      <div className={styles.guideHead}><b>วิธีใช้งาน Series แบบง่าย</b><span>ทำตาม 4 ขั้นนี้ ระบบจะพยายามรักษา Continuity ให้มากที่สุด</span></div>
+      <div className={styles.guideHead}><b>ขั้นตอนทำซีรีส์ที่ใช้งานจริง</b><span>ตั้งข้อมูลกลางครั้งเดียว แล้วทำ Episode และ Storyboard ทีละตอน</span></div>
       <div className={styles.guideGrid}>
-        <article><b>1</b><strong>ตั้ง Series Bible — ข้อมูลกลางซีรีส์</strong><span>กำหนดแกนเรื่อง Character Bible, Canon Rules, Model, Visual Style และ Lock หลักเพียงครั้งเดียว</span></article>
-        <article><b>2</b><strong>ทำทีละ Episode — ทำทีละตอน</strong><span>เขียน Synopsis และตรวจ Continuity Start จากตอนก่อน</span></article>
-        <article><b>3</b><strong>กำกับ Scene — ภาพ + เสียง</strong><span>ปรับเวลา กล้อง แสง บทพูด Ambience, SFX Timeline และ Sound Mix ได้เหมือน Studio</span></article>
-        <article><b>4</b><strong>ล็อก Ending State — สถานะตอนจบ</strong><span>บันทึกสถานะภาพ เรื่อง และ Soundscape เพื่อเป็นจุดเริ่มตอนถัดไป</span></article>
+        <article><b>01</b><strong>กำหนด Series Bible</strong><span>ล็อกแกนเรื่อง ตัวละคร กฎของโลก โมเดล และสไตล์กลางของทั้งซีรีส์</span></article>
+        <article><b>02</b><strong>วางแผน Episode</strong><span>เขียน Synopsis รับ Continuity จากตอนก่อน และกำหนด Ending State ให้ตอนถัดไป</span></article>
+        <article><b>03</b><strong>ออกแบบ Storyboard</strong><span>แบ่ง Scene กำกับกล้อง แสง การแสดง บทพูด Ambience, SFX และดนตรี</span></article>
+        <article><b>04</b><strong>ตรวจและส่งผลิต</strong><span>ตรวจเวลาและ Continuity แล้วส่ง Episode ที่เลือกให้ AI Agent ทำงานเป็นขั้นตอน</span></article>
       </div>
     </section>
 
@@ -310,9 +399,9 @@ export default function SeriesManagerV3(){
       <label className={styles.full}><span>Canon Rules — กฎข้อเท็จจริงของโลกและเรื่อง</span><textarea value={series.canonRules} onChange={e=>patchSeries({canonRules:e.target.value})}/><small>Canon คือข้อเท็จจริงที่ถือว่าเป็นจริงในเรื่อง เช่น ความสัมพันธ์ ประวัติ กฎของโลก และเหตุการณ์ที่เกิดขึ้นแล้ว</small></label>
       <div className={styles.locks}>{LOCK_INFO.map(lock=><label key={lock.key}><input type="checkbox" checked={series.locks.includes(lock.key)} onChange={e=>patchSeries({locks:e.target.checked?[...series.locks,lock.key]:series.locks.filter(v=>v!==lock.key)})}/><span><b style={{display:"block"}}>{lock.label}</b><small>{lock.help}</small></span></label>)}</div>
     </section>
+    </>}
 
-    <section id="history" className={styles.history}><div className={styles.sectionTitle}><div><span>SERIES HISTORY — ประวัติซีรีส์</span><h2>Episode Timeline — ลำดับตอน</h2></div><span>{series.episodes.length} Episodes • บันทึกอัตโนมัติ</span></div><div className={styles.historyRail}>{series.episodes.map(ep=><button key={ep.id} className={ep.id===episode.id?styles.activeEpisode:""} onClick={()=>{setSelectedEpisodeId(ep.id);setSelectedSceneId(ep.scenes[0]?.id||"")}}><span>EPISODE {String(ep.number).padStart(2,"0")}</span><b>{ep.title}</b><small>{ep.duration}s • {statusLabel[ep.status]}</small></button>)}</div></section>
-
+    {activeTab==="episodes"&&(
     <section id="episode-editor" className={styles.episodeGrid}>
       <article className={styles.card}>
         <div className={styles.cardHead}><div><span>EPISODE CONTROL — ควบคุมตอน</span><h2>Episode {String(episode.number).padStart(2,"0")}</h2></div><strong data-status={episode.status}>{statusLabel[episode.status]}</strong></div>
@@ -332,11 +421,14 @@ export default function SeriesManagerV3(){
         <label><span>Ending State — สถานะตอนจบสำหรับตอนถัดไป</span><textarea value={episode.endingState} onChange={e=>patchEpisode({endingState:e.target.value})}/><small>ควรระบุ Location, Character State, Costume, Props, Emotion, Story Knowledge, Relationship, Time, Soundscape และ Hook</small></label>
       </article>
     </section>
+    )}
 
+    {activeTab==="storyboard"&&(
     <section id="scene-direction" className={styles.sceneSection}>
-      <div className={styles.sectionTitle}><div><span>SCENE DIRECTION — การกำกับฉาก</span><h2>กล้อง ภาพ บทพูด และ Sound Design ต่อ Scene</h2></div><div><b>{used}/{episode.duration}s</b><span>{remaining}s remaining — เหลือ</span></div></div>
+      <div className={styles.sectionTitle}><div><span>EP {String(episode.number).padStart(2,"0")} · STORYBOARD & SCENE DIRECTION</span><h2>ออกแบบภาพ กล้อง การแสดง และเสียงรายฉาก</h2></div><div className={styles.timeSummary}><b>{used}/{episode.duration}s</b><span>เหลือ {remaining}s</span></div></div>
       <div className={styles.timeline}>{episode.scenes.map((item,index)=><button key={item.id} className={item.id===scene.id?styles.activeScene:""} onClick={()=>setSelectedSceneId(item.id)} style={{flexGrow:Math.max(1,item.duration)}}><b>{index+1}</b><span>{item.duration}s</span></button>)}</div>
-      <div className={styles.sceneTools}><span>ทุกช่องใช้ Preset + Custom ได้ และ Sound Design จะถูกบันทึกต่อ Scene / Episode</span><div><Link href="/libraries?tab=ambience">♫ Sound Library</Link><button onClick={addScene}>＋ Add Scene — เพิ่มฉาก</button></div></div>
+      <div className={styles.storyboardRail}>{episode.scenes.map((item,index)=><button type="button" key={item.id} className={item.id===scene.id?styles.activeBoardCard:""} onClick={()=>setSelectedSceneId(item.id)}><span>SCENE {String(index+1).padStart(2,"0")}</span><strong>{item.title}</strong><p>{item.action||"ยังไม่ได้ระบุเหตุการณ์ของฉาก"}</p><small>{item.shot} · {item.angle} · {item.lens} · {item.duration}s</small></button>)}</div>
+      <div className={styles.sceneTools}><span>Storyboard ทุกฉากบันทึกอัตโนมัติ และใช้ Preset หรือพิมพ์ค่ากำกับเองได้</span><div><Link href="/libraries?tab=ambience">♫ คลังเสียง</Link><button onClick={addScene}>＋ เพิ่ม Scene</button></div></div>
       <div className={styles.sceneWorkspace}>
         <aside>{episode.scenes.map((item,index)=><button key={item.id} className={item.id===scene.id?styles.activeList:""} onClick={()=>setSelectedSceneId(item.id)}><b>{String(index+1).padStart(2,"0")}</b><span><strong>{item.title}</strong><small>{item.shot} • {item.lens}</small></span></button>)}</aside>
         <div className={styles.sceneEditor}>
@@ -359,12 +451,48 @@ export default function SeriesManagerV3(){
         </div>
       </div>
     </section>
+    )}
 
-    <section className={styles.guide}>
+    {activeTab==="production"&&<>
+      <section className={styles.productionGrid} id="production">
+        <article className={styles.agentPanel}>
+          <div className={styles.agentBadge}>AI</div>
+          <div>
+            <span>AI AGENT HANDOFF</span>
+            <h2>ส่ง Episode {String(episode.number).padStart(2,"0")} เข้าทีมผลิต</h2>
+            <p>ระบบจะส่ง Series Bible, Canon, Continuity และ Storyboard ของตอนที่เลือกให้ Agent แต่ละบทบาททำงานต่อกัน ตั้งแต่วางแผน ตรวจบท ออกแบบภาพ เตรียม Prompt ไปจนถึงจุดอนุมัติก่อน Render</p>
+          </div>
+          <ol className={styles.agentSteps}>
+            <li><b>1</b><span><strong>Producer & Story</strong><small>ตรวจแผน เรื่อง และ Canon</small></span></li>
+            <li><b>2</b><span><strong>Director & Storyboard</strong><small>ตรวจ Shot, กล้อง แสง และเสียง</small></span></li>
+            <li><b>3</b><span><strong>Human Approval</strong><small>หยุดรอคุณอนุมัติก่อนใช้เครดิต</small></span></li>
+            <li><b>4</b><span><strong>Render & Quality</strong><small>สร้าง ตรวจ Continuity และส่งมอบ</small></span></li>
+          </ol>
+          <div className={styles.agentAction}>
+            <label><span>วงเงินสูงสุดของงานนี้</span><span><input type="number" min={1} step={50} value={agentBudgetThb} onChange={e=>setAgentBudgetThb(Math.max(1,Number(e.target.value)||1))}/><b>บาท</b></span></label>
+            <button type="button" onClick={sendToAgent} disabled={agentSubmitting}>{agentSubmitting?"กำลังส่งงาน...":"ส่ง Storyboard ให้ทีม AI →"}</button>
+          </div>
+        </article>
+        <aside className={styles.productionCheck}>
+          <div><span>PRODUCTION CHECK</span><h3>ความพร้อมของตอนนี้</h3></div>
+          <ul>
+            <li data-ready={Boolean(episode.synopsis.trim())}><b>{episode.synopsis.trim()?"✓":"!"}</b><span>Episode Synopsis</span></li>
+            <li data-ready={episode.scenes.length>0}><b>{episode.scenes.length>0?"✓":"!"}</b><span>{episode.scenes.length} Storyboard Scenes</span></li>
+            <li data-ready={used<=episode.duration}><b>{used<=episode.duration?"✓":"!"}</b><span>เวลา {used}/{episode.duration} วินาที</span></li>
+            <li data-ready={continuityScore>=72}><b>{continuityScore>=72?"✓":"!"}</b><span>Continuity Health {continuityScore}%</span></li>
+            <li data-ready={series.locks.length>0}><b>{series.locks.length>0?"✓":"!"}</b><span>{series.locks.length} Production Locks</span></li>
+          </ul>
+          <button type="button" onClick={()=>changeTab("storyboard")}>กลับไปตรวจ Storyboard</button>
+        </aside>
+      </section>
+      <SeriesVideoHistory embedded />
+    </>}
+
+    {activeTab==="overview"&&<section className={`${styles.guide} ${styles.terms}`}>
       <div className={styles.guideHead}><b>คำศัพท์ Production ที่ใช้บ่อย — ความหมายภาษาไทย</b><span>ศัพท์อังกฤษยังคงไว้เพื่อให้ตรงกับมาตรฐานงานภาพยนตร์และระบบ AI</span></div>
       <div className={styles.guideGrid}>{SERIES_TERMS.map(([term,meaning])=><article key={term}><strong>{term}</strong><span>{meaning}</span></article>)}</div>
-    </section>
+    </section>}
 
-    <section className={styles.rule}><b>กติกาเพื่อ Continuity ที่ดีที่สุด</b><span>ใช้ Series Bible เดิมตลอดงาน</span><span>ทำทีละ Episode และ Complete ก่อนเปิดตอนถัดไป</span><span>Ending State ต้องครบก่อน Complete</span><span>Scene แรกของตอนใหม่ Carry Forward Camera / Lighting / Soundscape จาก Scene สุดท้ายเดิม</span><span>Character / Voice / Soundscape / Visual Style / Canon Lock ควรเปิดไว้เป็นค่าเริ่มต้น</span></section>
+    {activeTab==="overview"&&<section className={styles.rule}><b>กติกาเพื่อ Continuity ที่ดีที่สุด</b><span>ใช้ Series Bible เดิมตลอดงาน</span><span>ทำทีละ Episode และปิดแผนก่อนเปิดตอนถัดไป</span><span>Ending State ต้องครบก่อน Complete</span><span>Scene แรกของตอนใหม่รับ Camera / Lighting / Soundscape จาก Scene สุดท้ายเดิม</span><span>Character / Voice / Visual Style / Canon Lock ควรเปิดไว้</span></section>}
   </main>;
 }
