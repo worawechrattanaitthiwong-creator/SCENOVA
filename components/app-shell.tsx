@@ -135,7 +135,7 @@ function WorkspaceShell({ children, pathname }: { children: React.ReactNode; pat
   const rail = useMemo(() => rawRail.filter((item) => !item.adminOnly || me.role === "ADMIN"), [rawRail, me.role]);
   const context = useMemo(() => getWorkspaceContext(pathname), [pathname]);
   const settingsScope = pathname.startsWith("/profile") || pathname.startsWith("/admin/security") || pathname.startsWith("/admin/ai-costs") || pathname.startsWith("/guide");
-  const hideTopbar = pathname === "/studio" || pathname.startsWith("/models") || pathname.startsWith("/wallet") || settingsScope;
+  const hideTopbar = pathname === "/studio" || pathname.startsWith("/models") || pathname.startsWith("/wallet") || pathname.startsWith("/libraries") || settingsScope;
   const showApiBackbar = pathname === "/profile/api";
   const activeRailIndex = useMemo(() => {
     const exact = rail.findIndex((item) => targetMatchesCurrent(item.href, pathname, searchParams, hash));
