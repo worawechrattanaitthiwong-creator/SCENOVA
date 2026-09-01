@@ -1,6 +1,7 @@
 import type { AgentRunRecord, AgentStage } from "@/lib/agent/types";
 import { getVideoProviderById } from "@/lib/providers/provider-registry";
 import { PrismaWalletService } from "@/lib/wallet";
+import { prisma } from "@/lib/db";
 import {
   cancelAgentRun,
   enqueueAgentStep,
@@ -8,9 +9,11 @@ import {
   recordAgentDecision,
   rejectAgentApproval,
   resumeAgentRun,
+  saveAgentRun,
 } from "@/lib/agent/store";
 import { getAgentPolicy } from "@/lib/agent/policy";
 import { cancelWorkflow } from "@/lib/agent/workflow-store";
+import { episodeScopeKey } from "@/lib/agent/contracts";
 
 type PersistedOutput = {
   providerId?: string;
@@ -25,6 +28,8 @@ type ControlState = {
   startEpisodeIndex?: number;
   outputsByEpisode?: Record<string, PersistedOutput[]>;
   resumeStage?: AgentStage;
+  providerSwitches?: number;
+  queueSequence?: number;
 };
 
 export async function pauseRunByUser(run: AgentRunRecord) {
@@ -42,6 +47,89 @@ export async function resumeRunByUser(run: AgentRunRecord) {
   const policy = getAgentPolicy();
   await recordAgentDecision({ runId: run.id, stage: updated.stage, action: "USER_RESUMED", reason: "ผู้ใช้สั่ง Resume งาน จึงนำ Stage ล่าสุดกลับเข้า Queue" });
   await enqueueAgentStep(updated.id, { reason: "user-resume", stage: updated.stage, episodeIndex }, 0, policy.maxRetriesPerStep + 1, `${updated.id}:${episodeIndex}:${updated.stage}:user-resume:${Date.now()}`);
+  return updated;
+}
+
+export async function retryFailedRunByUser(run: AgentRunRecord) {
+  if (run.status !== "FAILED") throw new Error("AGENT_RUN_NOT_FAILED");
+
+  const state = { ...((run.stateJson || {}) as ControlState) };
+  const episodeIndex = typeof state.currentEpisodeIndex === "number" ? state.currentEpisodeIndex : Number(state.startEpisodeIndex || 0);
+  const scopeKey = episodeScopeKey(episodeIndex);
+
+  const failedTask = await prisma.agentTask.findFirst({
+    where: {
+      runId: run.id,
+      scopeKey,
+      status: { in: ["FAILED", "READY", "RETURNED"] },
+      lastError: { not: null },
+    },
+    orderBy: { updatedAt: "desc" },
+  });
+
+  const nextTask = failedTask || await prisma.agentTask.findFirst({
+    where: {
+      runId: run.id,
+      scopeKey,
+      status: { notIn: ["COMPLETED", "CANCELLED"] },
+    },
+    orderBy: { sequence: "asc" },
+  });
+
+  if (!nextTask) throw new Error("AGENT_RETRY_STAGE_NOT_FOUND");
+  const retryStage = nextTask.stage as AgentStage;
+  if (["COMPLETED", "FAILED"].includes(retryStage)) throw new Error("AGENT_RETRY_STAGE_INVALID");
+
+  await prisma.$transaction([
+    prisma.agentTask.update({
+      where: { id: nextTask.id },
+      data: {
+        status: "READY",
+        attempt: 0,
+        lastError: null,
+        startedAt: null,
+        completedAt: null,
+      },
+    }),
+    prisma.agentWorkflow.updateMany({ where: { runId: run.id }, data: { status: "ACTIVE" } }),
+    prisma.agentQueueJob.updateMany({
+      where: { runId: run.id, status: { in: ["QUEUED", "RUNNING"] } },
+      data: {
+        status: "FAILED",
+        lastError: "SUPERSEDED_BY_USER_RETRY",
+        lockedAt: null,
+        lockedBy: null,
+        heartbeatAt: null,
+        leaseExpiresAt: null,
+      },
+    }),
+  ]);
+
+  state.providerSwitches = 0;
+  state.queueSequence = Number(state.queueSequence || 0) + 1;
+  delete state.resumeStage;
+  run.stage = retryStage;
+  run.status = "QUEUED";
+  run.stopReason = null;
+  run.finishedAt = null;
+  run.stateJson = state;
+  const updated = await saveAgentRun(run);
+
+  const policy = getAgentPolicy();
+  await enqueueAgentStep(
+    updated.id,
+    { reason: "user-force-retry", stage: retryStage, episodeIndex, sequence: state.queueSequence },
+    0,
+    policy.maxRetriesPerStep + 1,
+    `${updated.id}:${episodeIndex}:${retryStage}:user-force-retry:${Date.now()}`,
+  );
+  await recordAgentDecision({
+    runId: updated.id,
+    stage: retryStage,
+    action: "USER_FORCE_RETRY",
+    reason: `ผู้ใช้สั่งบังคับเริ่มใหม่จากขั้น ${retryStage} โดยเก็บ Artifact ที่ทำสำเร็จแล้วไว้`,
+    metadata: { episodeIndex, taskId: nextTask.id, previousError: nextTask.lastError },
+  });
   return updated;
 }
 
