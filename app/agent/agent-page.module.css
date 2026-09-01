@@ -1,0 +1,7 @@
+.root {
+  display: contents;
+}
+
+.root :global(.sc-system-info-trigger) {
+  display: none !important;
+}
