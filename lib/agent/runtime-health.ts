@@ -111,13 +111,22 @@ export async function getAgentRuntimeHealth(userId: string, requestedRunId?: str
     };
   }
 
+  const taskSelect = { id: true, agentKey: true, stage: true, status: true, attempt: true, maxAttempts: true, lastError: true, startedAt: true, updatedAt: true } as const;
+  const currentTaskPromise = run.status === "FAILED" || run.stage === "FAILED"
+    ? prisma.agentTask.findFirst({
+        where: { runId: run.id, OR: [{ status: "FAILED" }, { lastError: { not: null } }] },
+        orderBy: { updatedAt: "desc" },
+        select: taskSelect,
+      })
+    : prisma.agentTask.findFirst({
+        where: { runId: run.id, stage: run.stage },
+        orderBy: [{ status: "asc" }, { sequence: "asc" }],
+        select: taskSelect,
+      });
+
   const [jobs, currentTask] = await Promise.all([
     prisma.agentQueueJob.findMany({ where: { runId: run.id }, orderBy: { createdAt: "desc" }, take: 5 }),
-    prisma.agentTask.findFirst({
-      where: { runId: run.id, stage: run.stage },
-      orderBy: [{ status: "asc" }, { sequence: "asc" }],
-      select: { id: true, agentKey: true, stage: true, status: true, attempt: true, maxAttempts: true, lastError: true, startedAt: true, updatedAt: true },
-    }),
+    currentTaskPromise,
   ]);
   const latestJob = jobs[0] || null;
   const now = Date.now();
@@ -143,7 +152,7 @@ export async function getAgentRuntimeHealth(userId: string, requestedRunId?: str
     message = "งาน AI เสร็จสมบูรณ์แล้ว";
   } else if (run.status === "FAILED") {
     runtimeState = "failed";
-    message = run.stopReason || latestJob?.lastError || "งาน AI หยุดเพราะเกิดข้อผิดพลาด";
+    message = currentTask?.lastError || latestJob?.lastError || run.stopReason || "งาน AI หยุดเพราะเกิดข้อผิดพลาด";
   } else if (run.status === "CANCELLED") {
     runtimeState = "cancelled";
     message = run.stopReason || "งานถูกยกเลิกแล้ว";
@@ -155,7 +164,7 @@ export async function getAgentRuntimeHealth(userId: string, requestedRunId?: str
   } else if (latestJob.status === "RUNNING" && !leaseExpired) {
     runtimeState = "working";
     message = currentTask?.agentKey
-      ? `${currentTask.agentKey} กำลังทำงานในขั้น ${run.stage}`
+      ? `${currentTask.agentKey} กำลังทำงานในขั้น ${currentTask.stage}`
       : `Worker กำลังประมวลผลขั้น ${run.stage}`;
   } else if (latestJob.status === "RUNNING" && leaseExpired) {
     runtimeState = "stalled";
