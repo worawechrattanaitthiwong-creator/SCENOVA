@@ -34,6 +34,48 @@ export type PlannedGeneration = {
   estimatedTotalThb: number;
 };
 
+function providerLookupKey(value: string | null | undefined) {
+  return String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+export function resolveVideoProviderForModel(
+  providers: Record<string, VideoProvider>,
+  ...modelIds: Array<string | null | undefined>
+): VideoProvider | null {
+  for (const modelId of modelIds) {
+    if (!modelId) continue;
+    const exact = providers[modelId];
+    if (exact) return exact;
+
+    const wanted = providerLookupKey(modelId);
+    if (!wanted) continue;
+    const alias = Object.entries(providers).find(([key]) => providerLookupKey(key) === wanted)?.[1];
+    if (alias) return alias;
+
+    const lower = modelId.toLowerCase();
+    const family = lower.includes("seedance") || lower.includes("dreamina")
+      ? "seedance"
+      : lower.includes("kling")
+        ? "kling"
+        : lower.includes("veo")
+          ? "veo"
+          : lower.includes("runway") || lower.includes("gen4") || lower.includes("gen-4")
+            ? "runway"
+            : /(^|[^a-z])wan[\s._-]?2|wan-video|wan2/.test(lower)
+              ? "wan"
+              : null;
+    if (!family) continue;
+
+    const familyProvider = Object.entries(providers).find(([key, provider]) => {
+      const keyValue = key.toLowerCase();
+      const providerValue = provider.id.toLowerCase();
+      return keyValue.includes(family) || providerValue.includes(family);
+    })?.[1];
+    if (familyProvider) return familyProvider;
+  }
+  return null;
+}
+
 export async function planGeneration(project: Project, episodeIndex = 0, deps: OrchestratorDependencies = {}): Promise<PlannedGeneration> {
   const episode = project.episodes[episodeIndex];
   if (!episode) throw new Error("Episode not found");
@@ -56,8 +98,11 @@ export async function planGeneration(project: Project, episodeIndex = 0, deps: O
   let estimatedTotalThb = 0;
 
   for (const renderSegment of renderPlan) {
-    const provider = providers[renderSegment.modelId] ?? providers[project.mainModelId] ?? providers["mock-seedance"];
-    if (!provider) throw new Error(`VIDEO_PROVIDER_NOT_FOUND:${renderSegment.modelId}`);
+    const provider = resolveVideoProviderForModel(providers, renderSegment.modelId, project.mainModelId)
+      ?? providers["mock-seedance"];
+    if (!provider) {
+      throw new Error(`VIDEO_PROVIDER_CONNECTION_REQUIRED:${renderSegment.modelId || project.mainModelId || "VIDEO"}`);
+    }
     assertGenerationAllowed({
       killSwitch: deps.killSwitch ?? { globalGenerationDisabled: process.env.SCENOVA_GENERATION_KILL_SWITCH === "true", disabledProviderIds: [] },
       providerId: provider.id,
