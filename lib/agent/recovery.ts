@@ -15,7 +15,6 @@ export function decideAgentRecovery(input: { error: unknown; attempt: number; ma
     normalized.includes("provider_connection_required") ||
     normalized.includes("video_provider_not_found") ||
     normalized.includes("invalid_api_key") ||
-    normalized.includes("invalid_api_key") ||
     normalized.includes("credential_required")
   ) {
     return { action: "ASK_USER", delayMs: 0, reason: "ยังไม่พบ Video Provider/Credential ที่พร้อมใช้งานสำหรับโมเดลนี้ กรุณาตรวจการเชื่อมต่อ Provider แล้วเริ่มงานอีกครั้ง" };
