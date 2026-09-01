@@ -81,9 +81,12 @@ function friendlyAgentError(value?: string | null) {
   if (!raw) return "";
   const upper = raw.toUpperCase();
   const target = raw.includes(":") ? raw.split(":").slice(1).join(":").trim() : "โมเดลวิดีโอที่เลือก";
+  if (upper.includes("VEO_HTTP_429") || upper.includes("RESOURCE_EXHAUSTED") || upper.includes("EXCEEDED YOUR CURRENT QUOTA")) {
+    return "Veo ตอบ HTTP 429 ซึ่งอาจเป็น Rate Limit, Model Quota หรือ Spend Limit ไม่ได้แปลว่ายอดเงินคงเหลือหมดเสมอไป ระบบหยุด Retry อัตโนมัติเพื่อไม่ยิงงานซ้ำ ให้ตรวจ Rate Limit แล้วกด “บังคับเริ่มงานนี้” ที่งานที่เลือก";
+  }
   if (upper.startsWith("VIDEO_PROVIDER_NOT_FOUND")) {
     return target.toLowerCase().includes("seedance")
-      ? `รอบก่อนระบบจับคู่ชื่อ ${target} กับ Seedance Provider ไม่สำเร็จ จุดนี้แก้แล้ว สามารถกด “บังคับเริ่ม” เพื่อทำต่อได้`
+      ? `รอบก่อนระบบจับคู่ชื่อ ${target} กับ Seedance Provider ไม่สำเร็จ จุดนี้แก้แล้ว สามารถกด “บังคับเริ่มงานนี้” เพื่อทำต่อได้`
       : `ไม่พบ Video Provider ที่ตรงกับ ${target}`;
   }
   if (upper.startsWith("VIDEO_PROVIDER_CONNECTION_REQUIRED") || upper.startsWith("PROVIDER_CONNECTION_REQUIRED")) {
@@ -139,7 +142,7 @@ export default function AgentControlCenter() {
       const response = await fetch(`/api/agent/runs/${selectedId}/${name}`, { method: "POST", credentials: "same-origin" });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || `${name} ไม่สำเร็จ`);
-      setMessage(name === "approve" ? "อนุมัติแล้ว ระบบจะทำงานต่อ" : name === "reject" ? "ไม่อนุมัติและหยุดงานแล้ว" : name === "pause" ? "พักงานแล้ว" : name === "resume" ? "เริ่มทำงานต่อแล้ว" : name === "retry" ? "นำขั้นที่ล้มเหลวกลับเข้าคิวแล้ว ระบบกำลังเริ่มงานอีกครั้ง" : "ยกเลิกงานแล้ว");
+      setMessage(name === "approve" ? "อนุมัติแล้ว ระบบจะทำงานต่อ" : name === "reject" ? "ไม่อนุมัติและหยุดงานแล้ว" : name === "pause" ? "พักงานแล้ว" : name === "resume" ? "เริ่มทำงานต่อแล้ว" : name === "retry" ? "นำขั้นที่ล้มเหลวของงานที่เลือกกลับเข้าคิวแล้ว ระบบกำลังเริ่มงานอีกครั้ง" : "ยกเลิกงานแล้ว");
       await Promise.all([loadRuns(), loadDetails(selectedId)]);
     } catch (error) { setMessage(error instanceof Error ? friendlyAgentError(error.message) : String(error)); }
     finally { setBusy(false); }
@@ -154,7 +157,10 @@ export default function AgentControlCenter() {
   const shotTasks = workflowTasks.filter((task) => task.stage === "GENERATE_SHOT");
   const workflowArtifacts = details?.workflow?.artifacts || [];
   const latestJobError = details?.jobs?.find((job) => job.lastError)?.lastError || null;
-  const stopMessage = run?.status === "FAILED" ? friendlyAgentError(latestJobError || run.stopReason) : friendlyAgentError(run?.stopReason);
+  const stopMessage = run && ["FAILED", "PAUSED"].includes(run.status)
+    ? friendlyAgentError(latestJobError || run.stopReason)
+    : friendlyAgentError(run?.stopReason);
+  const canForceRetry = Boolean(run && (run.status === "FAILED" || (run.status === "PAUSED" && latestJobError)));
 
   return <main className={styles.page}>
     <header className={styles.hero}><div><span>SCENOVA AI AGENT</span><h1>AI Agent — ศูนย์ควบคุมงานอัตโนมัติ</h1><p>ดูงานที่ AI กำลังทำ ตรวจจุดที่ต้องอนุมัติ ติดตามค่าใช้จ่าย และไปต่อยังคิวสร้างวิดีโอได้จากหน้าเดียว</p></div><Link href="/studio">เริ่มงานใน Studio →</Link></header>
@@ -194,7 +200,7 @@ export default function AgentControlCenter() {
 
         {stopMessage ? <div className={styles.stopReason}><b>ข้อมูลเพิ่มเติม</b><span>{stopMessage}</span>{/PROVIDER_(NOT_FOUND|CONNECTION_REQUIRED)|INVALID_API_KEY|CREDENTIAL_REQUIRED/i.test(String(latestJobError || "")) ? <Link href="/profile/api">ตรวจ API & Models →</Link> : null}</div> : null}
         <div className={styles.controls}>
-          {run.status === "FAILED" ? <button disabled={busy} onClick={() => void action("retry")}>{busy ? "กำลังนำงานกลับเข้าคิว..." : "▶ บังคับเริ่ม"}</button> : run.status === "PAUSED" ? <button disabled={busy} onClick={() => void action("resume")}>▶ ทำงานต่อ</button> : !["COMPLETED","CANCELLED","WAITING_APPROVAL"].includes(run.status) ? <button disabled={busy} onClick={() => void action("pause")}>Ⅱ พักงาน</button> : null}
+          {canForceRetry ? <button disabled={busy} onClick={() => void action("retry")}>{busy ? "กำลังนำงานกลับเข้าคิว..." : "▶ บังคับเริ่มงานนี้"}</button> : run.status === "PAUSED" ? <button disabled={busy} onClick={() => void action("resume")}>▶ ทำงานต่อ</button> : !["COMPLETED","CANCELLED","WAITING_APPROVAL"].includes(run.status) ? <button disabled={busy} onClick={() => void action("pause")}>Ⅱ พักงาน</button> : null}
           <button disabled={busy || ["COMPLETED","FAILED","CANCELLED"].includes(run.status)} className={styles.danger} onClick={() => void action("cancel")}>ยกเลิกงาน</button>
         </div>
 
