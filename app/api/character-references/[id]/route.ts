@@ -24,7 +24,8 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   if (!signed.valid) return NextResponse.json({ error: "INVALID_REFERENCE_SIGNATURE" }, { status: 403 });
   const file = await readCharacterReference(signed.owner, id);
   if (!file) return NextResponse.json({ error: "REFERENCE_NOT_FOUND" }, { status: 404 });
-  return new Response(file.data, {
+  const body = Uint8Array.from(file.data).buffer;
+  return new Response(body, {
     status: 200,
     headers: {
       "Content-Type": file.mime,
