@@ -136,10 +136,32 @@ function checkedTime(value?: string) {
   return new Date(value).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
+function friendlyRuntimeError(value?: string | null) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const upper = raw.toUpperCase();
+  const target = raw.includes(":") ? raw.split(":").slice(1).join(":").trim() : "โมเดลวิดีโอที่เลือก";
+  if (upper.startsWith("VIDEO_PROVIDER_NOT_FOUND")) {
+    if (target.toLowerCase().includes("seedance")) {
+      return `งานรอบก่อนจับคู่ชื่อ ${target} กับ Seedance Provider ไม่สำเร็จ ระบบรองรับ alias นี้แล้ว กด “บังคับเริ่ม” เพื่อทำต่อจากขั้นเดิม`;
+    }
+    return `ไม่พบ Video Provider ที่ตรงกับ ${target} กรุณาตรวจ Model/Provider แล้วกด “บังคับเริ่ม”`;
+  }
+  if (upper.startsWith("VIDEO_PROVIDER_CONNECTION_REQUIRED") || upper.startsWith("PROVIDER_CONNECTION_REQUIRED")) {
+    return `ยังไม่มี Video Provider ที่เชื่อมต่อพร้อมใช้สำหรับ ${target} กรุณาเชื่อมต่อ Provider ใน API & Models ก่อนเริ่มงานอีกครั้ง`;
+  }
+  if (upper.includes("INVALID_API_KEY") || upper.includes("CREDENTIAL_REQUIRED")) {
+    return "Credential ของ Video Provider ยังไม่พร้อมใช้งาน กรุณาทดสอบการเชื่อมต่อใน API & Models แล้วเริ่มงานอีกครั้ง";
+  }
+  if (upper === "SUPERSEDED_BY_USER_RETRY") return "คิวเดิมถูกแทนที่ด้วยคำสั่งบังคับเริ่มใหม่แล้ว";
+  return raw;
+}
+
 export default function AgentRuntimeStatus() {
   const [health, setHealth] = useState<RuntimeHealth | null>(null);
   const [error, setError] = useState("");
   const [repairing, setRepairing] = useState(false);
+  const [forceStarting, setForceStarting] = useState(false);
   const lastAutoRepairAt = useRef(0);
   const mounted = useRef(true);
 
@@ -182,6 +204,26 @@ export default function AgentRuntimeStatus() {
     }
   }, [health, repairing]);
 
+  const forceStart = useCallback(async () => {
+    const runId = health?.run?.id;
+    if (!runId || forceStarting) return;
+    setForceStarting(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/agent/runs/${encodeURIComponent(runId)}/retry`, {
+        method: "POST",
+        credentials: "same-origin",
+      });
+      const data = await response.json() as { error?: string; message?: string };
+      if (!response.ok) throw new Error(data.error || "บังคับเริ่มงานไม่สำเร็จ");
+      await load();
+    } catch (cause) {
+      if (mounted.current) setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      if (mounted.current) setForceStarting(false);
+    }
+  }, [forceStarting, health, load]);
+
   useEffect(() => {
     mounted.current = true;
     void load().catch((cause) => setError(cause instanceof Error ? cause.message : String(cause)));
@@ -209,6 +251,7 @@ export default function AgentRuntimeStatus() {
   const task = health?.task;
   const worker = health?.worker;
   const canRepair = Boolean(run && !health?.security.blocked && ["stalled", "orphaned", "starting"].includes(state));
+  const canForceStart = Boolean(run && run.status === "FAILED" && !health?.security.blocked);
   const activeAgent = task?.agentKey ? AGENT_LABELS[task.agentKey] || task.agentKey : "ยังไม่มี Agent รับงาน";
   const stage = run?.stage ? STAGE_LABELS[run.stage] || run.stage : "—";
   const workerLabel = worker
@@ -219,6 +262,8 @@ export default function AgentRuntimeStatus() {
   const workerDetail = worker
     ? `${worker.activeLanes}/${worker.concurrency} lanes · heartbeat ${seconds(worker.ageMs)} ที่แล้ว`
     : `ตรวจล่าสุด ${checkedTime(health?.checkedAt)}`;
+  const queueError = friendlyRuntimeError(queue?.lastError || task?.lastError);
+  const needsProviderSettings = /PROVIDER_(NOT_FOUND|CONNECTION_REQUIRED)|INVALID_API_KEY|CREDENTIAL_REQUIRED/i.test(String(queue?.lastError || task?.lastError || ""));
 
   return <section className={styles.panel} data-state={state} aria-live="polite">
     <div className={styles.head}>
@@ -230,15 +275,18 @@ export default function AgentRuntimeStatus() {
         </div>
       </div>
       <div className={styles.actions}>
-        <button type="button" onClick={() => void load()} disabled={repairing}>↻ ตรวจอีกครั้ง</button>
+        <button type="button" onClick={() => void load()} disabled={repairing || forceStarting}>↻ ตรวจอีกครั้ง</button>
+        {canForceStart ? <button type="button" className={styles.repair} onClick={() => void forceStart()} disabled={forceStarting}>{forceStarting ? "กำลังนำงานกลับเข้าคิว..." : "▶ บังคับเริ่ม"}</button> : null}
         {canRepair ? <button type="button" className={styles.repair} onClick={() => void repair(false)} disabled={repairing}>{repairing ? "กำลังช่วยเริ่ม Worker..." : "▶ ช่วยเริ่ม Worker"}</button> : null}
+        {needsProviderSettings ? <Link href="/profile/api">API & Models →</Link> : null}
         {health?.security.blocked && health.viewerRole === "ADMIN" ? <Link className={styles.security} href="/admin/security">Security Center →</Link> : null}
       </div>
     </div>
 
     <div className={styles.message}>
-      <strong>{health?.message || "กำลังอ่านสถานะระบบ..."}</strong>
+      <strong>{queueError || health?.message || "กำลังอ่านสถานะระบบ..."}</strong>
       {repairing ? <span>ระบบกำลังตรวจคิว ซ่อม Queue Job ที่ขาด และเรียก Web Fallback Worker หาก Worker หลักยังไม่รับงาน</span> : null}
+      {forceStarting ? <span>ระบบจะเก็บ Artifact ที่เสร็จแล้วไว้ รีเซ็ตเฉพาะขั้นที่ล้มเหลว และนำขั้นนั้นกลับเข้า Queue</span> : null}
     </div>
 
     <div className={styles.grid}>
@@ -249,13 +297,13 @@ export default function AgentRuntimeStatus() {
       <div className={styles.cell}><small>Dedicated Worker</small><b>{workerLabel}</b><em>{workerDetail}</em></div>
     </div>
 
-    <div className={styles.notice} data-error={Boolean(error)}>
+    <div className={styles.notice} data-error={Boolean(error || queueError)}>
       {error
-        ? `ข้อผิดพลาด Runtime: ${error}`
+        ? `ข้อผิดพลาด Runtime: ${friendlyRuntimeError(error)}`
         : worker?.lastError
-          ? `Worker รายงานล่าสุด: ${worker.lastError}`
-          : queue?.lastError
-            ? `Queue รายงานล่าสุด: ${queue.lastError}`
+          ? `Worker รายงานล่าสุด: ${friendlyRuntimeError(worker.lastError)}`
+          : queueError
+            ? queueError
             : health?.security.environmentHardLock
               ? "Environment Hard Lock เปิดอยู่ ต้องแก้ค่า Production Environment ก่อนจึงจะเดินงานต่อได้"
               : worker && !worker.online
