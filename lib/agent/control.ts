@@ -51,7 +51,7 @@ export async function resumeRunByUser(run: AgentRunRecord) {
 }
 
 export async function retryFailedRunByUser(run: AgentRunRecord) {
-  if (run.status !== "FAILED") throw new Error("AGENT_RUN_NOT_FAILED");
+  if (!["FAILED", "PAUSED"].includes(run.status)) throw new Error("AGENT_RUN_NOT_RETRYABLE");
 
   const state = { ...((run.stateJson || {}) as ControlState) };
   const episodeIndex = typeof state.currentEpisodeIndex === "number" ? state.currentEpisodeIndex : Number(state.startEpisodeIndex || 0);
@@ -67,16 +67,19 @@ export async function retryFailedRunByUser(run: AgentRunRecord) {
     orderBy: { updatedAt: "desc" },
   });
 
-  const nextTask = failedTask || await prisma.agentTask.findFirst({
+  // A PAUSED run can be manually resumed when it is healthy. Force retry is only
+  // valid for PAUSED runs that actually contain a failed/error task, such as a
+  // provider 429 that deliberately paused automatic retries.
+  const nextTask = failedTask || (run.status === "FAILED" ? await prisma.agentTask.findFirst({
     where: {
       runId: run.id,
       scopeKey,
       status: { notIn: ["COMPLETED", "CANCELLED"] },
     },
     orderBy: { sequence: "asc" },
-  });
+  }) : null);
 
-  if (!nextTask) throw new Error("AGENT_RETRY_STAGE_NOT_FOUND");
+  if (!nextTask) throw new Error(run.status === "PAUSED" ? "AGENT_PAUSED_RUN_HAS_NO_FAILED_TASK" : "AGENT_RETRY_STAGE_NOT_FOUND");
   const retryStage = nextTask.stage as AgentStage;
   if (["COMPLETED", "FAILED"].includes(retryStage)) throw new Error("AGENT_RETRY_STAGE_INVALID");
 
