@@ -19,5 +19,6 @@
 .tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px}
 .tags span{color:var(--purple);font-size:11px;padding:5px 7px;border-radius:7px;border:1px solid color-mix(in srgb,var(--purple) 18%,var(--line));background:color-mix(in srgb,var(--purple) 7%,var(--panel-2))}
 .choose{display:inline-flex;align-items:center;justify-content:center;align-self:flex-start;min-height:42px;margin-top:auto;color:#fff;text-decoration:none;padding:8px 11px;border:1px solid color-mix(in srgb,var(--purple) 42%,transparent);border-radius:9px;background:linear-gradient(135deg,var(--purple-2),var(--purple));font-size:12px;font-weight:900;box-shadow:0 7px 20px color-mix(in srgb,var(--purple) 14%,transparent)}
+.page :global(.sc-system-info-trigger){display:none!important}
 .page :is(a,button):focus-visible{outline:2px solid var(--purple);outline-offset:2px}
 @media(max-width:700px){.page{padding:18px 12px 76px}.hero{align-items:flex-start;flex-direction:column}.primaryLink{width:100%;justify-content:center}.grid{grid-template-columns:1fr;grid-auto-rows:auto}.card{height:auto;min-height:0}.description{min-height:auto}.choose{margin-top:13px}}
