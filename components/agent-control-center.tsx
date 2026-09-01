@@ -76,6 +76,25 @@ function time(value: string) { return new Date(value).toLocaleString("th-TH", { 
 function stageLabel(value: string) { return STAGE_LABELS[value] || value; }
 function statusLabel(value: string) { return STATUS_LABELS[value] || value; }
 function runTitle(run: Run) { return run.inputJson?.project?.episodes?.[0]?.title || run.inputJson?.project?.title || "งาน AI"; }
+function friendlyAgentError(value?: string | null) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const upper = raw.toUpperCase();
+  const target = raw.includes(":") ? raw.split(":").slice(1).join(":").trim() : "โมเดลวิดีโอที่เลือก";
+  if (upper.startsWith("VIDEO_PROVIDER_NOT_FOUND")) {
+    return target.toLowerCase().includes("seedance")
+      ? `รอบก่อนระบบจับคู่ชื่อ ${target} กับ Seedance Provider ไม่สำเร็จ จุดนี้แก้แล้ว สามารถกด “บังคับเริ่ม” เพื่อทำต่อได้`
+      : `ไม่พบ Video Provider ที่ตรงกับ ${target}`;
+  }
+  if (upper.startsWith("VIDEO_PROVIDER_CONNECTION_REQUIRED") || upper.startsWith("PROVIDER_CONNECTION_REQUIRED")) {
+    return `ยังไม่มี Video Provider ที่เชื่อมต่อพร้อมใช้สำหรับ ${target} กรุณาตรวจ API & Models ก่อนเริ่มอีกครั้ง`;
+  }
+  if (upper.includes("INVALID_API_KEY") || upper.includes("CREDENTIAL_REQUIRED")) {
+    return "Credential ของ Video Provider ยังไม่พร้อมใช้งาน กรุณาทดสอบการเชื่อมต่อใน API & Models";
+  }
+  if (upper === "SUPERSEDED_BY_USER_RETRY") return "คิวเดิมถูกแทนที่ด้วยการบังคับเริ่มใหม่แล้ว";
+  return raw;
+}
 
 export default function AgentControlCenter() {
   const [runs, setRuns] = useState<Run[]>([]);
@@ -112,7 +131,7 @@ export default function AgentControlCenter() {
     return () => window.clearInterval(timer);
   }, [selectedId, loadDetails, loadRuns]);
 
-  async function action(name: "approve" | "reject" | "pause" | "resume" | "cancel") {
+  async function action(name: "approve" | "reject" | "pause" | "resume" | "retry" | "cancel") {
     if (!selectedId || busy) return;
     if ((name === "cancel" || name === "reject") && !window.confirm(name === "cancel" ? "ยืนยันยกเลิกงาน AI นี้? งานที่ยังไม่คิดเงินจริงจะถูกพยายามคืนเครดิตตามสถานะจริง" : "ไม่อนุมัติแผนนี้และยกเลิกงานใช่หรือไม่?")) return;
     setBusy(true); setMessage("");
@@ -120,9 +139,9 @@ export default function AgentControlCenter() {
       const response = await fetch(`/api/agent/runs/${selectedId}/${name}`, { method: "POST", credentials: "same-origin" });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || `${name} ไม่สำเร็จ`);
-      setMessage(name === "approve" ? "อนุมัติแล้ว ระบบจะทำงานต่อ" : name === "reject" ? "ไม่อนุมัติและหยุดงานแล้ว" : name === "pause" ? "พักงานแล้ว" : name === "resume" ? "เริ่มทำงานต่อแล้ว" : "ยกเลิกงานแล้ว");
+      setMessage(name === "approve" ? "อนุมัติแล้ว ระบบจะทำงานต่อ" : name === "reject" ? "ไม่อนุมัติและหยุดงานแล้ว" : name === "pause" ? "พักงานแล้ว" : name === "resume" ? "เริ่มทำงานต่อแล้ว" : name === "retry" ? "นำขั้นที่ล้มเหลวกลับเข้าคิวแล้ว ระบบกำลังเริ่มงานอีกครั้ง" : "ยกเลิกงานแล้ว");
       await Promise.all([loadRuns(), loadDetails(selectedId)]);
-    } catch (error) { setMessage(error instanceof Error ? error.message : String(error)); }
+    } catch (error) { setMessage(error instanceof Error ? friendlyAgentError(error.message) : String(error)); }
     finally { setBusy(false); }
   }
 
@@ -134,6 +153,8 @@ export default function AgentControlCenter() {
   const primaryTasks = workflowTasks.filter((task) => task.stage !== "GENERATE_SHOT");
   const shotTasks = workflowTasks.filter((task) => task.stage === "GENERATE_SHOT");
   const workflowArtifacts = details?.workflow?.artifacts || [];
+  const latestJobError = details?.jobs?.find((job) => job.lastError)?.lastError || null;
+  const stopMessage = run?.status === "FAILED" ? friendlyAgentError(latestJobError || run.stopReason) : friendlyAgentError(run?.stopReason);
 
   return <main className={styles.page}>
     <header className={styles.hero}><div><span>SCENOVA AI AGENT</span><h1>AI Agent — ศูนย์ควบคุมงานอัตโนมัติ</h1><p>ดูงานที่ AI กำลังทำ ตรวจจุดที่ต้องอนุมัติ ติดตามค่าใช้จ่าย และไปต่อยังคิวสร้างวิดีโอได้จากหน้าเดียว</p></div><Link href="/studio">เริ่มงานใน Studio →</Link></header>
@@ -171,15 +192,18 @@ export default function AgentControlCenter() {
 
         {pendingApproval ? <div className={styles.approval} id="approvals"><span>ต้องการการอนุมัติจากคุณ</span><h2>AI พร้อมทำขั้นตอนถัดไป แต่จะยังไม่ใช้ทรัพยากรจนกว่าคุณจะอนุมัติ</h2><p>{pendingApproval.summary}</p><strong>ประมาณ ฿{money(pendingApproval.estimatedCostThb)}</strong><small>วงเงินงานสูงสุด ฿{money(run.budgetThb)} · AI ไม่สามารถเพิ่มวงเงินเองได้</small><div><button disabled={busy} onClick={() => void action("approve")}>อนุมัติและทำต่อ</button><button disabled={busy} className={styles.danger} onClick={() => void action("reject")}>ไม่อนุมัติ</button></div></div> : <div id="approvals" />}
 
-        {run.stopReason ? <div className={styles.stopReason}><b>ข้อมูลเพิ่มเติม</b><span>{run.stopReason}</span></div> : null}
-        <div className={styles.controls}>{run.status === "PAUSED" ? <button disabled={busy} onClick={() => void action("resume")}>▶ ทำงานต่อ</button> : !["COMPLETED","FAILED","CANCELLED","WAITING_APPROVAL"].includes(run.status) ? <button disabled={busy} onClick={() => void action("pause")}>Ⅱ พักงาน</button> : null}<button disabled={busy || ["COMPLETED","FAILED","CANCELLED"].includes(run.status)} className={styles.danger} onClick={() => void action("cancel")}>ยกเลิกงาน</button></div>
+        {stopMessage ? <div className={styles.stopReason}><b>ข้อมูลเพิ่มเติม</b><span>{stopMessage}</span>{/PROVIDER_(NOT_FOUND|CONNECTION_REQUIRED)|INVALID_API_KEY|CREDENTIAL_REQUIRED/i.test(String(latestJobError || "")) ? <Link href="/profile/api">ตรวจ API & Models →</Link> : null}</div> : null}
+        <div className={styles.controls}>
+          {run.status === "FAILED" ? <button disabled={busy} onClick={() => void action("retry")}>{busy ? "กำลังนำงานกลับเข้าคิว..." : "▶ บังคับเริ่ม"}</button> : run.status === "PAUSED" ? <button disabled={busy} onClick={() => void action("resume")}>▶ ทำงานต่อ</button> : !["COMPLETED","CANCELLED","WAITING_APPROVAL"].includes(run.status) ? <button disabled={busy} onClick={() => void action("pause")}>Ⅱ พักงาน</button> : null}
+          <button disabled={busy || ["COMPLETED","FAILED","CANCELLED"].includes(run.status)} className={styles.danger} onClick={() => void action("cancel")}>ยกเลิกงาน</button>
+        </div>
 
         <div className={styles.grid}>
           <article className={styles.panel}><div className={styles.panelTitle}><h2>บันทึกการตัดสินใจของ AI</h2><span>ทำอะไร · เพราะอะไร</span></div><div className={styles.scroll}>{details.decisions?.length ? [...details.decisions].reverse().map((item) => <div className={styles.log} key={item.id}><span><b>{item.action}</b><i>{stageLabel(item.stage)}</i></span><p>{item.reason}</p><small>{time(item.createdAt)}{item.providerId ? ` · ${item.providerId}` : ""}</small></div>) : <p className={styles.muted}>ยังไม่มีบันทึกการตัดสินใจ</p>}</div></article>
           <article className={styles.panel}><div className={styles.panelTitle}><h2>การใช้ AI วางแผน</h2><span>{details.llmUsage?.length || 0} ครั้ง</span></div><div className={styles.scroll}>{details.llmUsage?.length ? [...details.llmUsage].reverse().map((item) => <div className={styles.log} key={item.id}><span><b>{item.category}</b><i>{item.modelId}</i></span><p>{item.inputTokens.toLocaleString()} input · {item.outputTokens.toLocaleString()} output</p><small>฿{money(item.costThb)} · {time(item.createdAt)}</small></div>) : <p className={styles.muted}>งานนี้ยังไม่มีค่าใช้ AI วางแผนที่บันทึกไว้</p>}</div></article>
         </div>
 
-        <article className={styles.panel}><div className={styles.panelTitle}><h2>คิวงานและการกู้คืน</h2><span>{details.jobs?.length || 0} งานย่อย</span></div><div className={styles.jobs}>{details.jobs?.slice(0,12).map((job) => <div key={job.id}><b>{statusLabel(job.status)}</b><span>ลอง {job.attempts}/{job.maxAttempts}</span><span>{job.lockedBy ? "กำลังประมวลผล" : "พร้อม"}</span><small>{job.lastError || time(job.createdAt)}</small></div>)}</div></article>
+        <article className={styles.panel}><div className={styles.panelTitle}><h2>คิวงานและการกู้คืน</h2><span>{details.jobs?.length || 0} งานย่อย</span></div><div className={styles.jobs}>{details.jobs?.slice(0,12).map((job) => <div key={job.id}><b>{statusLabel(job.status)}</b><span>ลอง {job.attempts}/{job.maxAttempts}</span><span>{job.lockedBy ? "กำลังประมวลผล" : "พร้อม"}</span><small>{job.lastError ? friendlyAgentError(job.lastError) : time(job.createdAt)}</small></div>)}</div></article>
       </>}</section>
     </div>
   </main>;
