@@ -1,0 +1,31 @@
+name: Apply Video Model Version Selector V1
+
+on:
+  push:
+    paths:
+      - "scripts/apply-video-model-version-selector-v1.mjs"
+      - ".github/workflows/apply-video-model-version-selector-v1.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch-main:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Apply model version selector
+        run: node scripts/apply-video-model-version-selector-v1.mjs
+      - name: Commit model version selector
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/video-model-versions.ts lib/domain.ts lib/providers/video-provider.ts components/single-episode-studio.tsx lib/agent/studio-project.ts lib/prompt-engine.ts lib/agent/worker-runtime.ts lib/providers/veo-video-provider.ts lib/providers/seedance-video-provider.ts lib/providers/kling-video-provider.ts lib/providers/runway-video-provider.ts lib/providers/wan-video-provider.ts app/models/page.tsx
+          git diff --cached --quiet && exit 0
+          git commit -m "Add selectable video model versions"
+          git push origin HEAD:main
