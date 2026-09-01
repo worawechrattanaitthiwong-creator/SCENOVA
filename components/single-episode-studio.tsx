@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import styles from "./single-episode-studio.module.css";
 import { buildStudioAgentProject } from "@/lib/agent/studio-project";
+import type { ProductionAnalysis } from "@/lib/analyzer/schema";
 import {
   CAMERA_ANGLES,
   CAMERA_HEIGHTS,
@@ -65,6 +66,7 @@ type CharacterDirection = {
   action: string;
   emotion: string;
   eyeline: string;
+  dialogue: string;
 };
 
 type StoryScene = {
@@ -181,7 +183,22 @@ function makeAnimal(index: number): Animal {
 }
 
 function makeDirection(): CharacterDirection {
-  return { blocking: "", action: "", emotion: "Natural", eyeline: "" };
+  return { blocking: "", action: "", emotion: "Natural", eyeline: "", dialogue: "" };
+}
+
+function legacyDialogueFor(dialogue: string, characterName: string) {
+  const prefix = `${characterName.trim()}:`;
+  const line = dialogue.split(/\r?\n/).find((item) => item.trim().startsWith(prefix));
+  return line ? line.trim().slice(prefix.length).trim() : "";
+}
+
+function closestChoice(value: string | null | undefined, options: ProductionChoice[], fallback: string) {
+  const needle = (value || "").trim().toLocaleLowerCase();
+  if (!needle) return fallback;
+  const exact = options.find((item) => item.value.toLocaleLowerCase() === needle || item.label.toLocaleLowerCase() === needle);
+  if (exact) return exact.value;
+  const partial = options.find((item) => needle.includes(item.value.toLocaleLowerCase()) || item.value.toLocaleLowerCase().includes(needle));
+  return partial?.value || fallback;
 }
 
 function makeScene(index: number, duration: number): StoryScene {
@@ -235,7 +252,7 @@ function normalizeScene(input: Partial<StoryScene>, index: number): StoryScene {
     title: input.title || base.title,
     characterIds: Array.isArray(input.characterIds) ? input.characterIds : [],
     animalIds: Array.isArray(input.animalIds) ? input.animalIds : [],
-    characterDirections: input.characterDirections || {},
+    characterDirections: Object.fromEntries(Object.entries(input.characterDirections || {}).map(([id, direction]) => [id, { ...makeDirection(), ...direction }])),
   };
 }
 
@@ -307,6 +324,8 @@ export default function SingleEpisodeStudio() {
   const [agentBudgetThb, setAgentBudgetThb] = useState(500);
   const [agentSubmitting, setAgentSubmitting] = useState(false);
   const [uploadingCharacterId, setUploadingCharacterId] = useState("");
+  const [sceneAiBusy, setSceneAiBusy] = useState(false);
+  const [sceneAiSummary, setSceneAiSummary] = useState("");
 
   useEffect(() => {
     const raw = localStorage.getItem("scenova-selected-character-v1");
@@ -446,7 +465,14 @@ export default function SingleEpisodeStudio() {
   }
 
   function patchCharacter(id: string, patch: Partial<Character>) {
+    const previous = characters.find((item) => item.id === id);
     setCharacters((current) => current.map((item) => item.id === id ? { ...item, ...patch } : item));
+    if (previous && typeof patch.name === "string" && patch.name.trim() && patch.name !== previous.name) {
+      setScenes((current) => current.map((scene) => ({
+        ...scene,
+        dialogue: scene.dialogue.split(/\r?\n/).map((line) => line.trim().startsWith(`${previous.name}:`) ? `${patch.name}:${line.trim().slice(previous.name.length + 1)}` : line).join("\n"),
+      })));
+    }
   }
 
   async function uploadCharacterReferences(characterId: string, files: File[]) {
@@ -545,6 +571,133 @@ export default function SingleEpisodeStudio() {
 
   function toggleLock(key: string) {
     setLocks((current) => current.includes(key) ? current.filter((item) => item !== key) : [...current, key]);
+  }
+
+  function patchCharacterDialogue(characterId: string, value: string) {
+    if (!selectedScene) return;
+    setScenes((current) => current.map((scene) => {
+      if (scene.id !== selectedScene.id) return scene;
+      const nextDirections = {
+        ...scene.characterDirections,
+        [characterId]: { ...(scene.characterDirections[characterId] || makeDirection()), dialogue: value },
+      };
+      const dialogue = scene.characterIds.map((id) => {
+        const character = characters.find((item) => item.id === id);
+        if (!character) return "";
+        const spoken = nextDirections[id]?.dialogue || legacyDialogueFor(scene.dialogue, character.name);
+        return spoken.trim() ? `${character.name}: ${spoken.trim()}` : "";
+      }).filter(Boolean).join("\n");
+      return { ...scene, characterDirections: nextDirections, dialogue };
+    }));
+  }
+
+  function friendlyAiError(value: string) {
+    if (value.startsWith("EMERGENCY_") || value.startsWith("LLM_DISABLED")) return "ระบบ AI ถูกระงับชั่วคราวโดยผู้ดูแลระบบ";
+    if (value.includes("CONNECTION_REQUIRED") || value.includes("API_KEY")) return "ยังไม่ได้เชื่อมต่อ AI Provider กรุณาตั้งค่า API ก่อนใช้งาน";
+    if (value.includes("INSUFFICIENT_CREDITS")) return "เครดิตไม่เพียงพอสำหรับให้ AI วิเคราะห์ฉาก";
+    if (value.includes("RATE_LIMIT") || value.includes("429")) return "มีคำขอ AI จำนวนมาก กรุณารอสักครู่แล้วลองใหม่";
+    if (value === "UNAUTHORIZED") return "เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่";
+    return value || "AI วิเคราะห์ฉากไม่สำเร็จ";
+  }
+
+  async function arrangeSceneWithAi() {
+    if (!selectedScene || sceneAiBusy) return;
+    if (!story.trim()) {
+      setMessage("กรุณาเขียนเรื่องหรือเหตุการณ์ของตอนก่อนให้ AI จัดฉาก");
+      return;
+    }
+    const sceneIndex = scenes.findIndex((item) => item.id === selectedScene.id);
+    setSceneAiBusy(true);
+    setSceneAiSummary("");
+    setMessage(`AI กำลังเลือกตัวละคร บทพูด ภาพ และเสียงให้ฉาก ${sceneIndex + 1}...`);
+    try {
+      const response = await fetch("/api/ai/analyze", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: "จัด Scene ปัจจุบันให้สอดคล้องกับโครงเรื่อง เลือกเฉพาะตัวละครที่ควรอยู่ในฉากจากรายชื่อ Cast และใช้ชื่อให้ตรงทุกตัว เขียน Action กับบทพูดแยกรายคน จากนั้นเลือกกล้อง เลนส์ Movement แสง อารมณ์ Ambience Music SFX และ Negative Prompt ที่เหมาะสม ห้ามสร้างตัวละครชื่อใหม่และห้ามขัด Locks",
+          context: {
+            episodeTitle, story, model, aspect, visualStyle, locks,
+            cast: characters.map((item) => ({ name: item.name, role: item.role, appearance: item.appearance, voice: item.voice })),
+            currentScene: selectedScene,
+            previousScene: sceneIndex > 0 ? scenes[sceneIndex - 1] : null,
+            nextScene: sceneIndex < scenes.length - 1 ? scenes[sceneIndex + 1] : null,
+            availableOptions: {
+              shot: SHOT_TYPES.map((item) => item.value), angle: CAMERA_ANGLES.map((item) => item.value), lens: LENSES.map((item) => item.value),
+              movement: CAMERA_MOVEMENTS.map((item) => item.value), height: CAMERA_HEIGHTS.map((item) => item.value), lighting: LIGHTING_STYLES.map((item) => item.value),
+              emotion: EMOTIONS.map((item) => item.value), composition: COMPOSITION_OPTIONS.map((item) => item.value), depthOfField: DOF_OPTIONS.map((item) => item.value),
+            },
+          },
+        }),
+      });
+      const data = await response.json() as { analysis?: ProductionAnalysis; provider?: string; usage?: { costThb?: number }; error?: string };
+      if (!response.ok || !data.analysis) throw new Error(data.error || "ANALYZER_FAILED");
+      const analysis = data.analysis;
+      const chosenCharacters = analysis.characters.map((suggestion) => characters.find((character) => {
+        const name = character.name.trim().toLocaleLowerCase();
+        const suggested = suggestion.name.trim().toLocaleLowerCase();
+        return name === suggested || suggested.includes(name) || name.includes(suggested);
+      })).filter((character): character is Character => Boolean(character));
+      const selectedCharacters = chosenCharacters.length ? chosenCharacters : selectedScene.characterIds.map((id) => characters.find((item) => item.id === id)).filter((item): item is Character => Boolean(item));
+      const nextIds = selectedCharacters.map((item) => item.id);
+      const nextDirections = { ...selectedScene.characterDirections };
+      selectedCharacters.forEach((character) => {
+        const suggestion = analysis.characters.find((item) => item.name.trim().toLocaleLowerCase().includes(character.name.trim().toLocaleLowerCase()) || character.name.trim().toLocaleLowerCase().includes(item.name.trim().toLocaleLowerCase()));
+        nextDirections[character.id] = {
+          ...(nextDirections[character.id] || makeDirection()),
+          action: suggestion?.action || nextDirections[character.id]?.action || "",
+          emotion: closestChoice(suggestion?.emotion, EMOTIONS, nextDirections[character.id]?.emotion || "Natural"),
+          dialogue: suggestion?.dialogue || nextDirections[character.id]?.dialogue || "",
+        };
+      });
+      const dialogue = selectedCharacters.map((character) => {
+        const spoken = nextDirections[character.id]?.dialogue?.trim();
+        return spoken ? `${character.name}: ${spoken}` : "";
+      }).filter(Boolean).join("\n");
+      const storySignal = `${analysis.intent} ${analysis.summaryTh}`.toLocaleLowerCase();
+      const objective = sceneIndex === scenes.length - 1 ? "Resolve Scene" : storySignal.includes("reveal") || storySignal.includes("เปิดเผย") ? "Reveal Information" : storySignal.includes("tension") || storySignal.includes("ตึง") ? "Build Tension" : sceneIndex === 0 ? "Establish World" : selectedScene.objective;
+      const beat = sceneIndex === 0 ? "Opening" : sceneIndex === scenes.length - 1 ? "Exit" : storySignal.includes("peak") || storySignal.includes("พีก") ? "Peak" : "Turn";
+      const transition = sceneIndex === scenes.length - 1 ? "Fade" : analysis.camera.movement.toLocaleLowerCase().includes("whip") ? "Whip" : "Seamless";
+      const cameraSpeed = storySignal.includes("action") || storySignal.includes("ไล่") || storySignal.includes("ต่อสู้") ? "Fast" : storySignal.includes("emotion") || storySignal.includes("อารมณ์") ? "Slow" : "Normal";
+      const performance = storySignal.includes("intense") || storySignal.includes("เข้ม") ? "Intense" : storySignal.includes("anime") || visualStyle.includes("Anime") ? "Expressive" : "Natural";
+      const colorTemp = analysis.lighting.mood.toLocaleLowerCase().match(/warm|อบอุ่น|gold/) ? "Warm 3200K" : analysis.lighting.mood.toLocaleLowerCase().match(/cool|blue|เย็น|กลางคืน/) ? "Cool 7000K" : "Neutral 4500K";
+      patchScene({
+        action: analysis.scene.description || selectedScene.action,
+        location: analysis.scene.location || selectedScene.location,
+        objective, beat, transition,
+        characterIds: nextIds,
+        characterDirections: nextDirections,
+        cameraSubjectId: nextIds[0] || "",
+        dialogue,
+        shot: closestChoice(analysis.camera.shotType, SHOT_TYPES, selectedScene.shot),
+        angle: closestChoice(analysis.camera.angle, CAMERA_ANGLES, selectedScene.angle),
+        lens: closestChoice(analysis.camera.lensMm ? `${analysis.camera.lensMm}mm` : "", LENSES, selectedScene.lens),
+        movement: closestChoice(analysis.camera.movement, CAMERA_MOVEMENTS, selectedScene.movement),
+        height: closestChoice(analysis.camera.cameraHeight, CAMERA_HEIGHTS, selectedScene.height),
+        cameraSpeed,
+        focus: nextIds.length ? "Auto Subject" : "Deep Focus",
+        dof: closestChoice(analysis.camera.depthOfField, DOF_OPTIONS, selectedScene.dof),
+        composition: closestChoice(analysis.camera.composition, COMPOSITION_OPTIONS, selectedScene.composition),
+        lighting: closestChoice(analysis.lighting.style, LIGHTING_STYLES, selectedScene.lighting),
+        colorTemp,
+        emotion: closestChoice(analysis.characters[0]?.emotion || analysis.lighting.mood, EMOTIONS, selectedScene.emotion),
+        performance,
+        ambience: closestChoice(analysis.audio.ambience, AMBIENCE_PRESETS, selectedScene.ambience),
+        sfx: closestChoice(analysis.audio.soundEffects[0], SFX_PRESETS, selectedScene.sfx),
+        music: closestChoice(analysis.audio.music, MUSIC_PRESETS, selectedScene.music),
+        negativePrompt: analysis.generation.negativePrompt.join(", ") || selectedScene.negativePrompt,
+        continuityNote: `${analysis.summaryTh}\nรักษาตัวละคร: ${selectedCharacters.map((item) => item.name).join(", ") || "ไม่มีตัวละครในฉาก"}`,
+      });
+      const cost = Number(data.usage?.costThb || 0);
+      setSceneAiSummary(`${analysis.summaryTh} · ${data.provider || "AI Analyzer"}${cost > 0 ? ` · ฿${cost.toFixed(4)}` : " · BYOK"}`);
+      setMessage("AI จัดตัวเลือกของฉากให้แล้ว คุณสามารถแก้ทุกช่องต่อได้");
+    } catch (error) {
+      const raw = error instanceof Error ? error.message : "ANALYZER_FAILED";
+      setMessage(friendlyAiError(raw));
+    } finally {
+      setSceneAiBusy(false);
+    }
   }
 
   async function sendToAgent() {
@@ -706,7 +859,8 @@ export default function SingleEpisodeStudio() {
         <aside className={styles.sceneList}>{scenes.map((scene, index) => { const time = sceneTimes[index]; return <button type="button" key={scene.id} className={scene.id === selectedScene?.id ? styles.sceneActive : ""} onClick={() => setSelectedSceneId(scene.id)}><b>{String(index + 1).padStart(2, "0")}</b><span><strong>{scene.title}</strong><small>{formatTime(time?.start || 0)}–{formatTime(time?.end || scene.duration)} • {scene.duration} วินาที</small></span></button>; })}</aside>
 
         {selectedScene ? <div className={styles.sceneEditor}>
-          <div className={styles.sceneEditorHead}><div><span>ฉาก {String(scenes.findIndex((item) => item.id === selectedScene.id) + 1).padStart(2, "0")}</span><h3>{selectedScene.title}</h3></div><div><button type="button" onClick={copyCameraToAll}>คัดลอกกล้องไปทุกฉาก</button><button type="button" onClick={copyLookToAll}>คัดลอกแสงไปทุกฉาก</button></div></div>
+          <div className={styles.sceneEditorHead}><div><span>ฉาก {String(scenes.findIndex((item) => item.id === selectedScene.id) + 1).padStart(2, "0")}</span><h3>{selectedScene.title}</h3></div><div><button type="button" className={styles.aiArrangeButton} onClick={arrangeSceneWithAi} disabled={sceneAiBusy}>{sceneAiBusy ? "AI กำลังจัดฉาก..." : "✦ AI จัดฉากตามโครงเรื่อง"}</button><button type="button" onClick={copyCameraToAll}>คัดลอกกล้องไปทุกฉาก</button><button type="button" onClick={copyLookToAll}>คัดลอกแสงไปทุกฉาก</button></div></div>
+          {sceneAiSummary ? <div className={styles.aiSceneNotice}><b>AI จัดฉากแล้ว</b><span>{sceneAiSummary}</span></div> : null}
 
           <div className={styles.twoGrid}><label className={styles.field}><span>ชื่อฉาก</span><input value={selectedScene.title} onChange={(event) => patchScene({ title: event.target.value })} /></label><label className={styles.field}><span>สถานที่</span><input list="scenova-locations" value={selectedScene.location} onChange={(event) => patchScene({ location: event.target.value })} placeholder="พิมพ์เองหรือเลือก Preset" /><datalist id="scenova-locations">{LOCATION_PRESETS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</datalist></label></div>
           <div className={styles.threeGrid}><ChoiceField label="เป้าหมายฉาก" value={selectedScene.objective} options={OBJECTIVE_PRESETS} onChange={(value) => patchScene({ objective: value })} compact /><ChoiceField label="จังหวะเรื่อง" value={selectedScene.beat} options={SCENE_BEATS} onChange={(value) => patchScene({ beat: value })} compact /><ChoiceField label="การเปลี่ยนฉาก" value={selectedScene.transition} options={TRANSITIONS} onChange={(value) => patchScene({ transition: value })} compact /></div>
@@ -720,9 +874,9 @@ export default function SingleEpisodeStudio() {
           </section>
 
           <section className={styles.directorBlock}>
-            <div className={styles.blockHead}><div><span>เหตุการณ์และบทพูด</span><h4>เหตุการณ์และบทพูด</h4></div><p>เขียน Action รวมของฉาก และระบุชื่อผู้พูดใน Dialogue ให้ตรงกับ Cast</p></div>
+            <div className={styles.blockHead}><div><span>เหตุการณ์และบทพูด</span><h4>Action และบทพูดรายตัวละคร</h4></div><p>บทพูดแยกตามตัวละครที่เลือกอยู่ในฉาก ระบบจะรวมชื่อกับเสียงให้ Voice Router อัตโนมัติ</p></div>
             <label className={styles.field}><span>Action รวมของฉาก</span><textarea className={styles.bigTextarea} value={selectedScene.action} onChange={(event) => patchScene({ action: event.target.value })} placeholder="ฉากเริ่มอย่างไร ใครทำอะไร จุดเปลี่ยนอยู่ตรงไหน และจบด้วยอะไร" /></label>
-            <label className={styles.field}><span>Dialogue / บทพูด</span><textarea value={selectedScene.dialogue} onChange={(event) => patchScene({ dialogue: event.target.value })} placeholder={'ตัวละคร 1: ...\nตัวละคร 2: ...'} /><small>ใช้ชื่อเดียวกับ Cast เพื่อให้ Voice Router จับคู่เสียงได้ถูกต้อง</small></label>
+            {selectedScene.characterIds.length ? <div className={styles.dialogueGrid}>{selectedScene.characterIds.map((id) => { const character = characters.find((item) => item.id === id); if (!character) return null; const direction = selectedScene.characterDirections[id] || makeDirection(); const value = direction.dialogue || legacyDialogueFor(selectedScene.dialogue, character.name); return <label key={id} className={styles.dialogueCard}><span><b>{character.name}</b><small>{character.voice}</small></span><textarea value={value} onChange={(event) => patchCharacterDialogue(id, event.target.value)} placeholder={`เขียนบทพูดของ ${character.name} หรือเว้นว่างถ้าไม่มีบท`} /><em>Voice Router จะใช้ชื่อและโปรไฟล์เสียงนี้โดยอัตโนมัติ</em></label>; })}</div> : <div className={styles.emptyState}>เลือกตัวละครที่อยู่ในฉากก่อน แล้วช่องบทพูดรายคนจะปรากฏที่นี่</div>}
           </section>
 
           <section className={styles.directorBlock}>

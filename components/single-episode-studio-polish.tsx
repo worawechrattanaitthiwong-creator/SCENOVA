@@ -25,7 +25,8 @@ function compact(value: string | null | undefined) {
 function findFieldByLabels(root: HTMLElement, labels: string[]) {
   return Array.from(root.querySelectorAll<HTMLLabelElement>("label")).find((field) => {
     const directLabel = Array.from(field.children).find((child) => child.tagName === "SPAN");
-    return labels.includes(compact(directLabel?.textContent));
+    const current = compact(directLabel?.textContent).toLocaleLowerCase();
+    return labels.some((label) => current === label.toLocaleLowerCase() || current.startsWith(`${label.toLocaleLowerCase()} /`));
   }) || null;
 }
 
