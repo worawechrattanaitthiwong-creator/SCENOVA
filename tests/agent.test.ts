@@ -6,6 +6,8 @@ import type { AgentRunRecord } from "@/lib/agent/types";
 import { FILM_WORKFLOW_TASKS, handoffEnvelopeSchema } from "@/lib/agent/contracts";
 import { deterministicRoleArtifact } from "@/lib/agent/role-runtime";
 import type { Project } from "@/lib/domain";
+import { resolveVideoProviderForModel } from "@/lib/orchestrator";
+import { MockVideoProvider } from "@/lib/providers/mock-video-provider";
 
 function run(overrides: Partial<AgentRunRecord> = {}): AgentRunRecord {
   const now = new Date();
@@ -42,6 +44,21 @@ describe("agent recovery policy", () => {
     const result = decideAgentRecovery({ error: new Error("provider timeout"), attempt: 1, maxRetries: 2, providerSwitches: 0, maxProviderSwitches: 1 });
     expect(result.action).toBe("RETRY");
     expect(result.delayMs).toBeGreaterThan(0);
+  });
+
+  it("asks the user instead of burning retries when a video connection is missing", () => {
+    const result = decideAgentRecovery({ error: new Error("VIDEO_PROVIDER_CONNECTION_REQUIRED:seedance"), attempt: 1, maxRetries: 2, providerSwitches: 0, maxProviderSwitches: 1 });
+    expect(result.action).toBe("ASK_USER");
+  });
+});
+
+describe("video provider model routing", () => {
+  it("matches Seedance model aliases regardless of case and punctuation", () => {
+    const seedance = new MockVideoProvider();
+    const providers = { "seedance-2.5": seedance };
+    expect(resolveVideoProviderForModel(providers, "Seedance-2.5")).toBe(seedance);
+    expect(resolveVideoProviderForModel(providers, "Seedance 2.5")).toBe(seedance);
+    expect(resolveVideoProviderForModel(providers, "seedance_2_5")).toBe(seedance);
   });
 });
 
