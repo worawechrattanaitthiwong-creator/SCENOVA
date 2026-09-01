@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { resolveSession } from "@/lib/auth-core";
 import { ensureAgentRunHasQueueJob, getAgentRuntimeHealth } from "@/lib/agent/runtime-health";
+import { readAgentWorkerHeartbeat } from "@/lib/agent/worker-heartbeat";
 import { runAgentWorkerOnce } from "@/lib/agent/worker-runtime";
 
 export const runtime = "nodejs";
@@ -25,8 +26,11 @@ export async function GET(request: Request) {
   const user = await currentUser();
   if (!user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
-  const health = await getAgentRuntimeHealth(user.id, requestedRunId(request));
-  return NextResponse.json({ ...health, viewerRole: user.role }, {
+  const [health, worker] = await Promise.all([
+    getAgentRuntimeHealth(user.id, requestedRunId(request)),
+    readAgentWorkerHeartbeat(),
+  ]);
+  return NextResponse.json({ ...health, worker, viewerRole: user.role }, {
     headers: { "Cache-Control": "no-store, max-age=0" },
   });
 }
@@ -46,11 +50,12 @@ export async function POST(request: Request) {
       error: before.message,
       code: before.security.environmentHardLock ? "AGENT_ENVIRONMENT_LOCKED" : "AGENT_SECURITY_BLOCKED",
       health: before,
+      worker: await readAgentWorkerHeartbeat(),
     }, { status: 423 });
   }
 
   if (["waiting_approval", "paused", "completed", "failed", "cancelled"].includes(before.runtimeState)) {
-    return NextResponse.json({ ok: true, kicked: false, repair: null, health: before });
+    return NextResponse.json({ ok: true, kicked: false, repair: null, health: before, worker: await readAgentWorkerHeartbeat() });
   }
 
   const repair = await ensureAgentRunHasQueueJob(runId);
@@ -72,6 +77,9 @@ export async function POST(request: Request) {
     }
   }
 
-  const health = await getAgentRuntimeHealth(user.id, runId);
-  return NextResponse.json({ ok: !kickError, kicked, kickError, repair, health });
+  const [health, worker] = await Promise.all([
+    getAgentRuntimeHealth(user.id, runId),
+    readAgentWorkerHeartbeat(),
+  ]);
+  return NextResponse.json({ ok: !kickError, kicked, kickError, repair, health, worker });
 }
