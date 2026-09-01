@@ -401,6 +401,7 @@ async function processAgentStage(run: AgentRunRecord, job: AgentQueueJobRecord) 
       const requestBase: Omit<GenerateVideoRequest, "idempotencyKey"> = {
         projectId: project.id,
         episodeId: episode.id,
+        modelVersionId: project.mainModelVersionId,
         renderSegment,
         prompt,
         resolution: project.resolution,

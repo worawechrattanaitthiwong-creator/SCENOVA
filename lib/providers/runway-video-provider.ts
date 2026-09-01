@@ -1,6 +1,7 @@
 import type { ModelDefinition } from "@/lib/domain";
 import { assertEmergencyCapability, enforceEmergencyRateLimit } from "@/lib/emergency-security";
 import type { GenerateVideoRequest, GenerateVideoResult, ProviderRuntimeCredential, VideoProvider } from "@/lib/providers/video-provider";
+import { resolveVideoApiModelId } from "@/lib/video-model-versions";
 import { asRecord, buildCompiledVideoPrompt, byokAwareEstimate, clampInt, errorMessage, runwayRatio } from "@/lib/providers/video-provider-utils";
 
 const DEFAULT_BASE_URL = "https://api.dev.runwayml.com/v1";
@@ -62,8 +63,10 @@ export class RunwayVideoProvider implements VideoProvider {
     if (!this.apiKey) throw new Error("RUNWAY_PROVIDER_UNAVAILABLE:API_KEY_NOT_CONFIGURED");
 
     const duration = clampInt(request.renderSegment.duration, 2, 10);
+    const modelId = resolveVideoApiModelId("Runway", request.modelVersionId) || this.modelId;
+    if (modelId === "gen4_turbo" && !request.imageReferences[0]) throw new Error("RUNWAY_GEN4_TURBO_REQUIRES_IMAGE_REFERENCE");
     const body: Record<string, unknown> = {
-      model: this.modelId,
+      model: modelId,
       promptText: buildCompiledVideoPrompt(request).slice(0, 4000),
       ratio: runwayRatio(request.aspectRatio),
       duration,

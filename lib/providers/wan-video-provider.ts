@@ -1,12 +1,13 @@
 import type { ModelDefinition } from "@/lib/domain";
 import { assertEmergencyCapability, enforceEmergencyRateLimit } from "@/lib/emergency-security";
 import type { GenerateVideoRequest, GenerateVideoResult, ProviderRuntimeCredential, VideoProvider } from "@/lib/providers/video-provider";
+import { resolveVideoApiModelId } from "@/lib/video-model-versions";
 import { asRecord, buildCompiledVideoPrompt, byokAwareEstimate, errorMessage, wanSize } from "@/lib/providers/video-provider-utils";
 
 // Legacy Singapore domain remains functional and lets a user connect with only a regional DashScope API key.
 // Users on the new workspace-specific domain can paste that URL in API Base URL without changing the adapter.
 const DEFAULT_BASE_URL = "https://dashscope-intl.aliyuncs.com/api/v1";
-const DEFAULT_MODEL = "wan2.6-t2v";
+const DEFAULT_MODEL = "wan3.0-video";
 
 function normalizedDuration(seconds: number) {
   return seconds <= 5 ? 5 : 10;
@@ -64,6 +65,7 @@ export class WanVideoProvider implements VideoProvider {
     await enforceEmergencyRateLimit(`video:project:${request.projectId}`, Number(process.env.EMERGENCY_VIDEO_CALLS_PER_MINUTE || 2));
     if (!this.apiKey) throw new Error("WAN_PROVIDER_UNAVAILABLE:API_KEY_NOT_CONFIGURED");
 
+    const modelId = resolveVideoApiModelId("Wan", request.modelVersionId) || this.modelId;
     const input: Record<string, unknown> = { prompt: buildCompiledVideoPrompt(request).slice(0, 5000) };
     if (request.imageReferences[0]) input.img_url = request.imageReferences[0];
     if (request.videoReferences.length > 0) input.reference_urls = request.videoReferences.slice(0, 3);
@@ -72,13 +74,13 @@ export class WanVideoProvider implements VideoProvider {
       method: "POST",
       headers: this.headers(true),
       body: JSON.stringify({
-        model: this.modelId,
+        model: modelId,
         input,
         parameters: {
           size: wanSize(request.aspectRatio),
           duration: normalizedDuration(request.renderSegment.duration),
           prompt_extend: true,
-          audio: request.audioReferences.length > 0 || /2\.6|2\.7/.test(this.modelId),
+          audio: request.audioReferences.length > 0 || /2\.6|2\.7|3\.0/.test(modelId),
           watermark: false,
         },
       }),

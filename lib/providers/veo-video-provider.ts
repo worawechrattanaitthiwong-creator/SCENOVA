@@ -1,6 +1,7 @@
 import type { ModelDefinition } from "@/lib/domain";
 import { assertEmergencyCapability, enforceEmergencyRateLimit } from "@/lib/emergency-security";
 import type { GenerateVideoRequest, GenerateVideoResult, ProviderRuntimeCredential, VideoProvider } from "@/lib/providers/video-provider";
+import { resolveVideoApiModelId } from "@/lib/video-model-versions";
 import { asRecord, buildCompiledVideoPrompt, byokAwareEstimate, errorMessage, ratioToLandscapePortrait } from "@/lib/providers/video-provider-utils";
 
 const DEFAULT_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
@@ -60,6 +61,7 @@ export class VeoVideoProvider implements VideoProvider {
     await enforceEmergencyRateLimit(`video:project:${request.projectId}`, Number(process.env.EMERGENCY_VIDEO_CALLS_PER_MINUTE || 2));
     if (!this.apiKey) throw new Error("VEO_PROVIDER_UNAVAILABLE:API_KEY_NOT_CONFIGURED");
 
+    const modelId = resolveVideoApiModelId("Veo", request.modelVersionId) || this.modelId;
     const instances: Array<Record<string, unknown>> = [{ prompt: buildCompiledVideoPrompt(request).slice(0, 8000) }];
     const parameters: Record<string, unknown> = {
       numberOfVideos: 1,
@@ -68,7 +70,7 @@ export class VeoVideoProvider implements VideoProvider {
     };
     if (request.prompt.negative) parameters.negativePrompt = request.prompt.negative.slice(0, 2000);
 
-    const response = await fetch(`${this.baseUrl}/models/${encodeURIComponent(this.modelId)}:predictLongRunning`, {
+    const response = await fetch(`${this.baseUrl}/models/${encodeURIComponent(modelId)}:predictLongRunning`, {
       method: "POST",
       headers: this.headers(),
       body: JSON.stringify({ instances, parameters }),

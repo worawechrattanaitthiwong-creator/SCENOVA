@@ -61,6 +61,7 @@ export type StudioAgentScene = {
 export type StudioAgentDraft = {
   episodeTitle: string;
   model: string;
+  modelVersion?: string;
   aspect: string;
   visualStyle: string;
   story: string;
@@ -304,6 +305,7 @@ export function buildStudioAgentProject(draft: StudioAgentDraft, idSeed = `${Dat
     aspectRatio: aspectRatio(draft.aspect),
     episodeCount: 1,
     mainModelId,
+    mainModelVersionId: draft.modelVersion || undefined,
     modelMode: "single",
     promptMode: "creative-director",
     resolution: "720p",
@@ -312,6 +314,7 @@ export function buildStudioAgentProject(draft: StudioAgentDraft, idSeed = `${Dat
     projectBible: [
       `สไตล์ภาพ: ${draft.visualStyle}`,
       `โมเดลหลัก: ${draft.model}`,
+      `รุ่นโมเดล: ${draft.modelVersion || "Provider default"}`,
       manualAdvancedSetup
         ? `ข้อห้ามรวม: ${draft.globalNegative}`
         : "Locks / Negative Prompt: AI AUTO — ให้ทีม AI สร้างเฉพาะ Lock และ Negative Prompt ที่จำเป็นตามเนื้อเรื่อง ความต่อเนื่อง และคุณภาพภาพ โดยไม่ถือค่าที่ซ่อนไว้เป็นข้อบังคับจากผู้ใช้.",

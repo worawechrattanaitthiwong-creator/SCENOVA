@@ -129,6 +129,7 @@ export type Project = {
   aspectRatio: AspectRatio;
   episodeCount: number | "open-ended";
   mainModelId: string;
+  mainModelVersionId?: string;
   modelMode: ModelMode;
   promptMode: PromptMode;
   resolution: Resolution;

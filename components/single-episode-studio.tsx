@@ -32,6 +32,7 @@ import {
   VOICE_PROFILES,
 } from "@/lib/sound-design-options";
 import { getVideoUiCapability } from "@/lib/providers/video-ui-capabilities";
+import { getDefaultVideoModelVersionId, getVideoModelVersions } from "@/lib/video-model-versions";
 
 type CharacterReference = {
   id: string;
@@ -290,6 +291,7 @@ export default function SingleEpisodeStudio() {
   const router = useRouter();
   const [episodeTitle, setEpisodeTitle] = useState("Untitled Episode");
   const [model, setModel] = useState("Seedance 2.5");
+  const [modelVersion, setModelVersion] = useState(() => getDefaultVideoModelVersionId("Seedance 2.5"));
   const [aspect, setAspect] = useState("16:9 — Widescreen");
   const [visualStyle, setVisualStyle] = useState(STYLES[0]);
   const [story, setStory] = useState("");
@@ -364,6 +366,8 @@ export default function SingleEpisodeStudio() {
   }, [scenes, selectedSceneId]);
 
   const selectedScene = scenes.find((scene) => scene.id === selectedSceneId) || scenes[0];
+  const modelVersions = useMemo(() => getVideoModelVersions(model), [model]);
+  const selectedModelVersion = modelVersions.find((item) => item.apiModelId === modelVersion) || modelVersions[0];
   const videoCapability = getVideoUiCapability(model);
   const providerMaxSeconds = Math.max(...videoCapability.durationSeconds);
   const providerMinScenes = Math.max(1, Math.ceil(totalDuration / providerMaxSeconds));
@@ -433,6 +437,7 @@ export default function SingleEpisodeStudio() {
     const maxSeconds = Math.max(...capability.durationSeconds);
     const requiredScenes = Math.max(1, Math.ceil(totalDuration / maxSeconds));
     setModel(nextModel);
+    setModelVersion(getDefaultVideoModelVersionId(nextModel));
     setScenes((current) => {
       const nextCount = Math.max(requiredScenes, Math.min(current.length, totalDuration));
       const needsRedistribution = current.length !== nextCount || current.some((scene) => scene.duration > maxSeconds);
@@ -557,6 +562,7 @@ export default function SingleEpisodeStudio() {
       const project = buildStudioAgentProject({
         episodeTitle,
         model,
+        modelVersion,
         aspect,
         visualStyle,
         story,
@@ -617,7 +623,7 @@ export default function SingleEpisodeStudio() {
       </div>
       <div className={styles.setupGrid}>
         <label className={styles.field}><span>ชื่อตอน</span><input value={episodeTitle} onChange={(event) => setEpisodeTitle(event.target.value)} placeholder="เช่น คืนสุดท้ายที่สถานีรถไฟ" /><small>ชื่อสำหรับร่าง งาน Render และ Video Library</small></label>
-        <label className={styles.field}><span>โมเดลวิดีโอ</span><select value={model} onChange={(event) => changeModel(event.target.value)}>{MODELS.map((item) => <option key={item}>{item}</option>)}</select><small>เลือก Provider ที่จะใช้สร้างคลิปจริง</small></label>
+        <div className={styles.field}><span>โมเดลวิดีโอ / รุ่น</span><div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1.2fr)", gap: 6 }}><select aria-label="โมเดลวิดีโอ" value={model} onChange={(event) => changeModel(event.target.value)}>{MODELS.map((item) => <option key={item}>{item}</option>)}</select><select aria-label="รุ่นโมเดล" value={modelVersion} onChange={(event) => setModelVersion(event.target.value)}>{modelVersions.map((item) => <option key={item.apiModelId} value={item.apiModelId}>{item.label}</option>)}</select></div><small>{selectedModelVersion ? `รุ่นที่ใช้จริง: ${selectedModelVersion.label} · ${selectedModelVersion.note}` : "เลือกรุ่นของ Provider ที่จะใช้สร้างคลิปจริง"}</small></div>
         <label className={styles.field}><span>อัตราส่วนภาพ</span><select value={aspect} onChange={(event) => setAspect(event.target.value)}>{ASPECTS.map((item) => <option key={item}>{item}</option>)}</select><small>ใช้สัดส่วนเดียวกันทุกฉากของตอนนี้</small></label>
         <label className={styles.field}><span>สไตล์ภาพ</span><select value={visualStyle} onChange={(event) => setVisualStyle(event.target.value)}>{STYLES.map((item) => <option key={item}>{item}</option>)}</select><small>Master Style ของตอนนี้</small></label>
         <label className={`${styles.field} ${styles.storyField}`}><span>เรื่อง / เหตุการณ์ของตอน</span><textarea value={story} onChange={(event) => setStory(event.target.value)} placeholder="เล่าว่าใครต้องการอะไร เกิดปัญหาอะไร เหตุการณ์ดำเนินอย่างไร และจบแบบไหน" /><small>เขียนเป็นภาษาธรรมชาติได้ Analyzer จะนำข้อมูลนี้ไปจัดโครง Prompt ภายหลัง</small></label>

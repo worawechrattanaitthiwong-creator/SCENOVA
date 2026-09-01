@@ -13,6 +13,7 @@ export type ProviderRuntimeCredential = {
 export type GenerateVideoRequest = {
   projectId: string;
   episodeId: string;
+  modelVersionId?: string;
   renderSegment: RenderSegment;
   prompt: PromptBundle;
   resolution: Resolution;

@@ -1,6 +1,7 @@
 import type { ModelDefinition } from "@/lib/domain";
 import { assertEmergencyCapability, enforceEmergencyRateLimit } from "@/lib/emergency-security";
 import type { GenerateVideoRequest, GenerateVideoResult, ProviderRuntimeCredential, VideoProvider } from "@/lib/providers/video-provider";
+import { resolveVideoApiModelId } from "@/lib/video-model-versions";
 
 const DEFAULT_BASE_URL = "https://operator.las.ap-southeast-1.bytepluses.com/api/v1";
 const DEFAULT_MODEL = "dreamina-seedance-2-5-260628";
@@ -92,6 +93,7 @@ export class Seedance25VideoProvider implements VideoProvider {
     await enforceEmergencyRateLimit(`video:project:${request.projectId}`, Number(process.env.EMERGENCY_VIDEO_CALLS_PER_MINUTE || 2));
     if (!this.apiKey) throw new Error("SEEDANCE_PROVIDER_UNAVAILABLE:SEEDANCE_API_KEY_NOT_CONFIGURED");
     const duration = Math.round(request.renderSegment.duration);
+    const modelId = resolveVideoApiModelId("Seedance 2.5", request.modelVersionId) || this.modelId;
     if (duration < 4 || duration > 30) throw new Error(`SEEDANCE_DURATION_NOT_SUPPORTED:${duration}`);
 
     const content: Array<Record<string, unknown>> = [{ type: "text", text: buildPrompt(request) }];
@@ -103,7 +105,7 @@ export class Seedance25VideoProvider implements VideoProvider {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${this.apiKey}`, "Idempotency-Key": request.idempotencyKey },
       body: JSON.stringify({
-        model: this.modelId,
+        model: modelId,
         content,
         duration,
         resolution: normalizedResolution(request.resolution),

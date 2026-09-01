@@ -2,6 +2,7 @@ import { createHmac } from "crypto";
 import type { ModelDefinition } from "@/lib/domain";
 import { assertEmergencyCapability, enforceEmergencyRateLimit } from "@/lib/emergency-security";
 import type { GenerateVideoRequest, GenerateVideoResult, ProviderRuntimeCredential, VideoProvider } from "@/lib/providers/video-provider";
+import { resolveVideoApiModelId } from "@/lib/video-model-versions";
 import { asRecord, buildCompiledVideoPrompt, byokAwareEstimate, clampInt, errorMessage, normalizedAspectRatio } from "@/lib/providers/video-provider-utils";
 
 const DEFAULT_BASE_URL = "https://api-singapore.klingai.com";
@@ -110,10 +111,11 @@ export class KlingVideoProvider implements VideoProvider {
     await enforceEmergencyRateLimit(`video:project:${request.projectId}`, Number(process.env.EMERGENCY_VIDEO_CALLS_PER_MINUTE || 2));
     if (!this.isConfigured()) throw new Error("KLING_PROVIDER_UNAVAILABLE:CREDENTIAL_REQUIRED");
 
+    const modelId = resolveVideoApiModelId("Kling", request.modelVersionId) || this.modelId;
     const hasImage = Boolean(request.imageReferences[0]);
     const kind = hasImage ? "image2video" : "text2video";
     const body: Record<string, unknown> = {
-      model_name: this.modelId,
+      model_name: modelId,
       prompt: buildCompiledVideoPrompt(request).slice(0, 2500),
       negative_prompt: request.prompt.negative.slice(0, 2500),
       duration: String(clampInt(request.renderSegment.duration, 3, 15)),
