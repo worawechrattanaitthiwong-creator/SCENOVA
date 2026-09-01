@@ -1,4 +1,5 @@
 import AgentControlCenter from "@/components/agent-control-center";
+import AgentJobStatusDock from "@/components/agent-job-status-dock";
 import AgentLocalNav from "@/components/agent-local-nav";
 import AgentRunModelEditor from "@/components/agent-run-model-editor";
 import AgentRuntimeStatus from "@/components/agent-runtime-status";
@@ -10,5 +11,6 @@ export default function AgentPage() {
     <AgentRuntimeStatus />
     <AgentRunModelEditor />
     <AgentControlCenter />
+    <AgentJobStatusDock />
   </div>;
 }
