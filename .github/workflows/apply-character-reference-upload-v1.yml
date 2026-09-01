@@ -1,0 +1,31 @@
+name: Apply Character Reference Upload V1
+
+on:
+  push:
+    paths:
+      - "scripts/apply-character-reference-upload-v1.mjs"
+      - ".github/workflows/apply-character-reference-upload-v1.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch-main:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Apply character reference upload
+        run: node scripts/apply-character-reference-upload-v1.mjs
+      - name: Commit character reference upload
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .env.example components/single-episode-studio.tsx components/single-episode-studio.module.css lib/agent/studio-project.ts lib/agent/worker-runtime.ts lib/character-reference-storage.ts app/api/character-references/route.ts 'app/api/character-references/[id]/route.ts'
+          git diff --cached --quiet && exit 0
+          git commit -m "Add multi-image character references"
+          git push origin HEAD:main
