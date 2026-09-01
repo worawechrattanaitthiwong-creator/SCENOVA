@@ -20,7 +20,7 @@ export function decideAgentRecovery(input: { error: unknown; attempt: number; ma
     return {
       action: "ASK_USER",
       delayMs: 0,
-      reason: "Provider ตอบ HTTP 429 / RESOURCE_EXHAUSTED ซึ่งอาจเกิดจาก Rate Limit, Model Quota หรือ Spend Limit แม้บัญชียังมียอดเงินคงเหลือ ระบบจะหยุด Retry อัตโนมัติเพื่อป้องกันงานซ้ำ กรุณาตรวจ Rate Limit แล้วเลือกงานนี้ในรายการงาน AI เพื่อกด “บังคับเริ่มงานนี้” อีกครั้ง",
+      reason: "Provider ตอบ HTTP 429 / RESOURCE_EXHAUSTED ซึ่งอาจเกิดจาก Rate Limit, โควตาโมเดล (Model Quota) หรือ Spend Limit แม้บัญชียังมียอดเงินคงเหลือ ระบบจะหยุด Retry อัตโนมัติเพื่อป้องกันงานซ้ำ กรุณาตรวจ Rate Limit แล้วเลือกงานนี้ในรายการงาน AI เพื่อกด “บังคับเริ่มงานนี้” อีกครั้ง",
     };
   }
 
