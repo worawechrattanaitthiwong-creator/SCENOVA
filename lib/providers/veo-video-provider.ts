@@ -13,6 +13,13 @@ function proxiedVeoUrl(url: string, connectionId?: string | null) {
   return `/api/provider-media?${params.toString()}`;
 }
 
+export function buildVeoParameters(request: Pick<GenerateVideoRequest, "aspectRatio" | "resolution">) {
+  return {
+    aspectRatio: ratioToLandscapePortrait(request.aspectRatio),
+    resolution: request.resolution === "1080p" ? "1080p" : "720p",
+  };
+}
+
 export class VeoVideoProvider implements VideoProvider {
   id = "veo";
   credentialProviderId = "veo";
@@ -62,15 +69,12 @@ export class VeoVideoProvider implements VideoProvider {
     if (!this.apiKey) throw new Error("VEO_PROVIDER_UNAVAILABLE:API_KEY_NOT_CONFIGURED");
 
     const modelId = resolveVideoApiModelId("Veo", request.modelVersionId) || this.modelId;
-    // buildCompiledVideoPrompt already embeds SCENOVA's negative/avoid guidance in the
-    // text prompt. Do not also send Gemini's optional negativePrompt parameter here:
-    // some Veo model variants reject that field with HTTP 400.
+    // Keep SCENOVA's negative/avoid guidance inside the compiled text prompt. Some
+    // Veo variants reject negativePrompt as a separate parameter. Veo 3.x models
+    // also produce exactly one video per request, so do not send numberOfVideos;
+    // variants with a fixed count can reject that otherwise-redundant field.
     const instances: Array<Record<string, unknown>> = [{ prompt: buildCompiledVideoPrompt(request).slice(0, 8000) }];
-    const parameters: Record<string, unknown> = {
-      numberOfVideos: 1,
-      aspectRatio: ratioToLandscapePortrait(request.aspectRatio),
-      resolution: request.resolution === "1080p" ? "1080p" : "720p",
-    };
+    const parameters = buildVeoParameters(request);
 
     const response = await fetch(`${this.baseUrl}/models/${encodeURIComponent(modelId)}:predictLongRunning`, {
       method: "POST",
