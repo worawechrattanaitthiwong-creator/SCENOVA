@@ -6,13 +6,13 @@ const priceLabel = (level: number) => level === 1 ? "ประหยัด" : le
 
 export default function ModelsPage() {
   return (
-    <main className={styles.page}>
+    <main className={styles.page} data-sc-help-ignore>
       <header className={styles.hero}>
         <div><span className={styles.eyebrow}>MODEL CENTER</span><h1>โมเดล & เรทราคา</h1><p>เปรียบเทียบโมเดลก่อนใช้งาน ดูความยาวสูงสุด ความละเอียด Audio, Reference และระดับราคา แล้วกลับไปเลือกใน Studio</p></div>
         <Link href="/studio#setup" className={styles.primaryLink}>กลับ Studio</Link>
       </header>
       <div className={styles.grid}>
-        {VIDEO_MODELS.map((model) => <article key={model.id} className={styles.card}>
+        {VIDEO_MODELS.map((model) => <article key={model.id} className={styles.card} data-sc-help-ignore>
           <div className={styles.cardTop}><div><b>{model.name}</b><span className={styles.provider}>{model.provider}</span></div><span className={styles.price}>{priceLabel(model.priceLevel)}</span></div>
           <p className={styles.description}>{model.descriptionTh}</p>
           <div className={styles.specs}>
