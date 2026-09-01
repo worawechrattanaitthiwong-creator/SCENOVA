@@ -129,24 +129,7 @@ jobs:
             worker_heartbeat_ok=0
             for attempt in 1 2 3 4 5 6 7 8 9 10; do
               if [ -f /tmp/scenova-agent-worker-heartbeat.json ]; then
-                if node <<'NODE'
-            const fs = require('node:fs');
-            const file = '/tmp/scenova-agent-worker-heartbeat.json';
-            const heartbeat = JSON.parse(fs.readFileSync(file, 'utf8'));
-            const updatedAt = Date.parse(String(heartbeat.updatedAt || ''));
-            const ageMs = Date.now() - updatedAt;
-            if (!Number.isFinite(updatedAt) || ageMs < 0 || ageMs > 10000 || heartbeat.state === 'stopping') process.exit(1);
-            console.log(JSON.stringify({
-              agentWorker: 'healthy',
-              state: heartbeat.state,
-              activeLanes: heartbeat.activeLanes,
-              concurrency: heartbeat.concurrency,
-              heartbeatAgeMs: ageMs,
-              securityReason: heartbeat.reason || null,
-              lastError: heartbeat.lastError || null,
-            }));
-            NODE
-                then
+                if node -e 'const fs=require("node:fs"); const file="/tmp/scenova-agent-worker-heartbeat.json"; const h=JSON.parse(fs.readFileSync(file,"utf8")); const updatedAt=Date.parse(String(h.updatedAt||"")); const ageMs=Date.now()-updatedAt; if(!Number.isFinite(updatedAt)||ageMs<0||ageMs>10000||h.state==="stopping") process.exit(1); console.log(JSON.stringify({agentWorker:"healthy",state:h.state,activeLanes:h.activeLanes,concurrency:h.concurrency,heartbeatAgeMs:ageMs,securityReason:h.reason||null,lastError:h.lastError||null}));'; then
                   worker_heartbeat_ok=1
                   break
                 fi
