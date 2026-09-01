@@ -1,4 +1,4 @@
-import type { AspectRatio, EpisodeDuration, Project } from "@/lib/domain";
+import type { AspectRatio, CharacterReference, EpisodeDuration, Project } from "@/lib/domain";
 
 export type StudioAgentCharacter = {
   id: string;
@@ -8,6 +8,7 @@ export type StudioAgentCharacter = {
   voice: string;
   identityLock: boolean;
   voiceLock: boolean;
+  references?: CharacterReference[];
 };
 
 export type StudioAgentAnimal = {
@@ -150,7 +151,7 @@ export function buildStudioAgentProject(draft: StudioAgentDraft, idSeed = `${Dat
     personality: character.role,
     voiceProfile: character.voice,
     lock: character.identityLock,
-    references: [],
+    references: character.references || [],
   }));
   const creatures = draft.hasAnimals ? draft.animals.map((animal) => ({
     id: animal.id,

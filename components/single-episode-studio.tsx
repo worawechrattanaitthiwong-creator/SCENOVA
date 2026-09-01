@@ -33,6 +33,13 @@ import {
 } from "@/lib/sound-design-options";
 import { getVideoUiCapability } from "@/lib/providers/video-ui-capabilities";
 
+type CharacterReference = {
+  id: string;
+  label: string;
+  kind: "custom";
+  url: string;
+};
+
 type Character = {
   id: string;
   name: string;
@@ -41,6 +48,7 @@ type Character = {
   voice: string;
   identityLock: boolean;
   voiceLock: boolean;
+  references: CharacterReference[];
 };
 
 type Animal = {
@@ -108,6 +116,7 @@ type SelectedCharacterPayload = {
     costume?: string;
     voiceProfile?: string;
     promptHint?: string;
+    referenceImages?: string[];
   };
 };
 
@@ -149,6 +158,7 @@ function makeCharacter(index: number): Character {
     voice: VOICE_PROFILES[0] || "Default",
     identityLock: true,
     voiceLock: true,
+    references: [],
   };
 }
 
@@ -161,6 +171,7 @@ function normalizeCharacter(input: Partial<Character>, index: number): Character
     name: input.name || base.name,
     identityLock: input.identityLock ?? true,
     voiceLock: input.voiceLock ?? true,
+    references: Array.isArray(input.references) ? input.references : base.references,
   };
 }
 
@@ -293,6 +304,7 @@ export default function SingleEpisodeStudio() {
   const [message, setMessage] = useState("พร้อมสร้างตอนเดียว");
   const [agentBudgetThb, setAgentBudgetThb] = useState(500);
   const [agentSubmitting, setAgentSubmitting] = useState(false);
+  const [uploadingCharacterId, setUploadingCharacterId] = useState("");
 
   useEffect(() => {
     const raw = localStorage.getItem("scenova-selected-character-v1");
@@ -310,6 +322,12 @@ export default function SingleEpisodeStudio() {
         voice: meta.voiceProfile && VOICE_PROFILES.includes(meta.voiceProfile) ? meta.voiceProfile : VOICE_PROFILES[0] || "Default",
         identityLock: true,
         voiceLock: true,
+        references: (meta.referenceImages || []).filter(Boolean).slice(0, 8).map((url, referenceIndex) => ({
+          id: payload.id ? "library_" + payload.id + "_reference_" + referenceIndex : makeId("library_reference"),
+          label: "Library Reference " + (referenceIndex + 1),
+          kind: "custom" as const,
+          url,
+        })),
       };
       const targetId = localStorage.getItem("scenova-character-import-target-v1");
       setCharacters((current) => {
@@ -424,6 +442,49 @@ export default function SingleEpisodeStudio() {
 
   function patchCharacter(id: string, patch: Partial<Character>) {
     setCharacters((current) => current.map((item) => item.id === id ? { ...item, ...patch } : item));
+  }
+
+  async function uploadCharacterReferences(characterId: string, files: File[]) {
+    if (!files.length || uploadingCharacterId) return;
+    const character = characters.find((item) => item.id === characterId);
+    const remaining = Math.max(0, 8 - (character?.references.length || 0));
+    if (!remaining) {
+      setMessage("ตัวละครนี้มีรูปอ้างอิงครบ 8 รูปแล้ว");
+      return;
+    }
+    const selected = files.slice(0, remaining);
+    const formData = new FormData();
+    selected.forEach((file) => formData.append("images", file));
+    setUploadingCharacterId(characterId);
+    setMessage("กำลังอัปโหลดรูปอ้างอิงตัวละคร...");
+    try {
+      const response = await fetch("/api/character-references", {
+        method: "POST",
+        credentials: "same-origin",
+        body: formData,
+      });
+      const data = await response.json() as { references?: CharacterReference[]; error?: string };
+      if (!response.ok || !Array.isArray(data.references)) throw new Error(data.error || "อัปโหลดรูปตัวละครไม่สำเร็จ");
+      setCharacters((current) => current.map((item) => item.id === characterId
+        ? { ...item, references: [...item.references, ...data.references!].slice(0, 8) }
+        : item));
+      setMessage("เพิ่มรูปอ้างอิงตัวละคร " + data.references.length + " รูปแล้ว");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "อัปโหลดรูปตัวละครไม่สำเร็จ");
+    } finally {
+      setUploadingCharacterId("");
+    }
+  }
+
+  async function removeCharacterReference(characterId: string, reference: CharacterReference) {
+    setCharacters((current) => current.map((item) => item.id === characterId
+      ? { ...item, references: item.references.filter((entry) => entry.id !== reference.id) }
+      : item));
+    try {
+      await fetch(reference.url, { method: "DELETE", credentials: "same-origin" });
+    } catch {
+      // UI removal should not be blocked if storage cleanup is temporarily unavailable.
+    }
   }
 
   function patchAnimal(id: string, patch: Partial<Animal>) {
@@ -591,6 +652,33 @@ export default function SingleEpisodeStudio() {
               <label className={styles.field}><span>โปรไฟล์เสียง</span><select value={character.voice} onChange={(event) => patchCharacter(character.id, { voice: event.target.value })}>{VOICE_PROFILES.map((voice) => <option key={voice}>{voice}</option>)}</select></label>
             </div>
             <label className={styles.field}><span>รูปลักษณ์ / เสื้อผ้า / บุคลิก / จุดจำ</span><textarea value={character.appearance} onChange={(event) => patchCharacter(character.id, { appearance: event.target.value })} placeholder="ใบหน้า ทรงผม อายุ รูปร่าง เสื้อผ้า เครื่องประดับ บุคลิก และรายละเอียดที่ห้ามเปลี่ยน" /></label>
+            <div className={styles.referencePicker}>
+              <div className={styles.referenceHead}>
+                <div><b>รูปอ้างอิงตัวละคร</b><span>เลือกรูปจากเครื่องได้หลายไฟล์พร้อมกัน สูงสุด 8 รูป ระบบจะส่งภาพเหล่านี้เป็น Character Reference ให้โมเดลที่รองรับ</span></div>
+                <label className={styles.referenceButton} aria-disabled={uploadingCharacterId === character.id}>
+                  {uploadingCharacterId === character.id ? "กำลังอัปโหลด..." : "＋ เลือกรูปจากเครื่อง"}
+                  <input
+                    className={styles.referenceInput}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    multiple
+                    disabled={uploadingCharacterId === character.id || character.references.length >= 8}
+                    onChange={(event) => {
+                      const files = Array.from(event.currentTarget.files || []);
+                      event.currentTarget.value = "";
+                      void uploadCharacterReferences(character.id, files);
+                    }}
+                  />
+                </label>
+              </div>
+              {character.references.length ? <div className={styles.referenceGrid}>
+                {character.references.map((reference) => <figure className={styles.referenceThumb} key={reference.id}>
+                  <img src={reference.url} alt={reference.label || character.name} loading="lazy" />
+                  <figcaption title={reference.label}>{reference.label}</figcaption>
+                  <button type="button" onClick={() => void removeCharacterReference(character.id, reference)} aria-label={"ลบ " + reference.label}>×</button>
+                </figure>)}
+              </div> : <div className={styles.referenceEmpty}>ยังไม่มีรูปอ้างอิง — เลือก Front / 3/4 / Side / Full Body หรือ Expression ได้หลายรูป</div>}
+            </div>
             <div className={styles.miniLocks}><label className={character.identityLock ? styles.miniLockActive : ""}><input type="checkbox" checked={character.identityLock} onChange={(event) => patchCharacter(character.id, { identityLock: event.target.checked })} />ล็อกตัวตน</label><label className={character.voiceLock ? styles.miniLockActive : ""}><input type="checkbox" checked={character.voiceLock} onChange={(event) => patchCharacter(character.id, { voiceLock: event.target.checked })} />ล็อกเสียง</label><Link href="/libraries?tab=characters" onClick={() => localStorage.setItem("scenova-character-import-target-v1", character.id)}>＋ นำเข้าตัวละครจากคลัง</Link></div>
           </div>
         </article>)}

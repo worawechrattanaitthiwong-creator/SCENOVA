@@ -174,6 +174,20 @@ async function runSpecialistStage(input: {
   return { result, completed, continued: true };
 }
 
+function imageReferencesForRenderSegment(project: Project, episode: Project["episodes"][number], renderSegment: GenerateVideoRequest["renderSegment"]) {
+  const sourceIds = new Set(renderSegment.sourceSegmentIds || []);
+  const relevantSegments = sourceIds.size
+    ? episode.segments.filter((segment) => sourceIds.has(segment.id))
+    : episode.segments.filter((segment) => segment.start < renderSegment.end && segment.end > renderSegment.start);
+  const characterIds = new Set(relevantSegments.flatMap((segment) => segment.characterIds));
+  const urls = project.characters
+    .filter((character) => characterIds.has(character.id))
+    .flatMap((character) => character.references || [])
+    .map((reference) => reference.url)
+    .filter((url): url is string => Boolean(url));
+  return [...new Set(urls)].slice(0, 8);
+}
+
 function quoteItems(plan: PlannedGeneration): CostQuoteItem[] {
   const videoCredits = creditsFromThb(plan.estimatedTotalThb);
   const agentFee = Math.max(0, Math.ceil(Number(process.env.SCENOVA_AGENT_CREDIT_FEE || 0)));
@@ -391,7 +405,9 @@ async function processAgentStage(run: AgentRunRecord, job: AgentQueueJobRecord) 
         prompt,
         resolution: project.resolution,
         aspectRatio: project.aspectRatio,
-        imageReferences: [],
+        imageReferences: provider.getModelDefinition().supportsImageReference
+          ? imageReferencesForRenderSegment(project, episode, renderSegment)
+          : [],
         videoReferences: [],
         audioReferences: [],
       };
