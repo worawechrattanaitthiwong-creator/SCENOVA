@@ -48,7 +48,7 @@ function restrictionView(log: Awaited<ReturnType<typeof latestRestriction>>) {
 
 export async function listAdminMembers() {
   const users = await prisma.user.findMany({
-    where: { role: "MEMBER" },
+    where: { OR: [{ role: "MEMBER" }, { role: "ADMIN" }] },
     include: { wallet: true },
     orderBy: { createdAt: "desc" },
   });
@@ -74,7 +74,7 @@ export async function listAdminMembers() {
       id: user.id,
       name: user.displayName || user.email,
       email: user.email,
-      role: "MEMBER" as const,
+      role: user.role,
       active: user.active,
       createdAt: user.createdAt.toISOString(),
       lastLoginAt: user.lastLoginAt?.toISOString() || null,
@@ -131,7 +131,17 @@ export type UpdateAdminMemberInput = {
 
 export async function updateAdminMember(actor: SessionUser, input: UpdateAdminMemberInput) {
   const target = await prisma.user.findUnique({ where: { id: input.id }, include: { wallet: true } });
-  if (!target || target.role !== "MEMBER") throw new Error("MEMBER_NOT_FOUND");
+  if (!target || (target.role !== "MEMBER" && target.role !== "ADMIN")) throw new Error("MEMBER_NOT_FOUND");
+
+  const suspendMinutes = Math.max(0, Math.floor(Number(input.suspendMinutes || 0)));
+  const adminAccountMutationRequested = target.role === "ADMIN" && (
+    typeof input.name === "string" ||
+    typeof input.email === "string" ||
+    (typeof input.password === "string" && input.password.length > 0) ||
+    typeof input.active === "boolean" ||
+    suspendMinutes > 0
+  );
+  if (adminAccountMutationRequested) throw new Error("ADMIN_ACCOUNT_CREDIT_ONLY");
 
   const userData: Prisma.UserUpdateInput = {};
   const changed: Record<string, unknown> = {};
@@ -154,7 +164,6 @@ export async function updateAdminMember(actor: SessionUser, input: UpdateAdminMe
     changed.passwordReset = true;
   }
 
-  const suspendMinutes = Math.max(0, Math.floor(Number(input.suspendMinutes || 0)));
   if (suspendMinutes > 0) {
     const suspendedUntil = new Date(Date.now() + suspendMinutes * 60_000).toISOString();
     userData.active = false;
@@ -206,7 +215,7 @@ export async function updateAdminMember(actor: SessionUser, input: UpdateAdminMe
           action: "ADMIN_USER_CREDIT_ADJUSTED",
           resource: "user",
           resourceId: target.id,
-          metadata: jsonObject({ delta, balanceAfter, targetEmail: target.email }),
+          metadata: jsonObject({ delta, balanceAfter, targetEmail: target.email, targetRole: target.role }),
         },
       });
     }
@@ -283,7 +292,7 @@ function jsonDetail(value: unknown) {
 
 export async function getMemberActivity(targetId: string) {
   const target = await prisma.user.findUnique({ where: { id: targetId }, include: { wallet: true } });
-  if (!target || target.role !== "MEMBER") throw new Error("MEMBER_NOT_FOUND");
+  if (!target || (target.role !== "MEMBER" && target.role !== "ADMIN")) throw new Error("MEMBER_NOT_FOUND");
 
   const [audits, jobs, agentRuns, ledger] = await Promise.all([
     prisma.auditLog.findMany({
