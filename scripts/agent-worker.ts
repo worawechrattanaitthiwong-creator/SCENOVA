@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import nextEnv from "@next/env";
+import { loadEnvConfig } from "@next/env";
 import { writeAgentWorkerHeartbeat } from "../lib/agent/worker-heartbeat";
 
 let stopping = false;
@@ -42,7 +42,6 @@ async function writeFatalHeartbeat(error: unknown) {
 
 async function main() {
   const isProduction = process.env.NODE_ENV === "production";
-  const { loadEnvConfig } = nextEnv;
   loadEnvConfig(process.cwd(), !isProduction);
 
   const baseWorkerId = process.env.AGENT_WORKER_ID || `agent-worker-${randomUUID().slice(0, 8)}`;
