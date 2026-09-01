@@ -19,10 +19,11 @@ function errorResponse(error: unknown, fallback: string) {
     INVALID_EMAIL: "อีเมลไม่ถูกต้อง",
     INVALID_NAME: "กรุณากรอกชื่อผู้ใช้",
     PASSWORD_TOO_SHORT: "รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร",
-    MEMBER_NOT_FOUND: "ไม่พบบัญชีสมาชิก",
+    MEMBER_NOT_FOUND: "ไม่พบบัญชีผู้ใช้",
     CREDIT_BELOW_AVAILABLE: "ไม่สามารถหักเครดิตต่ำกว่ายอดที่พร้อมใช้งานได้",
+    ADMIN_ACCOUNT_CREDIT_ONLY: "บัญชี Administrator ปรับได้เฉพาะเครดิตและดู Activity จากหน้านี้ เพื่อป้องกันการล็อกหรือลบบัญชี Admin โดยไม่ตั้งใจ",
   };
-  return NextResponse.json({ error: message[code] || fallback }, { status: code === "MEMBER_NOT_FOUND" ? 404 : 400 });
+  return NextResponse.json({ error: message[code] || fallback, code: code || undefined }, { status: code === "MEMBER_NOT_FOUND" ? 404 : 400 });
 }
 
 export async function GET() {
@@ -67,7 +68,7 @@ export async function PATCH(request: Request) {
     });
     return NextResponse.json({ ok: true, member });
   } catch (error) {
-    return errorResponse(error, "แก้ไขสมาชิกไม่สำเร็จ");
+    return errorResponse(error, "แก้ไขผู้ใช้ไม่สำเร็จ");
   }
 }
 
