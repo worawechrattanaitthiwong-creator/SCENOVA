@@ -11,6 +11,11 @@ type RatioPreview = {
   iconHeight: number;
 };
 
+type SubmissionNotice = {
+  tone: "info" | "success" | "error";
+  text: string;
+};
+
 const RATIOS: RatioPreview[] = [
   { value: "16:9 — Widescreen", orientation: "แนวนอน • Widescreen", iconWidth: 32, iconHeight: 18 },
   { value: "9:16 — Vertical", orientation: "แนวตั้ง • Vertical", iconWidth: 18, iconHeight: 32 },
@@ -35,6 +40,29 @@ function setNativeSelectValue(select: HTMLSelectElement, value: string) {
   setter?.call(select, value);
   select.dispatchEvent(new Event("input", { bubbles: true }));
   select.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+function isStudioSubmitButton(button: HTMLButtonElement) {
+  const text = compact(button.textContent);
+  return text.includes("ส่งให้ทีม AI ผลิต") || text.includes("ส่ง Storyboard ให้ทีม AI");
+}
+
+function findStudioSubmitButton() {
+  return Array.from(document.querySelectorAll<HTMLButtonElement>("button")).find(isStudioSubmitButton) || null;
+}
+
+function readStudioSubmissionStatus() {
+  const button = findStudioSubmitButton();
+  if (!button) return "";
+  const siblingStatus = button.parentElement?.querySelector<HTMLElement>("span");
+  return compact(siblingStatus?.textContent);
+}
+
+function submissionTone(text: string): SubmissionNotice["tone"] {
+  const normalized = text.toLocaleLowerCase();
+  if (normalized.includes("ส่งงานให้ทีม ai แล้ว") || normalized.includes("สำเร็จ") || normalized.includes("เข้าคิวแล้ว")) return "success";
+  if (normalized.includes("กำลัง") || normalized.includes("ตรวจสอบ")) return "info";
+  return "error";
 }
 
 function RatioFrame({ ratio }: { ratio: RatioPreview }) {
@@ -162,6 +190,57 @@ export default function SingleEpisodeStudioPolish() {
   const [aspectField, setAspectField] = useState<HTMLElement | null>(null);
   const [aspectSelect, setAspectSelect] = useState<HTMLSelectElement | null>(null);
   const [modelSelect, setModelSelect] = useState<HTMLSelectElement | null>(null);
+  const [submissionNotice, setSubmissionNotice] = useState<SubmissionNotice | null>(null);
+
+  useEffect(() => {
+    let lastStatus = "";
+    let clearTimer = 0;
+
+    const publish = (text: string) => {
+      const value = compact(text);
+      if (!value || value === "พร้อมสร้างตอนเดียว" || value === lastStatus) return;
+      lastStatus = value;
+      const tone = submissionTone(value);
+      setSubmissionNotice({ tone, text: value });
+      window.clearTimeout(clearTimer);
+      if (tone === "success") {
+        clearTimer = window.setTimeout(() => setSubmissionNotice(null), 5000);
+      } else if (tone === "info") {
+        clearTimer = window.setTimeout(() => setSubmissionNotice(null), 15000);
+      }
+    };
+
+    const syncStatus = () => publish(readStudioSubmissionStatus());
+
+    const clickHandler = (event: MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const button = target.closest<HTMLButtonElement>("button");
+      if (!button || !isStudioSubmitButton(button) || button.disabled) return;
+
+      lastStatus = "";
+      setSubmissionNotice({ tone: "info", text: "กำลังตรวจสอบข้อมูลก่อนส่งงานให้ทีม AI..." });
+      window.clearTimeout(clearTimer);
+      clearTimer = window.setTimeout(() => {
+        const status = readStudioSubmissionStatus();
+        if (status && status !== "พร้อมสร้างตอนเดียว") publish(status);
+        else setSubmissionNotice(null);
+      }, 1200);
+      window.setTimeout(syncStatus, 0);
+      window.setTimeout(syncStatus, 150);
+    };
+
+    const observer = new MutationObserver(syncStatus);
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    document.addEventListener("click", clickHandler, true);
+    syncStatus();
+
+    return () => {
+      observer.disconnect();
+      document.removeEventListener("click", clickHandler, true);
+      window.clearTimeout(clearTimer);
+    };
+  }, []);
 
   useEffect(() => {
     let stopped = false;
@@ -235,10 +314,32 @@ export default function SingleEpisodeStudioPolish() {
         .sc-ratio-option:hover:not(:disabled),.sc-ratio-option.is-active{border-color:var(--borderStrong);background:var(--accentSoft)}
         .sc-ratio-option:disabled{opacity:.38;cursor:not-allowed}.sc-ratio-option>span:nth-child(2){min-width:0;flex:1}
         .sc-ratio-option strong,.sc-ratio-option small{display:block}.sc-ratio-option strong{font-size:11px}.sc-ratio-option small{margin-top:1px;color:var(--muted);font-size:9px}.sc-ratio-option>b{color:var(--accent)}
+        .sc-submit-feedback{position:fixed;z-index:9999;top:18px;right:18px;width:min(430px,calc(100vw - 36px));display:flex;align-items:flex-start;gap:11px;padding:13px 14px;border:1px solid var(--borderStrong);border-radius:12px;background:color-mix(in srgb,var(--surface) 94%,transparent);box-shadow:0 18px 50px rgba(0,0,0,.42);backdrop-filter:blur(14px);color:var(--text)}
+        .sc-submit-feedback[data-tone='info']{border-color:color-mix(in srgb,var(--accent) 55%,var(--borderStrong))}
+        .sc-submit-feedback[data-tone='success']{border-color:rgba(70,190,130,.58)}
+        .sc-submit-feedback[data-tone='error']{border-color:rgba(245,100,120,.68)}
+        .sc-submit-feedback-icon{width:28px;height:28px;flex:0 0 28px;display:grid;place-items:center;border-radius:8px;background:var(--accentSoft);color:var(--accent);font-weight:900}
+        .sc-submit-feedback[data-tone='success'] .sc-submit-feedback-icon{color:#72d9a3;background:rgba(70,190,130,.12)}
+        .sc-submit-feedback[data-tone='error'] .sc-submit-feedback-icon{color:#ff8da0;background:rgba(245,100,120,.12)}
+        .sc-submit-feedback-copy{min-width:0;flex:1}.sc-submit-feedback-copy strong{display:block;font-size:12px;margin-bottom:3px}.sc-submit-feedback-copy p{margin:0;color:var(--muted);font-size:11px;line-height:1.5;overflow-wrap:anywhere}
+        .sc-submit-feedback-close{border:0;background:transparent;color:var(--muted);font-size:18px;line-height:1;cursor:pointer;padding:2px 3px}.sc-submit-feedback-close:hover{color:var(--text)}
+        @media (max-width:720px){.sc-submit-feedback{top:10px;right:10px;width:calc(100vw - 20px)}}
       `}</style>
       {aspectField && aspectSelect && modelSelect
         ? createPortal(<AspectPicker select={aspectSelect} modelSelect={modelSelect} />, aspectField)
         : null}
+      {submissionNotice ? (
+        <div className="sc-submit-feedback" data-tone={submissionNotice.tone} role={submissionNotice.tone === "error" ? "alert" : "status"} aria-live="polite">
+          <span className="sc-submit-feedback-icon" aria-hidden="true">
+            {submissionNotice.tone === "success" ? "✓" : submissionNotice.tone === "error" ? "!" : "…"}
+          </span>
+          <span className="sc-submit-feedback-copy">
+            <strong>{submissionNotice.tone === "success" ? "ส่งงานแล้ว" : submissionNotice.tone === "error" ? "ส่งงานไม่ได้" : "กำลังดำเนินการ"}</strong>
+            <p>{submissionNotice.text}</p>
+          </span>
+          <button type="button" className="sc-submit-feedback-close" onClick={() => setSubmissionNotice(null)} aria-label="ปิดข้อความ">×</button>
+        </div>
+      ) : null}
     </>
   );
 }
