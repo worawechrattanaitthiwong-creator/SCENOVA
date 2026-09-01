@@ -4,10 +4,25 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import styles from "./agent-runtime-status.module.css";
 
+type WorkerHeartbeat = {
+  workerId: string;
+  pid: number;
+  state: "starting" | "idle" | "working" | "blocked" | "error" | "stopping";
+  activeLanes: number;
+  concurrency: number;
+  reason?: string | null;
+  lastJobAt?: string | null;
+  lastError?: string | null;
+  updatedAt: string;
+  ageMs: number;
+  online: boolean;
+};
+
 type RuntimeHealth = {
   runtimeState: string;
   message: string;
   viewerRole?: string;
+  worker?: WorkerHeartbeat | null;
   security: {
     blocked: boolean;
     lockdownEnabled: boolean;
@@ -67,6 +82,15 @@ const STATE_LABELS: Record<string, string> = {
   cancelled: "ยกเลิกแล้ว",
 };
 
+const WORKER_LABELS: Record<string, string> = {
+  starting: "กำลังเริ่ม Worker",
+  idle: "Worker Online · ว่าง",
+  working: "Worker Online · กำลังทำงาน",
+  blocked: "Worker Online · ถูก Security พัก",
+  error: "Worker Online · พบข้อผิดพลาด",
+  stopping: "Worker กำลังหยุด",
+};
+
 const AGENT_LABELS: Record<string, string> = {
   AI_PRODUCER: "AI Producer",
   STORY_ARCHITECT: "Story Architect",
@@ -103,7 +127,7 @@ const STAGE_LABELS: Record<string, string> = {
 };
 
 function seconds(ms?: number | null) {
-  if (ms === null || ms === undefined) return "—";
+  if (ms === null || ms === undefined || !Number.isFinite(ms)) return "—";
   return `${Math.max(0, Math.round(ms / 1000))} วิ`;
 }
 
@@ -146,10 +170,10 @@ export default function AgentRuntimeStatus() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ runId }),
       });
-      const data = await response.json() as { health?: RuntimeHealth; error?: string; kickError?: string | null };
+      const data = await response.json() as { health?: RuntimeHealth; worker?: WorkerHeartbeat | null; error?: string; kickError?: string | null };
       if (!response.ok) throw new Error(data.error || data.kickError || "ซ่อมคิว AI ไม่สำเร็จ");
       if (!mounted.current) return;
-      if (data.health) setHealth({ ...data.health, viewerRole: health?.viewerRole });
+      if (data.health) setHealth({ ...data.health, worker: data.worker ?? health?.worker, viewerRole: health?.viewerRole });
       setError(data.kickError || "");
     } catch (cause) {
       if (mounted.current) setError(cause instanceof Error ? cause.message : String(cause));
@@ -183,9 +207,18 @@ export default function AgentRuntimeStatus() {
   const run = health?.run;
   const queue = health?.queue;
   const task = health?.task;
+  const worker = health?.worker;
   const canRepair = Boolean(run && !health?.security.blocked && ["stalled", "orphaned", "starting"].includes(state));
   const activeAgent = task?.agentKey ? AGENT_LABELS[task.agentKey] || task.agentKey : "ยังไม่มี Agent รับงาน";
   const stage = run?.stage ? STAGE_LABELS[run.stage] || run.stage : "—";
+  const workerLabel = worker
+    ? worker.online
+      ? WORKER_LABELS[worker.state] || worker.state
+      : "Worker Offline · Heartbeat ขาด"
+    : "ยังไม่พบ Worker Heartbeat";
+  const workerDetail = worker
+    ? `${worker.activeLanes}/${worker.concurrency} lanes · heartbeat ${seconds(worker.ageMs)} ที่แล้ว`
+    : `ตรวจล่าสุด ${checkedTime(health?.checkedAt)}`;
 
   return <section className={styles.panel} data-state={state} aria-live="polite">
     <div className={styles.head}>
@@ -213,17 +246,21 @@ export default function AgentRuntimeStatus() {
       <div className={styles.cell}><small>ขั้นตอนปัจจุบัน</small><b>{stage}</b><em>{run?.stage || "—"}</em></div>
       <div className={styles.cell}><small>Agent ที่กำลังทำ</small><b>{activeAgent}</b><em>{task?.status || "PENDING"}</em></div>
       <div className={styles.cell}><small>Queue / Attempt</small><b>{queue ? `${queue.status} · ${queue.attempts}/${queue.maxAttempts}` : "ไม่มี Active Job"}</b><em>อายุคิว {seconds(queue?.queueAgeMs)}</em></div>
-      <div className={styles.cell}><small>Worker Heartbeat</small><b>{queue?.lockedBy || "ยังไม่มี Worker Lock"}</b><em>{queue?.heartbeatAt ? `${seconds(queue.heartbeatAgeMs)} ที่แล้ว` : `ตรวจล่าสุด ${checkedTime(health?.checkedAt)}`}</em></div>
+      <div className={styles.cell}><small>Dedicated Worker</small><b>{workerLabel}</b><em>{workerDetail}</em></div>
     </div>
 
     <div className={styles.notice} data-error={Boolean(error)}>
       {error
         ? `ข้อผิดพลาด Runtime: ${error}`
-        : queue?.lastError
-          ? `Queue รายงานล่าสุด: ${queue.lastError}`
-          : health?.security.environmentHardLock
-            ? "Environment Hard Lock เปิดอยู่ ต้องแก้ค่า Production Environment ก่อนจึงจะเดินงานต่อได้"
-            : "ถ้า Worker หลักหยุดรับงานเกิน 12 วินาที ระบบจะเรียก Fallback Worker ให้อัตโนมัติ โดยยังใช้ Queue Lock เดิมเพื่อป้องกันงานซ้ำ"}
+        : worker?.lastError
+          ? `Worker รายงานล่าสุด: ${worker.lastError}`
+          : queue?.lastError
+            ? `Queue รายงานล่าสุด: ${queue.lastError}`
+            : health?.security.environmentHardLock
+              ? "Environment Hard Lock เปิดอยู่ ต้องแก้ค่า Production Environment ก่อนจึงจะเดินงานต่อได้"
+              : worker && !worker.online
+                ? "Dedicated Worker ไม่ส่ง heartbeat แล้ว ระบบ Web Fallback จะช่วยประมวลผลคิวที่ค้างโดยอัตโนมัติจน Worker หลักกลับมา"
+                : "ถ้า Worker หลักหยุดรับงานเกิน 12 วินาที ระบบจะเรียก Fallback Worker ให้อัตโนมัติ โดยยังใช้ Queue Lock เดิมเพื่อป้องกันงานซ้ำ"}
     </div>
   </section>;
 }
