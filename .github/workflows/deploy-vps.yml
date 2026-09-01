@@ -121,15 +121,15 @@ jobs:
             node scripts/deploy-production-migrations.mjs
 
             # Remove the previous heartbeat so deployment can only pass when the newly
-            # reloaded dedicated worker proves that it is alive.
+            # reloaded dedicated worker proves that it is alive and not crash-looping.
             rm -f /tmp/scenova-agent-worker-heartbeat.json
             pm2 startOrReload ecosystem.config.cjs --update-env
             pm2 save
 
             worker_heartbeat_ok=0
-            for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            for attempt in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
               if [ -f /tmp/scenova-agent-worker-heartbeat.json ]; then
-                if node -e 'const fs=require("node:fs"); const file="/tmp/scenova-agent-worker-heartbeat.json"; const h=JSON.parse(fs.readFileSync(file,"utf8")); const updatedAt=Date.parse(String(h.updatedAt||"")); const ageMs=Date.now()-updatedAt; if(!Number.isFinite(updatedAt)||ageMs<0||ageMs>10000||h.state==="stopping") process.exit(1); console.log(JSON.stringify({agentWorker:"healthy",state:h.state,activeLanes:h.activeLanes,concurrency:h.concurrency,heartbeatAgeMs:ageMs,securityReason:h.reason||null,lastError:h.lastError||null}));'; then
+                if node -e 'const fs=require("node:fs"); const file="/tmp/scenova-agent-worker-heartbeat.json"; const h=JSON.parse(fs.readFileSync(file,"utf8")); const updatedAt=Date.parse(String(h.updatedAt||"")); const ageMs=Date.now()-updatedAt; if(!Number.isFinite(updatedAt)||ageMs<0||ageMs>10000||h.state==="stopping"||h.state==="error") process.exit(1); console.log(JSON.stringify({agentWorker:"healthy",state:h.state,activeLanes:h.activeLanes,concurrency:h.concurrency,heartbeatAgeMs:ageMs,securityReason:h.reason||null,lastError:h.lastError||null}));'; then
                   worker_heartbeat_ok=1
                   break
                 fi
@@ -138,8 +138,15 @@ jobs:
             done
 
             if [ "$worker_heartbeat_ok" -ne 1 ]; then
-              echo "ERROR: scenova-agent-worker did not publish a fresh heartbeat after PM2 reload"
-              pm2 status
+              echo "ERROR: scenova-agent-worker did not publish a healthy heartbeat after PM2 reload"
+              if [ -f /tmp/scenova-agent-worker-heartbeat.json ]; then
+                node -e 'const fs=require("node:fs"); const h=JSON.parse(fs.readFileSync("/tmp/scenova-agent-worker-heartbeat.json","utf8")); console.error(JSON.stringify({agentWorker:"unhealthy",state:h.state,reason:h.reason||null,lastError:String(h.lastError||"").slice(0,1200),updatedAt:h.updatedAt||null,pid:h.pid||null}));' || true
+              else
+                echo "No agent worker heartbeat file was created."
+              fi
+              pm2 status || true
+              echo "--- scenova-agent-worker recent logs ---"
+              pm2 logs scenova-agent-worker --lines 80 --nostream || true
               exit 1
             fi
 
