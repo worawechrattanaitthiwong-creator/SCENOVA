@@ -23,7 +23,7 @@ function compact(value: string | null | undefined) {
 }
 
 function findFieldByLabels(root: HTMLElement, labels: string[]) {
-  return Array.from(root.querySelectorAll<HTMLLabelElement>("label")).find((field) => {
+  return Array.from(root.querySelectorAll<HTMLElement>("label, div")).find((field) => {
     const directLabel = Array.from(field.children).find((child) => child.tagName === "SPAN");
     const current = compact(directLabel?.textContent).toLocaleLowerCase();
     return labels.some((label) => current === label.toLocaleLowerCase() || current.startsWith(`${label.toLocaleLowerCase()} /`));
@@ -159,13 +159,14 @@ function AspectPicker({
 }
 
 export default function SingleEpisodeStudioPolish() {
-  const [aspectField, setAspectField] = useState<HTMLLabelElement | null>(null);
+  const [aspectField, setAspectField] = useState<HTMLElement | null>(null);
   const [aspectSelect, setAspectSelect] = useState<HTMLSelectElement | null>(null);
   const [modelSelect, setModelSelect] = useState<HTMLSelectElement | null>(null);
 
   useEffect(() => {
     let stopped = false;
     let timer = 0;
+    let discoveredAspectSelect: HTMLSelectElement | null = null;
 
     const discover = () => {
       if (stopped) return;
@@ -181,7 +182,8 @@ export default function SingleEpisodeStudioPolish() {
       const nextAspectSelect = aspect?.querySelector<HTMLSelectElement>("select") || null;
       const nextModelSelect = model?.querySelector<HTMLSelectElement>("select") || null;
 
-      if (nextAspectSelect) nextAspectSelect.style.display = "none";
+      discoveredAspectSelect = nextAspectSelect;
+      if (nextAspectSelect && nextModelSelect) nextAspectSelect.style.display = "none";
       setAspectField(aspect);
       setAspectSelect(nextAspectSelect);
       setModelSelect(nextModelSelect);
@@ -211,7 +213,7 @@ export default function SingleEpisodeStudioPolish() {
     return () => {
       stopped = true;
       window.clearTimeout(timer);
-      if (aspectSelect) aspectSelect.style.display = "";
+      if (discoveredAspectSelect) discoveredAspectSelect.style.display = "";
       const scenes = document.getElementById("scenes") as (HTMLElement & { __scPolishObserver?: MutationObserver }) | null;
       scenes?.__scPolishObserver?.disconnect();
     };
