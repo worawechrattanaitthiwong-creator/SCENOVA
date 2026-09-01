@@ -10,6 +10,20 @@ export function decideAgentRecovery(input: { error: unknown; attempt: number; ma
   if (normalized.includes("content policy") || normalized.includes("policy reject") || normalized.includes("moderation")) {
     return { action: "ASK_USER", delayMs: 0, reason: "Provider ปฏิเสธเนื้อหา ต้องให้ผู้ใช้แก้ Prompt หรือ Scene ก่อน" };
   }
+
+  const quotaExhausted =
+    normalized.includes("exceeded your current quota") ||
+    normalized.includes("check your plan and billing") ||
+    normalized.includes("billing details") ||
+    (normalized.includes("resource_exhausted") && normalized.includes("quota"));
+  if (quotaExhausted) {
+    return {
+      action: "ASK_USER",
+      delayMs: 0,
+      reason: "โควตาหรือสิทธิ์ Billing ของ Provider ไม่พร้อม ระบบจะไม่ Retry ซ้ำอัตโนมัติ กรุณาเพิ่มโควตา/ตรวจ Billing หรือเปลี่ยนโมเดล แล้วกดบังคับเริ่มอีกครั้ง",
+    };
+  }
+
   if (
     normalized.includes("video_provider_connection_required") ||
     normalized.includes("provider_connection_required") ||
