@@ -18,7 +18,7 @@ export const VIDEO_MODEL_VERSIONS: Record<string, VideoModelVersion[]> = {
     { id: "kling-v2-6", label: "Kling V2.6", apiModelId: "kling-v2-6", note: "รุ่นเสถียรพร้อมเสียง" },
   ],
   Veo: [
-    { id: "veo-3.1-lite", label: "Veo 3.1 Lite", apiModelId: "veo-3.1-lite-generate-preview", note: "ประหยัด · เหมาะกับการเริ่มทดสอบ", recommended: true },
+    { id: "veo-3.1-lite", label: "Veo 3.1 Lite", apiModelId: "veo-3.1-lite-generate-preview", note: "ประหยัด · ค่าเริ่มต้นสำหรับทดสอบ API", recommended: true },
     { id: "veo-3.1-fast", label: "Veo 3.1 Fast", apiModelId: "veo-3.1-fast-generate-preview", note: "สมดุลความเร็วและคุณภาพ" },
     { id: "veo-3.1-standard", label: "Veo 3.1 Standard", apiModelId: "veo-3.1-generate-preview", note: "คุณภาพสูง" },
   ],
