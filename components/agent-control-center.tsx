@@ -90,6 +90,11 @@ function playableVideoUrl(generation: VideoGeneration) {
   if (generation.providerId.toLowerCase() === "veo" && /^https:\/\//i.test(raw)) return `/api/provider-media?provider=veo&url=${encodeURIComponent(raw)}`;
   return raw;
 }
+function downloadableVideoUrl(generation: VideoGeneration) {
+  const raw = playableVideoUrl(generation);
+  if (!raw.startsWith("/api/provider-media")) return raw;
+  return `${raw}&download=1&filename=${encodeURIComponent(`SCENOVA-shot-${generation.shotOrder + 1}.mp4`)}`;
+}
 function stageLabel(value: string) { return STAGE_LABELS[value] || value; }
 function statusLabel(value: string) { return STATUS_LABELS[value] || value; }
 function runTitle(run: Run) { return run.inputJson?.project?.episodes?.[0]?.title || run.inputJson?.project?.title || "งาน AI"; }
@@ -322,12 +327,12 @@ export default function AgentControlCenter() {
             <div className={styles.clipTitleActions}><strong>{completedClips.length} คลิป</strong><Link href={`/libraries?tab=videos&run=${encodeURIComponent(run.id)}`}>เปิดคลัง / รวมคลิป →</Link></div>
           </div>
           <div className={styles.clipGrid}>{completedClips.map((clip) => { const clipUrl = playableVideoUrl(clip); return <article className={styles.clipCard} key={clip.id}>
-            <video controls preload="metadata" src={clipUrl || undefined}>เบราว์เซอร์นี้ไม่รองรับการเล่นวิดีโอ</video>
+            <video controls playsInline preload="auto" src={clipUrl || undefined}>เบราว์เซอร์นี้ไม่รองรับการเล่นวิดีโอ</video>
             <div className={styles.clipMeta}>
               <span><b>Shot {clip.shotOrder + 1}</b><small>{clip.providerId.toUpperCase()} · {clip.status}</small></span>
               <div>
                 <a href={clipUrl || "#"} target="_blank" rel="noreferrer">เปิดคลิป</a>
-                <a href={clipUrl || "#"} download={`scenova-shot-${clip.shotOrder + 1}.mp4`}>ดาวน์โหลด</a>
+                <a href={downloadableVideoUrl(clip) || "#"} download>ดาวน์โหลด</a>
               </div>
             </div>
           </article>; })}</div>

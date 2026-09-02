@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import styles from "./library-hub.module.css";
 import characterStyles from "./character-library.module.css";
 
@@ -53,6 +53,13 @@ function visualFor(tab: Tab) {
   if (tab === "ambience") return "ambience";
   if (tab === "plots") return "plot";
   return "anime";
+}
+
+function downloadableVideoUrl(raw: string, title: string) {
+  if (!raw.startsWith("/api/provider-media")) return raw;
+  const separator = raw.includes("?") ? "&" : "?";
+  const filename = `SCENOVA-${title.replace(/[^a-zA-Z0-9._-]+/g, "-")}.mp4`;
+  return `${raw}${separator}download=1&filename=${encodeURIComponent(filename)}`;
 }
 
 function typeLabel(tab: Tab) {
@@ -290,12 +297,12 @@ export default function LibrariesPage() {
             const quality = isCharacter ? characterQuality(item) : 0;
             return (
               <article id={tab === "videos" ? `video-${item.id}` : undefined} className={`${styles.card} ${isPlaying ? styles.playingCard : ""}`} key={item.id}>
-                {tab === "videos" && item.kind === "combined" && item.clips?.length ? <CombinedVideoPlayer clips={item.clips} /> : (tab === "images" || tab === "characters") && item.url ? <button className={styles.previewImageButton} onClick={() => setImagePreview(item)} aria-label={`ดูรูป ${item.title} แบบเต็ม`}><img className={styles.previewImage} src={item.url} alt={item.title} loading="lazy" decoding="async" onError={(event) => { event.currentTarget.style.display = "none"; event.currentTarget.parentElement?.classList.add(styles.imageFailed); }} /></button> : <div className={`${styles.preview} ${styles[item.visual as keyof typeof styles] || ""} ${isPlaying ? styles.voicePlaying : ""}`} style={item.url && tab !== "videos" ? { backgroundImage: `url(${item.url})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}>{tab === "voices" ? <div className={styles.voiceVisualizer} aria-live="polite"><span className={styles.voiceDisc}>{isPlaying ? "■" : "♫"}</span><div className={styles.waveBars} aria-hidden="true">{[0,1,2,3,4,5,6].map((bar) => <i key={bar} style={{ animationDelay:`${bar * 70}ms` }} />)}</div><small>{isPlaying ? "กำลังเล่นตัวอย่างเสียง..." : "แตะเพื่อฟังตัวอย่าง"}</small></div> : <span className={styles.previewIcon}>{item.icon}</span>}</div>}
+                {tab === "videos" && item.kind === "combined" && item.clips?.length ? <CombinedVideoPlayer clips={item.clips} /> : tab === "videos" && item.url ? <VideoCardPreview url={item.url} title={item.title} /> : (tab === "images" || tab === "characters") && item.url ? <button className={styles.previewImageButton} onClick={() => setImagePreview(item)} aria-label={`ดูรูป ${item.title} แบบเต็ม`}><img className={styles.previewImage} src={item.url} alt={item.title} loading="lazy" decoding="async" onError={(event) => { event.currentTarget.style.display = "none"; event.currentTarget.parentElement?.classList.add(styles.imageFailed); }} /></button> : <div className={`${styles.preview} ${styles[item.visual as keyof typeof styles] || ""} ${isPlaying ? styles.voicePlaying : ""}`} style={item.url && tab !== "videos" ? { backgroundImage: `url(${item.url})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}>{tab === "voices" ? <div className={styles.voiceVisualizer} aria-live="polite"><span className={styles.voiceDisc}>{isPlaying ? "■" : "♫"}</span><div className={styles.waveBars} aria-hidden="true">{[0,1,2,3,4,5,6].map((bar) => <i key={bar} style={{ animationDelay:`${bar * 70}ms` }} />)}</div><small>{isPlaying ? "กำลังเล่นตัวอย่างเสียง..." : "แตะเพื่อฟังตัวอย่าง"}</small></div> : <span className={styles.previewIcon}>{item.icon}</span>}</div>}
                 <div className={styles.content}><b>{item.title}</b><p>{item.description}</p><span className={styles.tag} style={item.source === "ADMIN" ? { color: "#8bcf98", background: "#101b12", boxShadow: "inset 0 0 0 1px #28432e" } : undefined}>{item.tag}</span>
                   {isCharacter ? <><div className={characterStyles.characterCardMeta}><span><b>Role</b>{item.metadata?.role || "กำหนดใน Studio"}</span><span><b>Age</b>{item.metadata?.ageRange || "Flexible"}</span><span><b>Voice</b>{item.metadata?.voiceProfile || "เลือกภายหลัง"}</span></div><div className={characterStyles.qualityWrap}><div className={characterStyles.qualityHead}><span>Reference Quality — ความพร้อมอ้างอิง</span><strong>{quality}%</strong></div><div className={characterStyles.qualityTrack}><i style={{ width: `${quality}%` }} /></div></div></> : null}
                   {tab === "videos" ? <div className={styles.videoMeta}><span>EP {item.ep}</span><span>{item.duration}s</span></div> : null}
                   <div className={styles.actions}>
-                    {tab === "voices" ? <button className={isPlaying ? styles.playingButton : ""} onClick={() => playVoice(item)} aria-pressed={isPlaying}>{isPlaying ? "■ หยุดเสียง" : "▶ ฟังตัวอย่าง"}</button> : tab === "videos" && item.kind !== "combined" && item.url ? <a className={styles.primary} href={item.url} target="_blank" rel="noreferrer" download={`SCENOVA-${item.title}.mp4`}>↓ เปิด / ดาวน์โหลด</a> : tab === "videos" && item.kind === "combined" ? <span className={styles.combinedHint}>เล่นต่อเนื่อง {item.clips?.length || 0} Shot</span> : isCharacter ? <button className={styles.primary} onClick={() => useCharacter(item)}>ใช้ตัวละครนี้</button> : tab === "images" ? <button className={styles.primary} onClick={() => useStyle(item)}>ใช้เป็นสไตล์</button> : <button className={styles.primary} onClick={() => setSelectedItem(item)}>ดูรายละเอียด</button>}
+                    {tab === "voices" ? <button className={isPlaying ? styles.playingButton : ""} onClick={() => playVoice(item)} aria-pressed={isPlaying}>{isPlaying ? "■ หยุดเสียง" : "▶ ฟังตัวอย่าง"}</button> : tab === "videos" && item.kind !== "combined" && item.url ? <a className={styles.primary} href={downloadableVideoUrl(item.url, item.title)} download>↓ ดาวน์โหลด MP4</a> : tab === "videos" && item.kind === "combined" ? <span className={styles.combinedHint}>เล่นต่อเนื่อง {item.clips?.length || 0} Shot</span> : isCharacter ? <button className={styles.primary} onClick={() => useCharacter(item)}>ใช้ตัวละครนี้</button> : tab === "images" ? <button className={styles.primary} onClick={() => useStyle(item)}>ใช้เป็นสไตล์</button> : <button className={styles.primary} onClick={() => setSelectedItem(item)}>ดูรายละเอียด</button>}
                     {(tab === "voices" || tab === "images" || isCharacter) ? <button onClick={() => setSelectedItem(item)}>ดูรายละเอียด</button> : null}
                   </div>
                 </div>
@@ -345,12 +352,64 @@ function CombinedVideoPlayer({ clips }: { clips: VideoClip[] }) {
   const current = clips[index];
   if (!current) return null;
   return <div className={styles.combinedPlayer}>
-    <video controls preload="metadata" src={current.url} onEnded={() => setIndex((value) => value + 1 < clips.length ? value + 1 : 0)}>
+    <video controls playsInline preload="auto" src={current.url} onEnded={() => setIndex((value) => value + 1 < clips.length ? value + 1 : 0)}>
       เบราว์เซอร์นี้ไม่รองรับการเล่นวิดีโอ
     </video>
     <div className={styles.combinedControls}>
       <span>รวม Shot {index + 1} / {clips.length}</span>
       <div><button type="button" onClick={() => setIndex((value) => (value - 1 + clips.length) % clips.length)} aria-label="Shot ก่อนหน้า">‹</button><button type="button" onClick={() => setIndex((value) => (value + 1) % clips.length)} aria-label="Shot ถัดไป">›</button></div>
     </div>
+  </div>;
+}
+
+function VideoCardPreview({ url, title }: { url: string; title: string }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const capturedRef = useRef(false);
+  const [poster, setPoster] = useState("");
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    capturedRef.current = false;
+    setPoster("");
+    setFailed(false);
+  }, [url]);
+
+  function captureFrame(video: HTMLVideoElement) {
+    if (capturedRef.current || !video.videoWidth || !video.videoHeight) return;
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.min(video.videoWidth, 960);
+      canvas.height = Math.round(canvas.width * video.videoHeight / video.videoWidth);
+      const context = canvas.getContext("2d");
+      if (!context) return;
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      setPoster(canvas.toDataURL("image/jpeg", 0.82));
+      capturedRef.current = true;
+      video.pause();
+    } catch {
+      // The playable first frame remains visible even if canvas capture is unavailable.
+    }
+  }
+
+  return <div className={`${styles.videoCardPreview} ${failed ? styles.videoFailed : ""}`}>
+    <video
+      ref={videoRef}
+      controls
+      playsInline
+      preload="auto"
+      poster={poster || undefined}
+      src={url}
+      aria-label={`เล่นวิดีโอ ${title}`}
+      onLoadedMetadata={(event) => {
+        const video = event.currentTarget;
+        if (Number.isFinite(video.duration) && video.duration > 0.2) video.currentTime = Math.min(0.25, video.duration / 10);
+      }}
+      onLoadedData={(event) => captureFrame(event.currentTarget)}
+      onSeeked={(event) => captureFrame(event.currentTarget)}
+      onError={() => setFailed(true)}
+    >
+      เบราว์เซอร์นี้ไม่รองรับการเล่นวิดีโอ
+    </video>
+    {failed ? <span>เปิดคลิปไม่ได้ กรุณาตรวจ API Key หรือดาวน์โหลดใหม่</span> : null}
   </div>;
 }
