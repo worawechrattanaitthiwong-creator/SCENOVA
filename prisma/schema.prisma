@@ -41,6 +41,7 @@ model User {
   costQuotes             CostQuote[]
   costUsageEvents        CostUsageEvent[]
   promptExportUnlocks    PromptExportUnlock[]
+  videoGenerations       VideoGeneration[]
 }
 
 model Project {
@@ -457,9 +458,82 @@ model AgentRun {
   agentHandoffs        AgentHandoff[]
   agentReviews         AgentReview[]
   humanCheckpoints     HumanCheckpoint[]
+  videoGenerations     VideoGeneration[]
 
   @@index([userId, createdAt])
   @@index([status, stage])
+}
+
+/// Durable paid-provider boundary. A record may be submitted to a video
+/// provider at most once; polling and output recovery always reuse
+/// providerTaskId instead of creating another paid request.
+model VideoGeneration {
+  id                    String                 @id
+  runId                 String
+  userId                String
+  projectRef            String
+  episodeRef            String
+  segmentId             String?
+  shotOrder             Int
+  providerId            String
+  modelId               String
+  modelVersionId        String?
+  billingMode           String
+  status                String                 @default("DRAFT")
+  promptSnapshot        Json
+  inputSnapshot         Json
+  providerTaskId        String?
+  providerSubmissionCount Int                  @default(0)
+  idempotencyKey        String                 @unique
+  estimatedProviderCost Decimal?               @db.Decimal(12, 4)
+  reservedCredits       Int                    @default(0)
+  reservationId         String?
+  outputUrl             String?                @db.Text
+  storagePath           String?                @db.Text
+  lastFrameUrl          String?                @db.Text
+  errorCode             String?
+  errorMessage          String?                @db.Text
+  providerAcceptedAt    DateTime?
+  submittedAt           DateTime?
+  completedAt           DateTime?
+  failedAt              DateTime?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @default(now()) @updatedAt
+  run                   AgentRun               @relation(fields: [runId], references: [id], onDelete: Cascade)
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  events                VideoGenerationEvent[]
+
+  @@unique([runId, episodeRef, shotOrder])
+  @@index([runId, status, shotOrder])
+  @@index([userId, createdAt])
+  @@index([providerId, status, updatedAt])
+}
+
+model VideoGenerationEvent {
+  id           String          @id
+  generationId String
+  type         String
+  metadata     Json?
+  createdAt    DateTime        @default(now())
+  generation   VideoGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+
+  @@index([generationId, createdAt])
+}
+
+/// Shared provider gate. SYSTEM calls use a provider-global scope and BYOK
+/// calls use the same conservative scope unless explicitly configured.
+model ProviderRateGate {
+  id                String   @id
+  providerId        String
+  scopeKey          String   @unique
+  nextAvailableAt   DateTime @default(now())
+  minuteWindowStart DateTime @default(now())
+  minuteCount       Int      @default(0)
+  dayWindowStart    DateTime @default(now())
+  dayCount          Int      @default(0)
+  updatedAt         DateTime @default(now()) @updatedAt
+
+  @@index([providerId, nextAvailableAt])
 }
 
 model AgentDefinition {

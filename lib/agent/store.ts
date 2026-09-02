@@ -218,11 +218,15 @@ export async function getUserAgentSpendWindows(userId: string) {
 export async function getAgentRunDetails(runId: string, userId: string) {
   const run = await getAgentRunForUser(runId, userId);
   if (!run) return null;
-  const [decisions, approvals, jobs, llmUsage] = await Promise.all([
+  const [decisions, approvals, jobs, llmUsage, videoGenerations] = await Promise.all([
     prisma.$queryRaw<Array<Record<string, unknown>>>`SELECT * FROM "AgentDecisionLog" WHERE "runId"=${runId} ORDER BY "createdAt" ASC`,
     prisma.$queryRaw<Array<Record<string, unknown>>>`SELECT * FROM "AgentApproval" WHERE "runId"=${runId} ORDER BY "requestedAt" DESC`,
     prisma.$queryRaw<Array<Record<string, unknown>>>`SELECT * FROM "AgentQueueJob" WHERE "runId"=${runId} ORDER BY "createdAt" DESC LIMIT 100`,
     prisma.$queryRaw<Array<Record<string, unknown>>>`SELECT * FROM "LlmUsageEvent" WHERE "runId"=${runId} ORDER BY "createdAt" ASC`,
+    prisma.videoGeneration.findMany({ where: { runId }, orderBy: [{ episodeRef: "asc" }, { shotOrder: "asc" }] }),
   ]);
-  return { run, decisions, approvals, jobs, llmUsage };
+  return {
+    run, decisions, approvals, jobs, llmUsage,
+    videoGenerations: videoGenerations.map((generation) => ({ ...generation, estimatedProviderCost: Number(generation.estimatedProviderCost || 0) })),
+  };
 }

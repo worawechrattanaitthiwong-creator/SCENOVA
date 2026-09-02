@@ -36,6 +36,18 @@ export type PublicProviderDefinition = Omit<ProviderDefinition, "systemKeyEnv"> 
 
 export const API_PROVIDER_DEFINITIONS: ProviderDefinition[] = [
   {
+    id: "inception",
+    label: "Inception Mercury",
+    kind: "ANALYZER",
+    defaultBaseUrl: "https://api.inceptionlabs.ai/v1",
+    defaultModelId: "mercury-2",
+    systemKeyEnv: "INCEPTION_API_KEY",
+    ready: true,
+    purposeTh: "AI Brain และตัวเลือกตามบริบท",
+    capabilityTh: "วิเคราะห์โครงเรื่อง Locks และบริบทล่าสุด พร้อมคืน Structured choices ให้ Agent และหน้าสร้าง",
+    credentialHintTh: "ใส่ Inception API Key เพื่อใช้ Mercury 2 เป็น AI Brain โดยไม่เกี่ยวกับ Video Provider",
+  },
+  {
     id: "groq",
     label: "Groq",
     kind: "ANALYZER",
@@ -192,6 +204,7 @@ function videoOptions(name: string): ProviderModelOption[] {
 }
 
 const STATIC_MODEL_CATALOG: Record<string, ProviderModelOption[]> = {
+  inception: [{ apiModelId: "mercury-2", label: "Mercury 2", recommended: true, availability: "SUPPORTED" }],
   groq: [{ apiModelId: "openai/gpt-oss-20b", label: "GPT OSS 20B", recommended: true, availability: "UNVERIFIED" }],
   openrouter: [{ apiModelId: "openai/gpt-oss-20b", label: "GPT OSS 20B", recommended: true, availability: "UNVERIFIED" }],
   gemini: [{ apiModelId: "gemini-2.5-flash", label: "Gemini 2.5 Flash", recommended: true, availability: "UNVERIFIED" }],
@@ -269,7 +282,7 @@ export async function testProviderConnection(input: {
   const baseUrl = (input.baseUrl?.trim() || definition.defaultBaseUrl).replace(/\/$/, "");
   let response: Response | null = null;
 
-  if (definition.id === "groq" || definition.id === "openrouter") {
+  if (definition.id === "groq" || definition.id === "openrouter" || definition.id === "inception") {
     response = await probeBearer(baseUrl, "/models", input.apiKey);
   } else if (definition.id === "gemini" || definition.id === "gemini-image" || definition.id === "veo") {
     response = await probeGemini(baseUrl, input.apiKey);
@@ -328,7 +341,7 @@ function providerAcceptsDiscoveredModel(providerId: string, modelId: string) {
 
 async function discoverRemoteModels(definition: ProviderDefinition, baseUrl: string, apiKey: string): Promise<ProviderModelOption[]> {
   let response: Response | null = null;
-  if (["groq", "openrouter", "openai-image", "openai-voice"].includes(definition.id)) {
+  if (["groq", "openrouter", "inception", "openai-image", "openai-voice"].includes(definition.id)) {
     response = await probeBearer(baseUrl, "/models", apiKey);
   } else if (["gemini", "gemini-image", "veo"].includes(definition.id)) {
     response = await probeGemini(baseUrl, apiKey, 1000);

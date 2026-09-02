@@ -10,7 +10,7 @@ const requestSchema = z.object({
   prompt: z.string().trim().min(1).max(50_000),
   context: z.record(z.unknown()).optional(),
   billingMode: z.enum(["AUTO", "BYOK", "SYSTEM"]).optional(),
-  provider: z.enum(["groq", "openrouter", "gemini"]).optional(),
+  provider: z.enum(["inception", "groq", "openrouter", "gemini"]).optional(),
 });
 
 export async function POST(request: Request) {

@@ -9,7 +9,7 @@ import { getDefaultUserApiConnectionSecret, getUserApiConnectionSecret, markApiC
 import { productionAnalysisJsonSchema, productionAnalysisSchema, type ProductionAnalysis } from "@/lib/analyzer/schema";
 
 export type AnalyzerBillingMode = "AUTO" | "BYOK" | "SYSTEM";
-export type AnalyzerProviderId = "groq" | "openrouter" | "gemini";
+export type AnalyzerProviderId = "inception" | "groq" | "openrouter" | "gemini";
 
 type ResolvedCredential = {
   provider: AnalyzerProviderId;
@@ -37,7 +37,7 @@ function envCredits(name: string, fallback = 0) {
 
 function asAnalyzerProvider(value: string): AnalyzerProviderId | null {
   const id = value.trim().toLowerCase();
-  return id === "groq" || id === "openrouter" || id === "gemini" ? id : null;
+  return id === "inception" || id === "groq" || id === "openrouter" || id === "gemini" ? id : null;
 }
 
 async function resolveCredential(userId: string, requested: AnalyzerBillingMode, preferredProvider?: string | null): Promise<ResolvedCredential> {
@@ -66,8 +66,8 @@ async function resolveCredential(userId: string, requested: AnalyzerBillingMode,
   }
 
   const systemOrder: AnalyzerProviderId[] = preferredProvider && asAnalyzerProvider(preferredProvider)
-    ? [asAnalyzerProvider(preferredProvider)!, "groq", "gemini", "openrouter"]
-    : ["groq", "gemini", "openrouter"];
+    ? [asAnalyzerProvider(preferredProvider)!, "inception", "groq", "gemini", "openrouter"]
+    : ["inception", "groq", "gemini", "openrouter"];
   for (const provider of Array.from(new Set(systemOrder))) {
     const definition = getProviderDefinition(provider, "ANALYZER");
     if (!definition?.ready) continue;

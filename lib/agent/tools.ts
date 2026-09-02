@@ -13,7 +13,7 @@ const TOOLS_BY_STAGE: Record<string, AgentToolName[]> = {
   BUILD_PROMPTS: ["improve_prompt", "request_approval", "pause_run"],
   STORYBOARD: ["create_storyboard", "request_approval", "pause_run"],
   AWAIT_APPROVAL: ["request_approval", "pause_run"],
-  GENERATE: ["generate_video", "switch_provider", "pause_run"],
+  GENERATE: ["generate_video", "pause_run"],
   VERIFY_CONTINUITY: ["verify_continuity", "pause_run"],
   POST_PRODUCTION: ["plan_post_production", "pause_run"],
   FINAL_QUALITY: ["quality_check", "pause_run"],

@@ -4,6 +4,7 @@ import { getAgentPolicy } from "@/lib/agent/policy";
 import { getAllowedAgentTools } from "@/lib/agent/tools";
 import { routeLlm } from "@/lib/llm/model-router";
 import { callOpenAiFunction, type FunctionTool } from "@/lib/llm/openai-responses";
+import { callInceptionFunction } from "@/lib/llm/inception";
 import { countLlmCalls } from "@/lib/llm/usage";
 
 export type AgentBrainDecision = {
@@ -119,7 +120,7 @@ function compactContext(project: Project, episode: Episode, run: AgentRunRecord,
 export async function chooseAgentAction(input: { run: AgentRunRecord; project: Project; episode: Episode; state: Record<string, unknown>; retryCount?: number }): Promise<AgentBrainDecision> {
   const allowed = getAllowedAgentTools(input.run.stage);
   if (!allowed.length) return fallback(input.run, "Stage นี้ไม่มี Agent tool ที่อนุญาต จึงใช้ safe fallback");
-  if (process.env.SCENOVA_LLM_ENABLED !== "true" || !process.env.OPENAI_API_KEY) {
+  if (process.env.SCENOVA_LLM_ENABLED !== "true") {
     return fallback(input.run, "LLM Planner ยังไม่เปิดใช้งาน จึงใช้ deterministic production policy โดยไม่เสียค่า LLM");
   }
 
@@ -138,23 +139,30 @@ export async function chooseAgentAction(input: { run: AgentRunRecord; project: P
     "Choose exactly one of the supplied function tools as the next action.",
     "User locks, canon, server-side budgets, wallet reservations, spend caps and kill switches are absolute and cannot be bypassed.",
     "Prefer the cheapest safe action. Do not invent provider availability. Do not request generation merely to explore alternatives.",
+    "Once paid rendering begins, never switch video providers and never request a second provider submission for the same Generation ID.",
     "Give the reason in concise Thai so it can be shown in the Agent Decision Log.",
   ].join("\n");
 
   try {
-    const result = await callOpenAiFunction({
+    const request = {
       userId: input.run.userId,
       runId: input.run.id,
       category: "AGENT_PLAN",
       referenceType: "episode",
       referenceId: input.episode.id,
-      modelId: route.modelId,
       instructions,
       prompt: context,
       tools: allowed.map(toolSchema),
       maxOutputTokens: route.maxOutputTokens,
       metadata: { stage: input.run.stage, routerTier: route.tier, routerReason: route.reason },
-    });
+    };
+    let result;
+    try {
+      result = await callInceptionFunction(request);
+    } catch (inceptionError) {
+      if (!process.env.OPENAI_API_KEY) throw inceptionError;
+      result = await callOpenAiFunction({ ...request, modelId: route.modelId });
+    }
     const tool = result.name as AgentToolName | null;
     if (!tool || !allowed.includes(tool)) return fallback(input.run, "LLM ไม่ได้เลือก Tool ที่อยู่ใน allowlist จึงใช้ deterministic safe action");
     return {

@@ -43,10 +43,22 @@ type Job = {
   createdAt?: string;
 };
 
+type VideoGeneration = {
+  id: string;
+  shotOrder: number;
+  providerId: string;
+  status: string;
+  providerTaskId?: string | null;
+  providerSubmissionCount: number;
+  outputUrl?: string | null;
+  errorMessage?: string | null;
+};
+
 type Details = {
   run: Run;
   jobs?: Job[];
   workflow?: { tasks?: Task[] } | null;
+  videoGenerations?: VideoGeneration[];
 };
 
 type Runtime = {
@@ -234,6 +246,7 @@ export default function AgentJobStatusDock() {
   const completedPhases = run?.status === "COMPLETED" ? PHASES.length : Math.max(0, currentPhase);
   const progress = run?.status === "COMPLETED" ? 100 : currentPhase >= 0 ? Math.round(((completedPhases + (run?.status === "FAILED" ? 0 : .45)) / PHASES.length) * 100) : 0;
   const latestJob = details?.jobs?.[0] || null;
+  const latestGeneration = [...(details?.videoGenerations || [])].reverse().find((item) => item.status !== "SETTLED") || details?.videoGenerations?.at(-1) || null;
   const latestError = failedTask?.lastError || details?.jobs?.find((job) => job.lastError)?.lastError || run?.stopReason || error;
   const model = VIDEO_MODELS.find((item) => item.id === run?.inputJson?.project?.mainModelId);
   const modelName = model?.name || run?.inputJson?.project?.mainModelId || "—";
@@ -256,7 +269,7 @@ export default function AgentJobStatusDock() {
         <span className={styles.pulse} aria-hidden="true" />
         <span className={styles.dockCopy}>
           <b>{runTitle(run)}</b>
-          <small>{statusText} · {currentPhase >= 0 ? PHASES[currentPhase].label : effectiveStage || "กำลังอ่านสถานะ"}</small>
+          <small>{statusText} · {latestGeneration ? `Generation ${latestGeneration.id.slice(0, 8)} · ${latestGeneration.status}` : currentPhase >= 0 ? PHASES[currentPhase].label : effectiveStage || "กำลังอ่านสถานะ"}</small>
         </span>
         <span className={styles.dockProgress}>{progress}% <span aria-hidden="true">›</span></span>
       </button>
@@ -289,6 +302,7 @@ export default function AgentJobStatusDock() {
             <div className={styles.metric}><span>Agent ปัจจุบัน</span><b>{activeTask ? AGENT_LABELS[activeTask.agentKey] || activeTask.agentKey : "—"}</b><small>{effectiveStage || "รอเริ่ม"}</small></div>
             <div className={styles.metric}><span>Queue / Retry</span><b>{latestJob ? `${latestJob.status} · ${latestJob.attempts}/${latestJob.maxAttempts}` : "ไม่มี Active Job"}</b><small>{latestJob?.createdAt ? timeAgo(latestJob.createdAt) : "—"}</small></div>
             <div className={styles.metric}><span>Worker</span><b>{workerLabel}</b><small>{runtime?.worker?.concurrency ? `${runtime.worker.activeLanes || 0}/${runtime.worker.concurrency} lanes` : runtime?.message || "—"}</small></div>
+            <div className={styles.metric}><span>Generation ID</span><b>{latestGeneration ? latestGeneration.id.slice(0, 12) : "ยังไม่ส่ง Provider"}</b><small>{latestGeneration ? `${latestGeneration.providerId.toUpperCase()} · ${latestGeneration.status} · ส่ง ${latestGeneration.providerSubmissionCount}/1` : "Precheck / รอคิว"}</small></div>
           </div>
 
           <section className={styles.flowPanel}>

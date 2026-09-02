@@ -35,7 +35,7 @@ export class MockVideoProvider implements VideoProvider {
   async getStatus(providerTaskId: string) {
     const task = tasks.get(providerTaskId);
     // Agent mock IDs are deterministic. Reconstructing the completed result makes local/dev runs resumable after a worker restart.
-    if (!task && providerTaskId.startsWith("mock_agent:")) return completedMock(providerTaskId);
+    if (!task && (providerTaskId.startsWith("mock_agent:") || providerTaskId.startsWith("mock_video-generation-v2:"))) return completedMock(providerTaskId);
     if (!task) return { providerTaskId, status: "failed" as const, error: "Mock task not found" };
     if (task.status === "queued" || task.status === "generating") {
       const result = completedMock(providerTaskId);
@@ -47,7 +47,7 @@ export class MockVideoProvider implements VideoProvider {
 
   async cancel(providerTaskId: string) {
     const task = tasks.get(providerTaskId);
-    if (!task && providerTaskId.startsWith("mock_agent:")) return true;
+    if (!task && (providerTaskId.startsWith("mock_agent:") || providerTaskId.startsWith("mock_video-generation-v2:"))) return true;
     if (!task) return false;
     tasks.set(providerTaskId, { ...task, status: "failed", error: "Cancelled in mock provider" });
     return true;
