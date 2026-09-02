@@ -18,6 +18,24 @@ function signedRequest(request: Request, id: string) {
   return { owner, valid: verifyCharacterReferenceSignature(owner, id, signature) };
 }
 
+function referenceHeaders(file: { mime: string; data: Buffer }) {
+  return {
+    "Content-Type": file.mime,
+    "Content-Length": String(file.data.byteLength),
+    "Cache-Control": "private, max-age=3600, no-transform",
+    "X-Content-Type-Options": "nosniff",
+  };
+}
+
+export async function HEAD(request: Request, context: { params: Promise<{ id: string }> }) {
+  const { id } = await context.params;
+  const signed = signedRequest(request, id);
+  if (!signed.valid) return new Response(null, { status: 403 });
+  const file = await readCharacterReference(signed.owner, id);
+  if (!file) return new Response(null, { status: 404 });
+  return new Response(null, { status: 200, headers: referenceHeaders(file) });
+}
+
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
   const signed = signedRequest(request, id);
@@ -27,12 +45,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   const body = Uint8Array.from(file.data).buffer;
   return new Response(body, {
     status: 200,
-    headers: {
-      "Content-Type": file.mime,
-      "Content-Length": String(file.data.byteLength),
-      "Cache-Control": "private, max-age=3600, no-transform",
-      "X-Content-Type-Options": "nosniff",
-    },
+    headers: referenceHeaders(file),
   });
 }
 
