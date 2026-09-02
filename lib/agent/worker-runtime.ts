@@ -174,17 +174,13 @@ async function runSpecialistStage(input: {
   return { result, completed, continued: true };
 }
 
-function imageReferencesForRenderSegment(project: Project, episode: Project["episodes"][number], renderSegment: GenerateVideoRequest["renderSegment"]) {
-  const sourceIds = new Set(renderSegment.sourceSegmentIds || []);
-  const relevantSegments = sourceIds.size
-    ? episode.segments.filter((segment) => sourceIds.has(segment.id))
-    : episode.segments.filter((segment) => segment.start < renderSegment.end && segment.end > renderSegment.start);
-  const characterIds = new Set(relevantSegments.flatMap((segment) => segment.characterIds));
-  const urls = project.characters
-    .filter((character) => characterIds.has(character.id))
-    .flatMap((character) => character.references || [])
-    .map((reference) => reference.url)
-    .filter((url): url is string => Boolean(url));
+function imageReferencesForRenderSegment(renderSegment: GenerateVideoRequest["renderSegment"]) {
+  const raw = (renderSegment as GenerateVideoRequest["renderSegment"] & { imageReferences?: unknown }).imageReferences;
+  if (!Array.isArray(raw)) return [];
+  const urls = raw
+    .filter((value): value is string => typeof value === "string")
+    .map((value) => value.trim())
+    .filter(Boolean);
   return [...new Set(urls)].slice(0, 8);
 }
 
@@ -407,7 +403,7 @@ async function processAgentStage(run: AgentRunRecord, job: AgentQueueJobRecord) 
         resolution: project.resolution,
         aspectRatio: project.aspectRatio,
         imageReferences: provider.getModelDefinition().supportsImageReference
-          ? imageReferencesForRenderSegment(project, episode, renderSegment)
+          ? imageReferencesForRenderSegment(renderSegment)
           : [],
         videoReferences: [],
         audioReferences: [],
