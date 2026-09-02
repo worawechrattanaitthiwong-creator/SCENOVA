@@ -236,13 +236,14 @@ export function resolveRunwayEndpoint(modelId: string, hasImage: boolean, hasVid
 
 export class RunwayVideoProvider implements VideoProvider {
   id = "runway";
-  credentialProviderId = "runway";
+  credentialProviderId: string;
   billingMode: "BYOK" | "SYSTEM";
   private readonly apiKey: string;
   private readonly baseUrl: string;
   private readonly modelId: string;
 
-  constructor(credential?: ProviderRuntimeCredential) {
+  constructor(credential?: ProviderRuntimeCredential, logicalProviderId = "runway") {
+    this.credentialProviderId = logicalProviderId;
     this.apiKey = credential?.apiKey || process.env.RUNWAY_API_KEY || process.env.RUNWAYML_API_SECRET || "";
     this.baseUrl = (credential?.baseUrl || process.env.RUNWAY_API_BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, "");
     this.modelId = credential?.modelId || process.env.RUNWAY_MODEL_ID || DEFAULT_MODEL;
