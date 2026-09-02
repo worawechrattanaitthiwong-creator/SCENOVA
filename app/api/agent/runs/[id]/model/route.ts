@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import type { Prisma } from "@/generated/prisma/client";
+import { Prisma } from "@/generated/prisma/client";
 import { resolveSession } from "@/lib/auth-core";
 import { getAgentRunForUser, recordAgentDecision } from "@/lib/agent/store";
 import { listUserApiConnections } from "@/lib/api-connections/store";
@@ -174,8 +174,8 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   const cancelledOldProviderOrders: number[] = [];
   const drainingOldProviderOrders: number[] = [];
   const supersededOutputOrders: number[] = [];
-  let previousRenderPlan = planEpisodeRender(input.project, episode);
-  let nextRenderPlan = planEpisodeRender(nextProject, episode);
+  const previousRenderPlan = planEpisodeRender(input.project, episode);
+  const nextRenderPlan = planEpisodeRender(nextProject, episode);
 
   if (mustRebuildGenerationPlan) {
     compatibleOrders = compatibleRenderOrders(previousRenderPlan, nextRenderPlan);
