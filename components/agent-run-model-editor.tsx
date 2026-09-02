@@ -81,7 +81,7 @@ export default function AgentRunModelEditor() {
     setProviders(connectionsPayload.providers || []);
     setSelectedRunId((current) => {
       if (current && nextRuns.some((run) => run.id === current)) return current;
-       const requested = readSelectedAgentRunId();
+      const requested = readSelectedAgentRunId();
       if (requested && nextRuns.some((run) => run.id === requested)) return requested;
       return nextRuns.find((run) => !["COMPLETED", "CANCELLED"].includes(run.status))?.id || nextRuns[0]?.id || "";
     });
@@ -129,6 +129,7 @@ export default function AgentRunModelEditor() {
 
   const ready = selectedModel ? modelReady(selectedModel.id) : false;
   const stopped = Boolean(selectedRun && ["FAILED", "PAUSED"].includes(selectedRun.status));
+  const cancelled = selectedRun?.status === "CANCELLED";
   const canPause = Boolean(selectedRun && !["FAILED", "PAUSED", "COMPLETED", "CANCELLED"].includes(selectedRun.status));
 
   function chooseModel(nextModelId: string) {
@@ -197,22 +198,65 @@ export default function AgentRunModelEditor() {
     }
   }
 
+  async function restoreCancelledRun() {
+    if (!selectedRun || !cancelled || busy) return;
+    setBusy(true);
+    setMessage("");
+    setError("");
+    try {
+      const response = await fetch(`/api/agent/runs/${encodeURIComponent(selectedRun.id)}/restore`, {
+        method: "POST",
+        credentials: "same-origin",
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "เริ่มงานที่ยกเลิกต่อไม่สำเร็จ");
+      setMessage("เรียกคืนงานแล้ว ระบบเริ่มต่อจากจุดเดิมและเก็บ Shot/Artifact ที่สำเร็จไว้ ไม่เริ่มใหม่ทั้งงาน");
+      await load();
+      selectAgentRun(selectedRun.id);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteCancelledRun() {
+    if (!selectedRun || !cancelled || busy) return;
+    const confirmed = window.confirm(`ลบ “${titleOf(selectedRun)}” ออกจากรายการงาน AI ถาวรใช่หรือไม่?\n\nคำสั่งนี้ลบ Run/Workflow/คิวและประวัติ Agent ของงานนี้ แต่จะไม่ลบ Project ต้นฉบับใน Studio`);
+    if (!confirmed) return;
+    setBusy(true);
+    setMessage("");
+    setError("");
+    try {
+      const response = await fetch(`/api/agent/runs/${encodeURIComponent(selectedRun.id)}/delete`, {
+        method: "POST",
+        credentials: "same-origin",
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "ลบงานไม่สำเร็จ");
+      window.location.assign("/agent");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+      setBusy(false);
+    }
+  }
+
   if (!runs.length) return null;
 
   return (
-    <section className={styles.panel} id="agent-model-editor" aria-label="แก้โมเดลของงาน AI">
+    <section className={styles.panel} id="agent-model-editor" aria-label={cancelled ? "จัดการงาน AI ที่ยกเลิก" : "แก้โมเดลของงาน AI"}>
       <div className={styles.head}>
         <div>
-          <span className={styles.eyebrow}>MODEL OVERRIDE · งานเดิม</span>
-          <h2>แก้เฉพาะโมเดลและรุ่นของงานนี้</h2>
-          <p>Story, ตัวละคร, ฉาก, Prompt/Artifact ที่ทำเสร็จแล้ว และความคืบหน้าเดิมจะไม่ถูกลบ</p>
+          <span className={styles.eyebrow}>{cancelled ? "CANCELLED JOB · งานเดิม" : "MODEL OVERRIDE · งานเดิม"}</span>
+          <h2>{cancelled ? "จัดการงานที่ยกเลิก" : "แก้เฉพาะโมเดลและรุ่นของงานนี้"}</h2>
+          <p>{cancelled ? "เลือกเพียงอย่างเดียว: เริ่มต่อจากจุดเดิมโดยเก็บงานที่สำเร็จไว้ หรือเอางานนี้ออกจากรายการงาน AI" : "Story, ตัวละคร, ฉาก, Prompt/Artifact ที่ทำเสร็จแล้ว และความคืบหน้าเดิมจะไม่ถูกลบ"}</p>
         </div>
         <span className={styles.status} data-status={selectedRun?.status || ""}>{selectedRun ? statusLabel(selectedRun.status) : "—"}</span>
       </div>
 
       <div className={styles.body}>
         <label>
-          <span>งานที่ต้องการแก้</span>
+          <span>งานที่ต้องการจัดการ</span>
           <select value={selectedRunId} onChange={(event) => selectAgentRun(event.target.value)} disabled={busy}>
             {runs.map((run) => (
               <option value={run.id} key={run.id}>{titleOf(run)} · {statusLabel(run.status)}</option>
@@ -220,42 +264,48 @@ export default function AgentRunModelEditor() {
           </select>
         </label>
 
-        <label>
-          <span>โมเดลวิดีโอ</span>
-          <select value={modelId} onChange={(event) => chooseModel(event.target.value)} disabled={!stopped || busy}>
-            {VIDEO_MODELS.filter((model) => model.enabled).map((model) => {
-              const isReady = modelReady(model.id);
-              return <option key={model.id} value={model.id} disabled={!isReady}>{model.name}{isReady ? " · พร้อมใช้งาน" : " · ยังไม่พร้อมใช้งาน"}</option>;
-            })}
-          </select>
-        </label>
+        {!cancelled ? <>
+          <label>
+            <span>โมเดลวิดีโอ</span>
+            <select value={modelId} onChange={(event) => chooseModel(event.target.value)} disabled={!stopped || busy}>
+              {VIDEO_MODELS.filter((model) => model.enabled).map((model) => {
+                const isReady = modelReady(model.id);
+                return <option key={model.id} value={model.id} disabled={!isReady}>{model.name}{isReady ? " · พร้อมใช้งาน" : " · ยังไม่พร้อมใช้งาน"}</option>;
+              })}
+            </select>
+          </label>
 
-        <label>
-          <span>รุ่น / Version</span>
-          <select value={versionId} onChange={(event) => setVersionId(event.target.value)} disabled={!stopped || !ready || busy}>
-            {versions.map((version) => <option key={version.apiModelId} value={version.apiModelId}>{version.label}{version.recommended ? " · แนะนำ" : ""}</option>)}
-          </select>
-        </label>
+          <label>
+            <span>รุ่น / Version</span>
+            <select value={versionId} onChange={(event) => setVersionId(event.target.value)} disabled={!stopped || !ready || busy}>
+              {versions.map((version) => <option key={version.apiModelId} value={version.apiModelId}>{version.label}{version.recommended ? " · แนะนำ" : ""}</option>)}
+            </select>
+          </label>
+        </> : null}
       </div>
 
       <div className={styles.meta}>
         <span>โมเดลเดิม: <b>{VIDEO_MODELS.find((item) => item.id === currentProject?.mainModelId)?.name || currentProject?.mainModelId || "—"}</b></span>
         <span>รุ่นเดิม: <b>{currentProject?.mainModelVersionId || "Provider default"}</b></span>
-        {!ready && selectedModel ? <strong>{selectedModel.name} ยังไม่พร้อมใช้งาน — เชื่อมต่อ/ทดสอบ Provider ก่อนจึงจะเลือกได้</strong> : null}
-        {selectedRun?.status === "CANCELLED" ? <strong>งานนี้ถูกยกเลิกแล้ว จึงแก้โมเดลหรือเริ่มต่อจาก Run เดิมไม่ได้ เพื่อป้องกัน Provider เรียกเก็บซ้ำ ให้สร้างงานใหม่จาก Studio</strong> : null}
+        {!cancelled && !ready && selectedModel ? <strong>{selectedModel.name} ยังไม่พร้อมใช้งาน — เชื่อมต่อ/ทดสอบ Provider ก่อนจึงจะเลือกได้</strong> : null}
+        {cancelled ? <strong>เริ่มต่อจะใช้ Run เดิม: งาน/Artifact/Render Shot ที่สำเร็จแล้วจะคงไว้ และสร้างใหม่เฉพาะส่วนที่ยังไม่สำเร็จ</strong> : null}
       </div>
 
       {message ? <div className={styles.success}>{message}</div> : null}
       {error ? <div className={styles.error}>{error}</div> : null}
 
       <div className={styles.actions}>
-        {canPause ? <button type="button" className={styles.pause} disabled={busy} onClick={() => void pauseForEdit()}>{busy ? "กำลังพักงาน..." : "Ⅱ พักงานเพื่อแก้โมเดล"}</button> : null}
-        {stopped ? <>
-          <button type="button" disabled={busy || !ready || !versionId} onClick={() => void saveModel(false)}>บันทึกโมเดลอย่างเดียว</button>
-          <button type="button" className={styles.primary} disabled={busy || !ready || !versionId} onClick={() => void saveModel(true)}>{busy ? "กำลังบันทึก..." : "บันทึกและทำงานต่อ →"}</button>
-        </> : null}
-        {!ready ? <Link href="/profile/api">ไปที่ API &amp; Models →</Link> : null}
-        {selectedRun?.status === "CANCELLED" ? <Link href="/studio">สร้างงานใหม่จาก Studio →</Link> : null}
+        {cancelled ? <>
+          <button type="button" className={styles.danger} disabled={busy} onClick={() => void deleteCancelledRun()}>{busy ? "กำลังดำเนินการ..." : "ลบงานนี้"}</button>
+          <button type="button" className={styles.primary} disabled={busy} onClick={() => void restoreCancelledRun()}>{busy ? "กำลังเรียกคืนงาน..." : "▶ เริ่มต่อจากจุดเดิม"}</button>
+        </> : <>
+          {canPause ? <button type="button" className={styles.pause} disabled={busy} onClick={() => void pauseForEdit()}>{busy ? "กำลังพักงาน..." : "Ⅱ พักงานเพื่อแก้โมเดล"}</button> : null}
+          {stopped ? <>
+            <button type="button" disabled={busy || !ready || !versionId} onClick={() => void saveModel(false)}>บันทึกโมเดลอย่างเดียว</button>
+            <button type="button" className={styles.primary} disabled={busy || !ready || !versionId} onClick={() => void saveModel(true)}>{busy ? "กำลังบันทึก..." : "บันทึกและทำงานต่อ →"}</button>
+          </> : null}
+          {!ready ? <Link href="/profile/api">ไปที่ API &amp; Models →</Link> : null}
+        </>}
       </div>
     </section>
   );
