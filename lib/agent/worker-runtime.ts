@@ -39,6 +39,7 @@ import {
   markPollRetry,
   markSubmissionFailure,
   persistProviderResult,
+  recoverGenerationOutput,
   precheckVideoRequest,
   refundRejectedGeneration,
   settleStoredGeneration,
@@ -446,8 +447,7 @@ async function processAgentStage(run: AgentRunRecord, job: AgentQueueJobRecord) 
 
       if (generation?.providerTaskId) {
         try {
-          const polled = await provider.getStatus(generation.providerTaskId);
-          generation = await persistProviderResult(generation.id, polled, "PROVIDER_POLLED");
+          generation = await recoverGenerationOutput(generation, provider);
         } catch (error) {
           generation = await markPollRetry(generation.id, error);
           syncOutput(generationOutput(generation));

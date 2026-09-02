@@ -167,6 +167,17 @@ export async function persistProviderResult(generationId: string, result: Genera
   return updated;
 }
 
+/**
+ * Reconcile/download recovery always uses the original provider task.  It is
+ * deliberately separate from submission so a missing output URL or a failed
+ * fetch can never create a second paid generation.
+ */
+export async function recoverGenerationOutput(generation: VideoGeneration, provider: VideoProvider) {
+  if (!generation.providerTaskId) throw new Error("GENERATION_PROVIDER_TASK_REQUIRED");
+  const result = await provider.getStatus(generation.providerTaskId);
+  return persistProviderResult(generation.id, result, "DOWNLOAD_RECOVERY");
+}
+
 export async function markPollRetry(generationId: string, error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
   const updated = await prisma.videoGeneration.update({ where: { id: generationId }, data: { status: "POLL_RETRY", errorCode: "POLL_TRANSIENT", errorMessage: message } });

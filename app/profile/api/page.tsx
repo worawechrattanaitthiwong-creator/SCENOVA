@@ -127,7 +127,9 @@ export default function ApiConnectionsPage() {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [routing, setRouting] = useState<RouteStage[]>([]);
   const [activeKind, setActiveKind] = useState<ConnectionKind>("ANALYZER");
-  const [providerId, setProviderId] = useState("groq");
+  // Put the configured Analyzer brain first so Mercury is discoverable without
+  // requiring the user to hunt through the provider list.
+  const [providerId, setProviderId] = useState("inception");
   const [apiKey, setApiKey] = useState("");
   const [showKey, setShowKey] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -420,6 +422,7 @@ export default function ApiConnectionsPage() {
           {selectedProvider ? <div className={styles.connectionForm}>
             <div className={styles.formHeader}><div className={styles.formProvider}><span className={styles.providerMonogramLarge}>{selectedProvider.label.slice(0,1).toUpperCase()}</span><span><small>{editConnection ? "แก้รุ่นที่เชื่อมต่อ" : "กำลังเชื่อมต่อ"}</small><strong>{selectedProvider.label}</strong></span></div><div className={styles.formBadges}>{selectedProvider.systemConfigured ? <span className={styles.systemBadge}>มีค่าระบบ</span> : null}<span className={styles.adapterReady}>Adapter พร้อม</span></div></div>
             <p className={styles.capability}>{selectedProvider.capabilityTh}</p>
+            {selectedProvider.id === "inception" ? <div className={styles.providerCallout} role="note"><strong>Mercury 2 · AI Brain</strong><span>ใช้สำหรับวิเคราะห์บทและจัดตัวเลือกตามบริบท ไม่ใช่ Provider สำหรับสร้างวิดีโอ และจะไม่หักเครดิตการเรนเดอร์</span><a href="https://docs.inceptionlabs.ai/capabilities/chat-completions" target="_blank" rel="noreferrer">ดูวิธีใช้ API ↗</a></div> : null}
 
             {!editConnection ? <div className={styles.fieldGroup}>
               <div className={styles.fieldLabelRow}><label htmlFor="api-key"><span className={styles.stepBadge}>1</span>Credential</label><span>จำเป็น</span></div>

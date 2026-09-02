@@ -724,6 +724,27 @@
   line-height: 1.6;
 }
 
+.providerCallout {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  margin: 12px 0 4px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--api-accent) 28%, var(--api-line));
+  border-radius: 10px;
+  background: var(--api-accent-soft);
+  color: var(--api-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.providerCallout strong { color: var(--api-text); white-space: nowrap; }
+.providerCallout a { color: var(--api-accent); font-weight: 700; white-space: nowrap; text-decoration: none; }
+@media (max-width: 760px) {
+  .providerCallout { grid-template-columns: 1fr; gap: 4px; }
+}
+
 .fieldGroup {
   min-width: 0;
 }
