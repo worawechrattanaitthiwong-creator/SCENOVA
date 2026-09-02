@@ -4,8 +4,18 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import styles from "./single-episode-studio.module.css";
+import SingleEpisodeAiDirectorPanel from "@/components/single-episode-ai-director-panel";
 import { buildStudioAgentProject } from "@/lib/agent/studio-project";
-import type { ProductionAnalysis } from "@/lib/analyzer/schema";
+import type { AiDirectorMeta, AiDirectorMode, AiDirectorNovelty, AiDirectorScenePatch, AiDirectorScope } from "@/lib/ai-director";
+import {
+  AI_SCOPE_OPTIONS,
+  aiStorySignature,
+  appendAiDirectorHistory,
+  applyAiDirectorPatch,
+  cloneAiDirectorScenes,
+  readAiDirectorHistory,
+  readManualAiSections,
+} from "@/lib/ai-director-client";
 import {
   CAMERA_ANGLES,
   CAMERA_HEIGHTS,
@@ -326,6 +336,10 @@ export default function SingleEpisodeStudio() {
   const [uploadingCharacterId, setUploadingCharacterId] = useState("");
   const [sceneAiBusy, setSceneAiBusy] = useState(false);
   const [sceneAiSummary, setSceneAiSummary] = useState("");
+  const [aiDirectorMode, setAiDirectorMode] = useState<AiDirectorMode>("production");
+  const [aiDirectorNovelty, setAiDirectorNovelty] = useState<AiDirectorNovelty>("balanced");
+  const [sceneAiMeta, setSceneAiMeta] = useState<AiDirectorMeta | null>(null);
+  const [sceneAiUndo, setSceneAiUndo] = useState<StoryScene[] | null>(null);
 
   useEffect(() => {
     const raw = localStorage.getItem("scenova-selected-character-v1");
@@ -383,6 +397,12 @@ export default function SingleEpisodeStudio() {
     if (!selectedSceneId && scenes[0]) setSelectedSceneId(scenes[0].id);
     if (selectedSceneId && !scenes.some((scene) => scene.id === selectedSceneId) && scenes[0]) setSelectedSceneId(scenes[0].id);
   }, [scenes, selectedSceneId]);
+
+  useEffect(() => {
+    setSceneAiMeta(null);
+    setSceneAiSummary("");
+    setSceneAiUndo(null);
+  }, [selectedSceneId]);
 
   const selectedScene = scenes.find((scene) => scene.id === selectedSceneId) || scenes[0];
   const modelVersions = useMemo(() => getVideoModelVersions(model), [model]);
@@ -600,104 +620,81 @@ export default function SingleEpisodeStudio() {
     return value || "AI วิเคราะห์ฉากไม่สำเร็จ";
   }
 
-  async function arrangeSceneWithAi() {
+  async function arrangeSceneWithAi(scope: AiDirectorScope = "all") {
     if (!selectedScene || sceneAiBusy) return;
-    if (!story.trim()) {
-      setMessage("กรุณาเขียนเรื่องหรือเหตุการณ์ของตอนก่อนให้ AI จัดฉาก");
+    if (!story.trim() && !selectedScene.action.trim()) {
+      setMessage("กรุณาเขียนเรื่องหรือ Action ของฉากก่อนให้ AI Director ช่วยคิด");
       return;
     }
     const sceneIndex = scenes.findIndex((item) => item.id === selectedScene.id);
+    const manualSections = readManualAiSections();
+    const historyKey = aiStorySignature(episodeTitle, story, sceneIndex);
+    const history = readAiDirectorHistory(historyKey);
+    const scopeLabel = scope === "all" ? "ทั้งฉาก" : AI_SCOPE_OPTIONS.find((item) => item.value === scope)?.label || scope;
     setSceneAiBusy(true);
     setSceneAiSummary("");
-    setMessage(`AI กำลังเลือกตัวละคร บทพูด ภาพ และเสียงให้ฉาก ${sceneIndex + 1}...`);
+    setMessage(`AI Director กำลังสร้าง Candidate และตรวจ ${scopeLabel} ของฉาก ${sceneIndex + 1}...`);
     try {
-      const response = await fetch("/api/ai/analyze", {
+      const response = await fetch("/api/ai/director", {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          prompt: "จัด Scene ปัจจุบันให้สอดคล้องกับโครงเรื่อง เลือกเฉพาะตัวละครที่ควรอยู่ในฉากจากรายชื่อ Cast และใช้ชื่อให้ตรงทุกตัว เขียน Action กับบทพูดแยกรายคน จากนั้นเลือกกล้อง เลนส์ Movement แสง อารมณ์ Ambience Music SFX และ Negative Prompt ที่เหมาะสม ห้ามสร้างตัวละครชื่อใหม่และห้ามขัด Locks",
-          context: {
-            episodeTitle, story, model, aspect, visualStyle, locks,
-            cast: characters.map((item) => ({ name: item.name, role: item.role, appearance: item.appearance, voice: item.voice })),
-            currentScene: selectedScene,
-            previousScene: sceneIndex > 0 ? scenes[sceneIndex - 1] : null,
-            nextScene: sceneIndex < scenes.length - 1 ? scenes[sceneIndex + 1] : null,
-            availableOptions: {
-              shot: SHOT_TYPES.map((item) => item.value), angle: CAMERA_ANGLES.map((item) => item.value), lens: LENSES.map((item) => item.value),
-              movement: CAMERA_MOVEMENTS.map((item) => item.value), height: CAMERA_HEIGHTS.map((item) => item.value), lighting: LIGHTING_STYLES.map((item) => item.value),
-              emotion: EMOTIONS.map((item) => item.value), composition: COMPOSITION_OPTIONS.map((item) => item.value), depthOfField: DOF_OPTIONS.map((item) => item.value),
-            },
-          },
+          mode: aiDirectorMode,
+          novelty: aiDirectorNovelty,
+          scope,
+          episodeTitle,
+          story,
+          model,
+          modelVersion,
+          aspect,
+          visualStyle,
+          locks,
+          totalDuration,
+          sceneIndex,
+          sceneCount: scenes.length,
+          currentScene: selectedScene,
+          previousScene: sceneIndex > 0 ? scenes[sceneIndex - 1] : null,
+          nextScene: sceneIndex < scenes.length - 1 ? scenes[sceneIndex + 1] : null,
+          cast: characters.map((item) => ({ id: item.id, name: item.name, role: item.role, appearance: item.appearance, voice: item.voice })),
+          manualSections,
+          history,
         }),
       });
-      const data = await response.json() as { analysis?: ProductionAnalysis; provider?: string; usage?: { costThb?: number }; error?: string };
-      if (!response.ok || !data.analysis) throw new Error(data.error || "ANALYZER_FAILED");
-      const analysis = data.analysis;
-      const chosenCharacters = analysis.characters.map((suggestion) => characters.find((character) => {
-        const name = character.name.trim().toLocaleLowerCase();
-        const suggested = suggestion.name.trim().toLocaleLowerCase();
-        return name === suggested || suggested.includes(name) || name.includes(suggested);
-      })).filter((character): character is Character => Boolean(character));
-      const selectedCharacters = chosenCharacters.length ? chosenCharacters : selectedScene.characterIds.map((id) => characters.find((item) => item.id === id)).filter((item): item is Character => Boolean(item));
-      const nextIds = selectedCharacters.map((item) => item.id);
-      const nextDirections = { ...selectedScene.characterDirections };
-      selectedCharacters.forEach((character) => {
-        const suggestion = analysis.characters.find((item) => item.name.trim().toLocaleLowerCase().includes(character.name.trim().toLocaleLowerCase()) || character.name.trim().toLocaleLowerCase().includes(item.name.trim().toLocaleLowerCase()));
-        nextDirections[character.id] = {
-          ...(nextDirections[character.id] || makeDirection()),
-          action: suggestion?.action || nextDirections[character.id]?.action || "",
-          emotion: closestChoice(suggestion?.emotion, EMOTIONS, nextDirections[character.id]?.emotion || "Natural"),
-          dialogue: suggestion?.dialogue || nextDirections[character.id]?.dialogue || "",
-        };
-      });
-      const dialogue = selectedCharacters.map((character) => {
-        const spoken = nextDirections[character.id]?.dialogue?.trim();
-        return spoken ? `${character.name}: ${spoken}` : "";
-      }).filter(Boolean).join("\n");
-      const storySignal = `${analysis.intent} ${analysis.summaryTh}`.toLocaleLowerCase();
-      const objective = sceneIndex === scenes.length - 1 ? "Resolve Scene" : storySignal.includes("reveal") || storySignal.includes("เปิดเผย") ? "Reveal Information" : storySignal.includes("tension") || storySignal.includes("ตึง") ? "Build Tension" : sceneIndex === 0 ? "Establish World" : selectedScene.objective;
-      const beat = sceneIndex === 0 ? "Opening" : sceneIndex === scenes.length - 1 ? "Exit" : storySignal.includes("peak") || storySignal.includes("พีก") ? "Peak" : "Turn";
-      const transition = sceneIndex === scenes.length - 1 ? "Fade" : analysis.camera.movement.toLocaleLowerCase().includes("whip") ? "Whip" : "Seamless";
-      const cameraSpeed = storySignal.includes("action") || storySignal.includes("ไล่") || storySignal.includes("ต่อสู้") ? "Fast" : storySignal.includes("emotion") || storySignal.includes("อารมณ์") ? "Slow" : "Normal";
-      const performance = storySignal.includes("intense") || storySignal.includes("เข้ม") ? "Intense" : storySignal.includes("anime") || visualStyle.includes("Anime") ? "Expressive" : "Natural";
-      const colorTemp = analysis.lighting.mood.toLocaleLowerCase().match(/warm|อบอุ่น|gold/) ? "Warm 3200K" : analysis.lighting.mood.toLocaleLowerCase().match(/cool|blue|เย็น|กลางคืน/) ? "Cool 7000K" : "Neutral 4500K";
-      patchScene({
-        action: analysis.scene.description || selectedScene.action,
-        location: analysis.scene.location || selectedScene.location,
-        objective, beat, transition,
-        characterIds: nextIds,
-        characterDirections: nextDirections,
-        cameraSubjectId: nextIds[0] || "",
-        dialogue,
-        shot: closestChoice(analysis.camera.shotType, SHOT_TYPES, selectedScene.shot),
-        angle: closestChoice(analysis.camera.angle, CAMERA_ANGLES, selectedScene.angle),
-        lens: closestChoice(analysis.camera.lensMm ? `${analysis.camera.lensMm}mm` : "", LENSES, selectedScene.lens),
-        movement: closestChoice(analysis.camera.movement, CAMERA_MOVEMENTS, selectedScene.movement),
-        height: closestChoice(analysis.camera.cameraHeight, CAMERA_HEIGHTS, selectedScene.height),
-        cameraSpeed,
-        focus: nextIds.length ? "Auto Subject" : "Deep Focus",
-        dof: closestChoice(analysis.camera.depthOfField, DOF_OPTIONS, selectedScene.dof),
-        composition: closestChoice(analysis.camera.composition, COMPOSITION_OPTIONS, selectedScene.composition),
-        lighting: closestChoice(analysis.lighting.style, LIGHTING_STYLES, selectedScene.lighting),
-        colorTemp,
-        emotion: closestChoice(analysis.characters[0]?.emotion || analysis.lighting.mood, EMOTIONS, selectedScene.emotion),
-        performance,
-        ambience: closestChoice(analysis.audio.ambience, AMBIENCE_PRESETS, selectedScene.ambience),
-        sfx: closestChoice(analysis.audio.soundEffects[0], SFX_PRESETS, selectedScene.sfx),
-        music: closestChoice(analysis.audio.music, MUSIC_PRESETS, selectedScene.music),
-        negativePrompt: analysis.generation.negativePrompt.join(", ") || selectedScene.negativePrompt,
-        continuityNote: `${analysis.summaryTh}\nรักษาตัวละคร: ${selectedCharacters.map((item) => item.name).join(", ") || "ไม่มีตัวละครในฉาก"}`,
-      });
+      const data = await response.json() as {
+        scene?: AiDirectorScenePatch;
+        meta?: AiDirectorMeta;
+        provider?: string;
+        usage?: { costThb?: number };
+        error?: string;
+      };
+      if (!response.ok || !data.scene || !data.meta) throw new Error(data.error || "AI_DIRECTOR_FAILED");
+
+      setSceneAiUndo(cloneAiDirectorScenes(scenes));
+      setScenes((current) => current.map((scene) => scene.id === selectedScene.id
+        ? applyAiDirectorPatch(scene, data.scene!, manualSections, locks)
+        : scene));
+      appendAiDirectorHistory(historyKey, data.meta.historyEntry);
+      setSceneAiMeta(data.meta);
       const cost = Number(data.usage?.costThb || 0);
-      setSceneAiSummary(`${analysis.summaryTh} · ${data.provider || "AI Analyzer"}${cost > 0 ? ` · ฿${cost.toFixed(4)}` : " · BYOK"}`);
-      setMessage("AI จัดตัวเลือกของฉากให้แล้ว คุณสามารถแก้ทุกช่องต่อได้");
+      const providerCopy = `${data.provider || "AI Director"}${cost > 0 ? ` · ฿${cost.toFixed(4)}` : " · BYOK"}`;
+      setSceneAiSummary(`${data.meta.rationaleTh} · ${providerCopy}`);
+      setMessage(`AI Director จัด ${scopeLabel} แล้ว · เปลี่ยน ${data.meta.changedFields.length} ค่า · คุมความซ้ำด้วยประวัติ ${history.length + 1} รุ่น`);
     } catch (error) {
-      const raw = error instanceof Error ? error.message : "ANALYZER_FAILED";
-      setMessage(friendlyAiError(raw));
+      const raw = error instanceof Error ? error.message : "AI_DIRECTOR_FAILED";
+      setMessage(raw === "AI_DIRECTOR_SOURCE_REQUIRED" ? "กรุณาใส่เรื่องหรือ Action ก่อนให้ AI ช่วยคิด" : friendlyAiError(raw));
     } finally {
       setSceneAiBusy(false);
     }
+  }
+
+  function undoLastAiSceneChange() {
+    if (!sceneAiUndo || sceneAiBusy) return;
+    setScenes(cloneAiDirectorScenes(sceneAiUndo));
+    setSceneAiUndo(null);
+    setSceneAiMeta(null);
+    setSceneAiSummary("");
+    setMessage("ย้อนกลับค่าจาก AI ครั้งล่าสุดแล้ว");
   }
 
   async function sendToAgent() {
@@ -859,8 +856,19 @@ export default function SingleEpisodeStudio() {
         <aside className={styles.sceneList}>{scenes.map((scene, index) => { const time = sceneTimes[index]; return <button type="button" key={scene.id} className={scene.id === selectedScene?.id ? styles.sceneActive : ""} onClick={() => setSelectedSceneId(scene.id)}><b>{String(index + 1).padStart(2, "0")}</b><span><strong>{scene.title}</strong><small>{formatTime(time?.start || 0)}–{formatTime(time?.end || scene.duration)} • {scene.duration} วินาที</small></span></button>; })}</aside>
 
         {selectedScene ? <div className={styles.sceneEditor}>
-          <div className={styles.sceneEditorHead}><div><span>ฉาก {String(scenes.findIndex((item) => item.id === selectedScene.id) + 1).padStart(2, "0")}</span><h3>{selectedScene.title}</h3></div><div><button type="button" className={styles.aiArrangeButton} onClick={arrangeSceneWithAi} disabled={sceneAiBusy}>{sceneAiBusy ? "AI กำลังจัดฉาก..." : "✦ AI จัดฉากตามโครงเรื่อง"}</button><button type="button" onClick={copyCameraToAll}>คัดลอกกล้องไปทุกฉาก</button><button type="button" onClick={copyLookToAll}>คัดลอกแสงไปทุกฉาก</button></div></div>
-          {sceneAiSummary ? <div className={styles.aiSceneNotice}><b>AI จัดฉากแล้ว</b><span>{sceneAiSummary}</span></div> : null}
+          <div className={styles.sceneEditorHead}><div><span>ฉาก {String(scenes.findIndex((item) => item.id === selectedScene.id) + 1).padStart(2, "0")}</span><h3>{selectedScene.title}</h3></div><div><button type="button" className={styles.aiArrangeButton} onClick={() => void arrangeSceneWithAi("all")} disabled={sceneAiBusy}>{sceneAiBusy ? "AI Director กำลังคิด..." : "✦ AI ช่วยคิดทั้งฉาก"}</button><button type="button" onClick={copyCameraToAll}>คัดลอกกล้องไปทุกฉาก</button><button type="button" onClick={copyLookToAll}>คัดลอกแสงไปทุกฉาก</button></div></div>
+          <SingleEpisodeAiDirectorPanel
+            busy={sceneAiBusy}
+            summary={sceneAiSummary}
+            meta={sceneAiMeta}
+            mode={aiDirectorMode}
+            novelty={aiDirectorNovelty}
+            canUndo={Boolean(sceneAiUndo)}
+            onModeChange={setAiDirectorMode}
+            onNoveltyChange={setAiDirectorNovelty}
+            onGenerate={(scope) => void arrangeSceneWithAi(scope)}
+            onUndo={undoLastAiSceneChange}
+          />
 
           <div className={styles.twoGrid}><label className={styles.field}><span>ชื่อฉาก</span><input value={selectedScene.title} onChange={(event) => patchScene({ title: event.target.value })} /></label><label className={styles.field}><span>สถานที่</span><input list="scenova-locations" value={selectedScene.location} onChange={(event) => patchScene({ location: event.target.value })} placeholder="พิมพ์เองหรือเลือก Preset" /><datalist id="scenova-locations">{LOCATION_PRESETS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</datalist></label></div>
           <div className={styles.threeGrid}><ChoiceField label="เป้าหมายฉาก" value={selectedScene.objective} options={OBJECTIVE_PRESETS} onChange={(value) => patchScene({ objective: value })} compact /><ChoiceField label="จังหวะเรื่อง" value={selectedScene.beat} options={SCENE_BEATS} onChange={(value) => patchScene({ beat: value })} compact /><ChoiceField label="การเปลี่ยนฉาก" value={selectedScene.transition} options={TRANSITIONS} onChange={(value) => patchScene({ transition: value })} compact /></div>
