@@ -1,12 +1,37 @@
 import type { GenerateVideoRequest, ProviderBillingMode } from "@/lib/providers/video-provider";
 
 export function buildCompiledVideoPrompt(request: GenerateVideoRequest) {
+  const shots = request.prompt.shots
+    .map((shot) => String(shot || "").trim())
+    .filter(Boolean);
+  const currentIndex = Math.max(0, Number(request.renderSegment.order || 1) - 1);
+  const currentShot = String(request.prompt.shots[currentIndex] || "").trim() || shots[0] || "";
+  const remainingShots = request.prompt.shots
+    .map((shot) => String(shot || "").trim())
+    .filter((shot, index) => Boolean(shot) && index !== currentIndex)
+    .join("\n");
+  const segmentNote = `Requested segment: ${request.renderSegment.start}-${request.renderSegment.end}s. Preserve every character, style, voice, location, prop, canon, camera and continuity lock supplied by SCENOVA.`;
+
+  // Agent video jobs are rendered one segment at a time. Put the matching shot
+  // instructions first so provider prompt limits cannot truncate the only text
+  // that describes the shot currently being generated.
+  if (request.idempotencyKey.startsWith("agent:")) {
+    return [
+      currentShot,
+      request.prompt.episode,
+      request.prompt.master,
+      remainingShots,
+      request.prompt.negative ? `NEGATIVE / AVOID:\n${request.prompt.negative}` : "",
+      segmentNote,
+    ].filter(Boolean).join("\n\n").trim();
+  }
+
   return [
     request.prompt.master,
     request.prompt.episode,
-    request.prompt.shots.join("\n"),
+    shots.join("\n"),
     request.prompt.negative ? `NEGATIVE / AVOID:\n${request.prompt.negative}` : "",
-    `Requested segment: ${request.renderSegment.start}-${request.renderSegment.end}s. Preserve every character, style, voice, location, prop, canon, camera and continuity lock supplied by SCENOVA.`,
+    segmentNote,
   ].filter(Boolean).join("\n\n").trim();
 }
 
