@@ -159,63 +159,15 @@ export const API_PROVIDER_DEFINITIONS: ProviderDefinition[] = [
   },
   {
     id: "runway",
-    label: "Runway Gen-4",
+    label: "Runway Developer API",
     kind: "VIDEO",
     defaultBaseUrl: RUNWAY_BASE_URL,
     defaultModelId: "gen4.5",
     systemKeyEnv: "RUNWAY_API_KEY",
     ready: true,
-    purposeTh: "Runway Gen-4 Video",
-    capabilityTh: "Gen-4.5 และ Gen-4 Turbo ผ่าน Runway Developer API",
-    credentialHintTh: "คีย์ของการ์ดนี้ใช้เฉพาะกลุ่ม Runway Gen-4; บริการอื่นตั้งค่าแยกการ์ดได้",
-  },
-  {
-    id: "runway-seedance",
-    label: "Seedance 2.5 — Runway",
-    kind: "VIDEO",
-    defaultBaseUrl: RUNWAY_BASE_URL,
-    defaultModelId: "seedance2_5",
-    systemKeyEnv: "RUNWAY_API_KEY",
-    ready: true,
-    purposeTh: "Seedance 2.5 ผ่าน Runway",
-    capabilityTh: "Text / Image / Video → Video พร้อม Reference และ Native Audio ผ่าน Runway",
-    credentialHintTh: "ตั้ง Runway API Key แยกสำหรับ Seedance 2.5 ได้ ไม่ผูกกับ Runway Gen-4",
-  },
-  {
-    id: "runway-gemini-omni",
-    label: "Gemini Omni Flash 1.1 — Runway",
-    kind: "VIDEO",
-    defaultBaseUrl: RUNWAY_BASE_URL,
-    defaultModelId: "gemini_omni_flash",
-    systemKeyEnv: "RUNWAY_API_KEY",
-    ready: true,
-    purposeTh: "Gemini Omni Flash ผ่าน Runway",
-    capabilityTh: "Text / Image / Video → Video ผ่าน Runway Developer API",
-    credentialHintTh: "ตั้ง Runway API Key แยกสำหรับ Gemini Omni Flash ได้",
-  },
-  {
-    id: "runway-aleph",
-    label: "Aleph 2.0 — Runway",
-    kind: "VIDEO",
-    defaultBaseUrl: RUNWAY_BASE_URL,
-    defaultModelId: "aleph2",
-    systemKeyEnv: "RUNWAY_API_KEY",
-    ready: true,
-    purposeTh: "Video Edit",
-    capabilityTh: "แก้ไขวิดีโอต้นฉบับด้วย Aleph 2.0 ผ่าน Runway",
-    credentialHintTh: "ตั้ง Runway API Key แยกสำหรับงาน Aleph ได้",
-  },
-  {
-    id: "runway-ruby",
-    label: "Ruby HDR — Runway",
-    kind: "VIDEO",
-    defaultBaseUrl: RUNWAY_BASE_URL,
-    defaultModelId: "ruby",
-    systemKeyEnv: "RUNWAY_API_KEY",
-    ready: true,
-    purposeTh: "HDR Post-production",
-    capabilityTh: "แปลงวิดีโอ SDR เป็น HDR ผ่าน Ruby ของ Runway",
-    credentialHintTh: "ตั้ง Runway API Key แยกสำหรับ Ruby HDR ได้",
+    purposeTh: "ศูนย์เชื่อมต่อโมเดลวิดีโอ",
+    capabilityTh: "ใช้คีย์เดียวเรียกโมเดลที่ Runway Developer API รองรับ โดยส่ง Model ID จริงของแต่ละโมเดล",
+    credentialHintTh: "เชื่อมต่อคีย์ครั้งเดียวแล้วเลือกโมเดลได้จากหน้าสร้าง สิทธิ์และโควตารายโมเดลขึ้นกับบัญชี Runway ของคุณ",
   },
   {
     id: "wan",
@@ -265,6 +217,16 @@ function videoOptions(name: string): ProviderModelOption[] {
   }));
 }
 
+function runwayVideoOptions(): ProviderModelOption[] {
+  return [
+    ...videoOptions("Runway"),
+    ...videoOptions("Seedance 2.5 (Runway)"),
+    ...videoOptions("Gemini Omni Flash 1.1 (Runway)"),
+    ...videoOptions("Aleph 2.0 (Runway)"),
+    ...videoOptions("Ruby HDR (Runway)"),
+  ];
+}
+
 const STATIC_MODEL_CATALOG: Record<string, ProviderModelOption[]> = {
   inception: [{ apiModelId: "mercury-2", label: "Mercury 2", recommended: true, availability: "SUPPORTED" }],
   groq: [{ apiModelId: "openai/gpt-oss-20b", label: "GPT OSS 20B", recommended: true, availability: "UNVERIFIED" }],
@@ -276,11 +238,7 @@ const STATIC_MODEL_CATALOG: Record<string, ProviderModelOption[]> = {
   seedance: videoOptions("Seedance 2.5"),
   kling: videoOptions("Kling"),
   veo: videoOptions("Veo"),
-  runway: videoOptions("Runway"),
-  "runway-seedance": videoOptions("Seedance 2.5 (Runway)"),
-  "runway-gemini-omni": videoOptions("Gemini Omni Flash 1.1 (Runway)"),
-  "runway-aleph": videoOptions("Aleph 2.0 (Runway)"),
-  "runway-ruby": videoOptions("Ruby HDR (Runway)"),
+  runway: runwayVideoOptions(),
   wan: videoOptions("Wan"),
   elevenlabs: [{ apiModelId: "eleven_multilingual_v2", label: "Eleven Multilingual v2", recommended: true, availability: "UNVERIFIED" }],
   "openai-voice": [
@@ -291,12 +249,19 @@ const STATIC_MODEL_CATALOG: Record<string, ProviderModelOption[]> = {
 };
 
 export function getProviderDefinition(providerId: string, kind?: ApiConnectionKind) {
-  const id = providerId.trim().toLowerCase();
+  const requestedId = providerId.trim().toLowerCase();
+  const id = ["runway-seedance", "runway-gemini-omni", "runway-aleph", "runway-ruby"].includes(requestedId)
+    ? "runway"
+    : requestedId;
   return API_PROVIDER_DEFINITIONS.find((item) => item.id === id && (!kind || item.kind === kind)) || null;
 }
 
 export function getProviderModelCatalog(providerId: string) {
-  return (STATIC_MODEL_CATALOG[providerId.trim().toLowerCase()] || []).map((model) => ({ ...model }));
+  const requestedId = providerId.trim().toLowerCase();
+  const id = ["runway-seedance", "runway-gemini-omni", "runway-aleph", "runway-ruby"].includes(requestedId)
+    ? "runway"
+    : requestedId;
+  return (STATIC_MODEL_CATALOG[id] || []).map((model) => ({ ...model }));
 }
 
 export function getPublicProviderCatalog(): PublicProviderDefinition[] {

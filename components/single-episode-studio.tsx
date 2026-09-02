@@ -43,7 +43,7 @@ import {
   VOICE_PROFILES,
 } from "@/lib/sound-design-options";
 import { getVideoUiCapability } from "@/lib/providers/video-ui-capabilities";
-import { getDefaultVideoModelVersionId, getVideoModelVersions } from "@/lib/video-model-versions";
+import { getVideoModelVersions } from "@/lib/video-model-versions";
 
 type CharacterReference = {
   id: string;
@@ -159,24 +159,25 @@ type StudioModelProfile = {
   value: string;
   label: string;
   providerId: string;
+  catalogKey: string;
+  fixedModelId?: string;
   image: "ready" | "adapter" | "no";
   mode: "generate" | "video-edit" | "hdr";
   nativeAudio?: boolean;
 };
 
 const MODEL_PROFILES: StudioModelProfile[] = [
-  { value: "Seedance 2.5", label: "Seedance 2.5", providerId: "seedance", image: "ready", mode: "generate", nativeAudio: true },
-  { value: "Kling", label: "Kling", providerId: "kling", image: "ready", mode: "generate", nativeAudio: true },
-  { value: "Veo", label: "Veo", providerId: "veo", image: "adapter", mode: "generate", nativeAudio: true },
-  { value: "Runway", label: "Runway Gen-4", providerId: "runway", image: "ready", mode: "generate" },
-  { value: "Seedance 2.5 (Runway)", label: "Seedance 2.5 — Runway", providerId: "runway-seedance", image: "ready", mode: "generate", nativeAudio: true },
-  { value: "Gemini Omni Flash 1.1 (Runway)", label: "Gemini Omni Flash 1.1 — Runway", providerId: "runway-gemini-omni", image: "ready", mode: "generate", nativeAudio: true },
-  { value: "Aleph 2.0 (Runway)", label: "Aleph 2.0 — Runway", providerId: "runway-aleph", image: "no", mode: "video-edit" },
-  { value: "Ruby HDR (Runway)", label: "Ruby HDR — Runway", providerId: "runway-ruby", image: "no", mode: "hdr", nativeAudio: true },
-  { value: "Wan", label: "Wan", providerId: "wan", image: "ready", mode: "generate", nativeAudio: true },
+  { value: "runway:gen4.5", label: "Runway Gen-4.5", providerId: "runway", catalogKey: "Runway", fixedModelId: "gen4.5", image: "ready", mode: "generate" },
+  { value: "runway:gen4_turbo", label: "Runway Gen-4 Turbo", providerId: "runway", catalogKey: "Runway", fixedModelId: "gen4_turbo", image: "ready", mode: "generate" },
+  { value: "runway:seedance2_5", label: "Seedance 2.5", providerId: "runway", catalogKey: "Seedance 2.5 (Runway)", fixedModelId: "seedance2_5", image: "ready", mode: "generate", nativeAudio: true },
+  { value: "runway:gemini_omni_flash", label: "Gemini Omni Flash 1.1", providerId: "runway", catalogKey: "Gemini Omni Flash 1.1 (Runway)", fixedModelId: "gemini_omni_flash", image: "ready", mode: "generate", nativeAudio: true },
+  { value: "runway:aleph2", label: "Aleph 2.0", providerId: "runway", catalogKey: "Aleph 2.0 (Runway)", fixedModelId: "aleph2", image: "no", mode: "video-edit" },
+  { value: "runway:ruby", label: "Ruby HDR", providerId: "runway", catalogKey: "Ruby HDR (Runway)", fixedModelId: "ruby", image: "no", mode: "hdr", nativeAudio: true },
+  { value: "Kling", label: "Kling", providerId: "kling", catalogKey: "Kling", image: "ready", mode: "generate", nativeAudio: true },
+  { value: "Veo", label: "Veo", providerId: "veo", catalogKey: "Veo", image: "adapter", mode: "generate", nativeAudio: true },
+  { value: "Wan", label: "Wan", providerId: "wan", catalogKey: "Wan", image: "ready", mode: "generate", nativeAudio: true },
 ];
 
-const MODELS = MODEL_PROFILES.map((item) => item.value);
 const ASPECTS = ["16:9 — Widescreen", "9:16 — Vertical", "1:1 — Square", "4:5 — Portrait"];
 const STYLES = [
   "Cinematic Anime — อนิเมะภาพยนตร์",
@@ -360,8 +361,8 @@ function ChoiceField({ label, value, options, onChange, compact = false }: { lab
 export default function SingleEpisodeStudio() {
   const router = useRouter();
   const [episodeTitle, setEpisodeTitle] = useState("Untitled Episode");
-  const [model, setModel] = useState("Seedance 2.5");
-  const [modelVersion, setModelVersion] = useState(() => getDefaultVideoModelVersionId("Seedance 2.5"));
+  const [model, setModel] = useState("runway:seedance2_5");
+  const [modelVersion, setModelVersion] = useState("seedance2_5");
   const [aspect, setAspect] = useState("16:9 — Widescreen");
   const [visualStyle, setVisualStyle] = useState(STYLES[0]);
   const [story, setStory] = useState("");
@@ -469,9 +470,9 @@ export default function SingleEpisodeStudio() {
   }, [selectedSceneId]);
 
   const selectedScene = scenes.find((scene) => scene.id === selectedSceneId) || scenes[0];
-  const modelVersions = useMemo(() => getVideoModelVersions(model), [model]);
-  const selectedModelVersion = modelVersions.find((item) => item.apiModelId === modelVersion) || modelVersions[0];
   const selectedModelProfile = MODEL_PROFILES.find((item) => item.value === model) || MODEL_PROFILES[0];
+  const modelVersions = useMemo(() => getVideoModelVersions(selectedModelProfile.catalogKey), [selectedModelProfile.catalogKey]);
+  const selectedModelVersion = modelVersions.find((item) => item.apiModelId === modelVersion) || modelVersions[0];
   const modelConnectionStates = useMemo(() => Object.fromEntries(MODEL_PROFILES.map((profile) => {
     const provider = videoProviders.find((item) => item.id === profile.providerId);
     const connection = videoConnections.find((item) => item.provider === profile.providerId && item.kind === "VIDEO");
@@ -494,7 +495,7 @@ export default function SingleEpisodeStudio() {
       || selectedConnection.modelId === selectedModelVersion.apiModelId)
   );
   const selectedModelReady = Boolean(selectedConnectionState?.primaryReady && selectedVersionEnabled);
-  const videoCapability = getVideoUiCapability(model);
+  const videoCapability = getVideoUiCapability(selectedModelProfile.catalogKey);
   const providerMaxSeconds = Math.max(...videoCapability.durationSeconds);
   const providerMinScenes = Math.max(1, Math.ceil(totalDuration / providerMaxSeconds));
   const usedDuration = useMemo(() => scenes.reduce((sum, scene) => sum + scene.duration, 0), [scenes]);
@@ -559,11 +560,13 @@ export default function SingleEpisodeStudio() {
   }
 
   function changeModel(nextModel: string) {
-    const capability = getVideoUiCapability(nextModel);
+    const profile = MODEL_PROFILES.find((item) => item.value === nextModel) || MODEL_PROFILES[0];
+    const capability = getVideoUiCapability(profile.catalogKey);
     const maxSeconds = Math.max(...capability.durationSeconds);
     const requiredScenes = Math.max(1, Math.ceil(totalDuration / maxSeconds));
     setModel(nextModel);
-    setModelVersion(getDefaultVideoModelVersionId(nextModel));
+    const versions = getVideoModelVersions(profile.catalogKey);
+    setModelVersion(profile.fixedModelId || versions.find((item) => item.recommended)?.apiModelId || versions[0]?.apiModelId || "");
     setScenes((current) => {
       const nextCount = Math.max(requiredScenes, Math.min(current.length, totalDuration));
       const needsRedistribution = current.length !== nextCount || current.some((scene) => scene.duration > maxSeconds);
@@ -861,8 +864,8 @@ export default function SingleEpisodeStudio() {
       <div className={styles.setupGrid}>
         <label className={styles.field}><span>ชื่อตอน</span><input value={episodeTitle} onChange={(event) => setEpisodeTitle(event.target.value)} placeholder="เช่น คืนสุดท้ายที่สถานีรถไฟ" /><small>ชื่อสำหรับร่าง งาน Render และ Video Library</small></label>
         <div className={styles.field}>
-          <span>โมเดลวิดีโอ / รุ่น</span>
-          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1.2fr)", gap: 6 }}>
+          <span>โมเดลวิดีโอ</span>
+          <div style={{ display: "grid", gridTemplateColumns: selectedModelProfile.fixedModelId ? "minmax(0,1fr)" : "minmax(0,1fr) minmax(0,1.2fr)", gap: 6 }}>
             <select aria-label="โมเดลวิดีโอ" value={model} onChange={(event) => changeModel(event.target.value)}>
               {MODEL_PROFILES.map((item) => {
                 const state = modelConnectionStates[item.value];
@@ -871,16 +874,16 @@ export default function SingleEpisodeStudio() {
                 return <option key={item.value} value={item.value}>{marker} {inputMarker} {item.label}</option>;
               })}
             </select>
-            <select aria-label="รุ่นโมเดล" value={modelVersion} onChange={(event) => setModelVersion(event.target.value)}>
+            {!selectedModelProfile.fixedModelId ? <select aria-label="รุ่นโมเดล" value={modelVersion} onChange={(event) => setModelVersion(event.target.value)}>
               {modelVersions.map((item) => {
                 const versionReady = Boolean(selectedProvider?.systemConfigured) || Boolean(selectedConnection?.enabled && selectedConnection.status === "CONNECTED" && (selectedEnabledIds.length === 0 || selectedEnabledIds.includes(item.apiModelId) || selectedConnection.modelId === item.apiModelId));
                 return <option key={item.apiModelId} value={item.apiModelId}>{versionReady ? "🟢" : "⚪"} {item.label}</option>;
               })}
-            </select>
+            </select> : null}
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, marginTop: 6 }}>
             <span style={{ padding: "3px 7px", borderRadius: 999, border: "1px solid rgba(255,255,255,.12)", fontSize: 10 }}>
-              {videoConnectionLoading ? "⚪ กำลังตรวจ Connection…" : selectedConnectionState?.operationalReady ? (selectedModelProfile.mode === "generate" ? "🟢 พร้อมใช้งาน" : "🟣 Connection พร้อม · เครื่องมือแปลงวิดีโอ") : selectedConnectionState?.adapterReady ? "🟠 ยังไม่ได้เชื่อมต่อ / Connection ไม่พร้อม" : "🔴 Adapter ยังไม่พร้อม"}
+              {videoConnectionLoading ? "⚪ กำลังตรวจ Connection…" : selectedConnectionState?.operationalReady ? (selectedModelProfile.mode === "generate" ? "🟢 คีย์เชื่อมต่อแล้ว" : "🟣 คีย์เชื่อมต่อแล้ว · เครื่องมือแปลงวิดีโอ") : selectedConnectionState?.adapterReady ? "🟠 ยังไม่ได้เชื่อมต่อ / Connection ไม่พร้อม" : "🔴 Adapter ยังไม่พร้อม"}
             </span>
             <span style={{ padding: "3px 7px", borderRadius: 999, border: "1px solid rgba(255,255,255,.12)", fontSize: 10 }}>
               {selectedModelProfile.image === "ready" ? "🖼 รับรูปอ้างอิง" : selectedModelProfile.image === "adapter" ? "⚠️🖼 Model รองรับรูป แต่ SCENOVA Adapter ยังไม่ส่งรูป" : "🎞 ใช้วิดีโอต้นฉบับ ไม่รับรูป"}
@@ -890,7 +893,7 @@ export default function SingleEpisodeStudio() {
             {selectedModelProfile.mode === "hdr" ? <span style={{ padding: "3px 7px", borderRadius: 999, border: "1px solid rgba(167,112,255,.35)", fontSize: 10 }}>🎞 HDR Post-process เท่านั้น · ต้องมีวิดีโอต้นฉบับ</span> : null}
             {!videoConnectionLoading && selectedModelProfile.mode === "generate" && !selectedModelReady ? <Link href="/profile/api" style={{ fontSize: 10, color: "#bd8cff" }}>ตั้งค่า Provider →</Link> : null}
           </div>
-          <small>{selectedModelVersion ? `รุ่นที่ใช้จริง: ${selectedModelVersion.label} · ${selectedModelVersion.note}` : "เลือกรุ่นของ Provider ที่จะใช้สร้างคลิปจริง"}</small>
+          <small>{selectedModelVersion ? `ระบบจะส่ง Model ID จริง: ${selectedModelVersion.apiModelId} · ${selectedModelVersion.note} · สิทธิ์รายโมเดลยืนยันเมื่อ Provider รับงานครั้งแรก` : "เลือกรุ่นของ Provider ที่จะใช้สร้างคลิปจริง"}</small>
         </div>
         <label className={styles.field}><span>อัตราส่วนภาพ</span><select value={aspect} onChange={(event) => setAspect(event.target.value)}>{ASPECTS.map((item) => <option key={item}>{item}</option>)}</select><small>ใช้สัดส่วนเดียวกันทุกฉากของตอนนี้</small></label>
         <label className={styles.field}><span>สไตล์ภาพ</span><select value={visualStyle} onChange={(event) => setVisualStyle(event.target.value)}>{STYLES.map((item) => <option key={item}>{item}</option>)}</select><small>Master Style ของตอนนี้</small></label>

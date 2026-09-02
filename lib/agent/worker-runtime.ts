@@ -379,7 +379,9 @@ async function processAgentStage(run: AgentRunRecord, job: AgentQueueJobRecord) 
     if (!prompt) throw new Error("AGENT_PROMPT_BUNDLE_NOT_FOUND");
     const existingGenerations = await listEpisodeVideoGenerations(run.id, episode.id);
     const lockedProviderId = existingGenerations[0]?.providerId || state.selectedProviderId || null;
-    const selection = await selectUserVideoProvider(run.userId, project.mainModelId, lockedProviderId);
+    // Select the gateway from the exact API model first. A single Runway
+    // connection can execute several independently named models.
+    const selection = await selectUserVideoProvider(run.userId, project.mainModelVersionId || project.mainModelId, lockedProviderId);
     const selectedProvider = selection.provider;
     state.selectedProviderId = selectedProvider.id;
     const approvedBudget = await getApprovedAgentBudget(run.id);

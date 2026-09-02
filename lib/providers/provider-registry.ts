@@ -13,10 +13,6 @@ export type SupportedVideoProviderId =
   | "kling"
   | "veo"
   | "runway"
-  | "runway-seedance"
-  | "runway-gemini-omni"
-  | "runway-aleph"
-  | "runway-ruby"
   | "wan";
 
 export type ProviderSelection = {
@@ -30,28 +26,13 @@ const VIDEO_PROVIDER_IDS: SupportedVideoProviderId[] = [
   "kling",
   "veo",
   "runway",
-  "runway-seedance",
-  "runway-gemini-omni",
-  "runway-aleph",
-  "runway-ruby",
   "wan",
 ];
-
-const RUNWAY_LOGICAL_PROVIDERS = new Set<SupportedVideoProviderId>([
-  "runway",
-  "runway-seedance",
-  "runway-gemini-omni",
-  "runway-aleph",
-  "runway-ruby",
-]);
 
 function normalizeProviderId(value: string): SupportedVideoProviderId | "mock" | null {
   const id = String(value || "").trim().toLowerCase();
   if (id === "mock" || id === "mock-seedance") return "mock";
-  if (id === "runway-seedance" || id === "seedance2_5" || id === "runway-seedance-2.5") return "runway-seedance";
-  if (id === "runway-gemini-omni" || id === "gemini_omni_flash") return "runway-gemini-omni";
-  if (id === "runway-aleph" || id === "aleph2") return "runway-aleph";
-  if (id === "runway-ruby" || id === "ruby") return "runway-ruby";
+  if (["runway-seedance", "seedance2_5", "runway-seedance-2.5", "runway-gemini-omni", "gemini_omni_flash", "runway-aleph", "aleph2", "runway-ruby", "ruby"].includes(id)) return "runway";
   if (id === "runway" || id === "runway-gen4.5" || id === "gen4.5" || id === "gen4_turbo" || id.includes("gen4") || id.includes("gen-4")) return "runway";
   if (id === "seedance" || id === "byteplus-seedance-2.5" || id === "seedance-2.5" || id === "seedance-2-5") return "seedance";
   if (id === "kling" || id.startsWith("kling-")) return "kling";
@@ -62,10 +43,7 @@ function normalizeProviderId(value: string): SupportedVideoProviderId | "mock" |
 
 function providerForModel(modelId: string): SupportedVideoProviderId | null {
   const value = String(modelId || "").toLowerCase();
-  if (value === "seedance2_5") return "runway-seedance";
-  if (value === "gemini_omni_flash") return "runway-gemini-omni";
-  if (value === "aleph2") return "runway-aleph";
-  if (value === "ruby") return "runway-ruby";
+  if (["seedance2_5", "gemini_omni_flash", "aleph2", "ruby"].includes(value)) return "runway";
   if (value === "gen4.5" || value === "gen4_turbo" || value.includes("runway") || value.includes("gen4") || value.includes("gen-4")) return "runway";
   if (value.includes("seedance") || value.includes("dreamina")) return "seedance";
   if (value.includes("kling")) return "kling";
@@ -78,7 +56,7 @@ function createProvider(providerId: SupportedVideoProviderId, credential?: Provi
   if (providerId === "seedance") return new Seedance25VideoProvider(credential);
   if (providerId === "kling") return new KlingVideoProvider(credential);
   if (providerId === "veo") return new VeoVideoProvider(credential);
-  if (RUNWAY_LOGICAL_PROVIDERS.has(providerId)) return new RunwayVideoProvider(credential, providerId);
+  if (providerId === "runway") return new RunwayVideoProvider(credential, providerId);
   return new WanVideoProvider(credential);
 }
 
@@ -95,15 +73,20 @@ function systemCredential(providerId: SupportedVideoProviderId): ProviderRuntime
 }
 
 async function userCredential(userId: string, providerId: SupportedVideoProviderId): Promise<ProviderRuntimeCredential | null> {
-  const byok = await getUserApiConnectionSecret({ userId, provider: providerId, kind: "VIDEO" });
-  if (byok && byok.connection.status === "CONNECTED") {
-    return {
-      apiKey: byok.apiKey,
-      baseUrl: byok.connection.baseUrl,
-      modelId: byok.connection.modelId,
-      billingMode: "BYOK",
-      connectionId: byok.connection.id,
-    };
+  const candidateIds = providerId === "runway"
+    ? ["runway", "runway-seedance", "runway-gemini-omni", "runway-aleph", "runway-ruby"]
+    : [providerId];
+  for (const candidateId of candidateIds) {
+    const byok = await getUserApiConnectionSecret({ userId, provider: candidateId, kind: "VIDEO" });
+    if (byok && byok.connection.status === "CONNECTED") {
+      return {
+        apiKey: byok.apiKey,
+        baseUrl: byok.connection.baseUrl,
+        modelId: byok.connection.modelId,
+        billingMode: "BYOK",
+        connectionId: byok.connection.id,
+      };
+    }
   }
   return systemCredential(providerId);
 }
@@ -153,15 +136,13 @@ function mapProviderAliases(map: Record<string, VideoProvider>, providerId: Supp
   } else if (providerId === "veo") {
     for (const key of ["veo", "veo-3.1", "veo-3.1-generate-preview", "Veo 3.1"]) map[key] = provider;
   } else if (providerId === "runway") {
-    for (const key of ["runway", "runway-gen4.5", "gen4.5", "gen4_turbo", "Runway Gen-4.5"]) map[key] = provider;
-  } else if (providerId === "runway-seedance") {
-    for (const key of ["runway-seedance", "seedance2_5", "runway-seedance-2.5", "Seedance 2.5 (Runway)", "Seedance 2.5 via Runway"]) map[key] = provider;
-  } else if (providerId === "runway-gemini-omni") {
-    for (const key of ["runway-gemini-omni", "gemini_omni_flash", "Gemini Omni Flash 1.1 (Runway)", "Gemini Omni Flash 1.1 via Runway"]) map[key] = provider;
-  } else if (providerId === "runway-aleph") {
-    for (const key of ["runway-aleph", "aleph2", "Aleph 2.0 (Runway)", "Aleph 2.0 via Runway"]) map[key] = provider;
-  } else if (providerId === "runway-ruby") {
-    for (const key of ["runway-ruby", "ruby", "Ruby HDR (Runway)", "Ruby HDR via Runway"]) map[key] = provider;
+    for (const key of [
+      "runway", "runway-gen4.5", "gen4.5", "gen4_turbo", "Runway Gen-4.5", "Runway Gen-4 Turbo",
+      "runway-seedance", "seedance2_5", "runway-seedance-2.5", "Seedance 2.5 (Runway)", "Seedance 2.5 via Runway",
+      "runway-gemini-omni", "gemini_omni_flash", "Gemini Omni Flash 1.1 (Runway)", "Gemini Omni Flash 1.1 via Runway",
+      "runway-aleph", "aleph2", "Aleph 2.0 (Runway)", "Aleph 2.0 via Runway",
+      "runway-ruby", "ruby", "Ruby HDR (Runway)", "Ruby HDR via Runway",
+    ]) map[key] = provider;
   } else if (providerId === "wan") {
     for (const key of ["wan", "wan-video", "wan2.6-t2v", "wan2.7", "wan3.0-video", "Wan"]) map[key] = provider;
   }

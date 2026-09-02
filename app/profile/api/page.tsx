@@ -72,7 +72,7 @@ const KIND_META: Record<ConnectionKind, { stage: "A" | "B" | "C" | "D"; label: s
   VOICE: { stage: "D", label: "เสียง / พากย์", short: "เสียงพูดและเสียงประกอบ" },
 };
 const STATUS_LABEL: Record<ConnectionStatus, string> = {
-  CONNECTED: "พร้อมใช้งาน",
+  CONNECTED: "คีย์เชื่อมต่อแล้ว",
   INVALID: "คีย์ไม่ถูกต้อง",
   RATE_LIMITED: "ติด Rate limit",
   ERROR: "เชื่อมต่อไม่ได้",
@@ -114,7 +114,7 @@ function formatTestedAt(value: string | null) {
 
 function availabilityLabel(value?: ModelAvailability) {
   if (value === "AVAILABLE") return "ตรวจพบจากบัญชี";
-  if (value === "SUPPORTED") return "Adapter รองรับ";
+  if (value === "SUPPORTED") return "ระบบรองรับ · ยังไม่ยืนยันสิทธิ์";
   return "ยังยืนยันรายรุ่นไม่ได้";
 }
 
@@ -280,7 +280,7 @@ export default function ApiConnectionsPage() {
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.message || payload.error || "เชื่อมต่อไม่สำเร็จ");
-      setMessage(`${selectedProvider.label} เชื่อมต่อแล้ว เปิดใช้งาน ${selectedModelIds.length} รุ่น`);
+      setMessage(`${selectedProvider.label} เชื่อมต่อแล้ว เลือกใช้ ${selectedModelIds.length} โมเดล (สิทธิ์รายโมเดลยืนยันเมื่อ Provider รับงาน)`);
       setApiKey("");
       setShowKey(false);
       setModels([]);
@@ -378,7 +378,7 @@ export default function ApiConnectionsPage() {
         <div className={styles.headerCopy}>
           <div className={styles.breadcrumb}><span>การตั้งค่า</span><Icon name="chevron" size={14}/><strong>API &amp; Models</strong></div>
           <h1>ศูนย์เชื่อมต่อ AI</h1>
-          <p>เลือก Provider แล้ววาง Credential เพียงครั้งเดียว ระบบจะเติม Base URL และค้นหา Model ID ให้อัตโนมัติ จากนั้นเลือกเฉพาะรุ่นที่ต้องการเปิดใช้งาน</p>
+          <p>เชื่อมต่อ API เพียงครั้งเดียว แล้วเลือกโมเดลจริงที่ต้องการใช้ ระบบจะแสดง Model ID ที่ส่งไปหลังบ้านอย่างชัดเจน</p>
         </div>
         <div className={styles.headerSummary}>
           <div className={styles.summaryItem}><span>การเชื่อมต่อที่พร้อม</span><strong>{connectedCount}</strong><small>จากทั้งหมด {connections.length}</small></div>
@@ -428,7 +428,7 @@ export default function ApiConnectionsPage() {
               <div className={styles.fieldLabelRow}><label htmlFor="api-key"><span className={styles.stepBadge}>1</span>Credential</label><span>จำเป็น</span></div>
               <div className={styles.secretInput}><span className={styles.inputIcon}><Icon name="key" size={17}/></span><input id="api-key" type={showKey ? "text" : "password"} value={apiKey} onChange={(event) => { setApiKey(event.target.value); setModels([]); setSelectedModelIds([]); setDefaultModelId(""); }} placeholder={credentialPlaceholder(selectedProvider)} autoComplete="off" spellCheck={false}/><button type="button" onClick={() => setShowKey((value) => !value)}><Icon name={showKey ? "eyeOff" : "eye"} size={18}/></button></div>
               <p className={styles.fieldHint}>{selectedProvider.credentialHintTh}</p>
-              <div className={styles.submitRow}><div className={styles.submitExplanation}><span className={styles.stepBadge}>2</span><span><strong>ตรวจสอบและค้นหาโมเดล</strong><small>เป็นการอ่านข้อมูล Credential/Model ไม่สั่ง Generate งาน</small></span></div><button type="button" className={styles.primaryButton} disabled={apiKey.trim().length < 8 || loading} onClick={() => void discoverModels()}>{loading ? "กำลังตรวจสอบ..." : <>ตรวจสอบ Key และค้นหารุ่น <Icon name="arrow" size={18}/></>}</button></div>
+              <div className={styles.submitRow}><div className={styles.submitExplanation}><span className={styles.stepBadge}>2</span><span><strong>ตรวจสอบคีย์และโหลดรายการโมเดล</strong><small>ไม่สั่ง Generate และยังไม่ยืนยันสิทธิ์รายโมเดลจนกว่าจะสร้างงานจริง</small></span></div><button type="button" className={styles.primaryButton} disabled={apiKey.trim().length < 8 || loading} onClick={() => void discoverModels()}>{loading ? "กำลังตรวจสอบ..." : <>ตรวจสอบ Key และค้นหารุ่น <Icon name="arrow" size={18}/></>}</button></div>
             </div> : <div className={styles.fieldGroup}><div className={styles.fieldLabelRow}><label><span className={styles.stepBadge}>1</span>Credential เดิม</label><span>{editConnection.maskedKey}</span></div><p className={styles.fieldHint}>แก้รายการรุ่นได้โดยไม่ต้องกรอก API Key ใหม่ หากต้องการเปลี่ยน Key ให้เลือก Provider ใหม่แล้วเชื่อมต่อซ้ำ</p></div>}
 
             {(models.length > 0 || editConnection) ? <>
@@ -459,7 +459,7 @@ export default function ApiConnectionsPage() {
 
         <aside className={`${styles.panel} ${styles.connectionsPanel}`}>
           <div className={styles.panelHeader}><div><span className={styles.panelKicker}>CONNECTED PROVIDERS</span><h2>การเชื่อมต่อในสายนี้</h2><p>แก้รุ่น, Sync รุ่นล่าสุด, เปิด/ปิด หรือลบ Connection ได้จากที่นี่</p></div><span className={styles.countPill}>{activeConnections.length}</span></div>
-          <div className={styles.routeSummary}><span className={styles.routeIcon}><Icon name="plug"/></span><span><small>พร้อมให้หน้าสร้างเลือก</small><strong>{activeConnections.filter((connection) => connection.enabled && connection.status === "CONNECTED").length} Provider พร้อมใช้งาน</strong></span><span className={`${styles.routeIndicator} ${activeConnections.some((connection) => connection.enabled && connection.status === "CONNECTED") ? styles.routeIndicatorReady : ""}`}/></div>
+          <div className={styles.routeSummary}><span className={styles.routeIcon}><Icon name="plug"/></span><span><small>พร้อมให้หน้าสร้างเลือก</small><strong>{activeConnections.filter((connection) => connection.enabled && connection.status === "CONNECTED").length} API Connection เชื่อมต่อแล้ว</strong></span><span className={`${styles.routeIndicator} ${activeConnections.some((connection) => connection.enabled && connection.status === "CONNECTED") ? styles.routeIndicatorReady : ""}`}/></div>
 
           {activeConnections.length ? <div className={styles.connectionList}>{activeConnections.map((connection) => {
             const provider = providers.find((item) => item.id === connection.provider && item.kind === connection.kind);

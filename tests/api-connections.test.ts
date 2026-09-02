@@ -39,12 +39,12 @@ describe("provider model catalogs", () => {
     expect(getProviderModelCatalog("seedance").length).toBeGreaterThan(1);
   });
 
-  it("keeps Runway-hosted services in separate provider connections", () => {
+  it("uses one Runway connection for exact first-class API models", () => {
     expect(getProviderModelCatalog("runway").map((model) => model.apiModelId)).toEqual(expect.arrayContaining([
       "gen4.5",
       "gen4_turbo",
     ]));
-    expect(getProviderModelCatalog("runway").map((model) => model.apiModelId)).not.toEqual(expect.arrayContaining([
+    expect(getProviderModelCatalog("runway").map((model) => model.apiModelId)).toEqual(expect.arrayContaining([
       "seedance2_5",
       "gemini_omni_flash",
       "aleph2",
@@ -59,17 +59,11 @@ describe("provider model catalogs", () => {
 
     const providers = getPublicProviderCatalog();
     const runway = providers.find((provider) => provider.id === "runway" && provider.kind === "VIDEO");
-    const seedanceViaRunway = providers.find((provider) => provider.id === "runway-seedance" && provider.kind === "VIDEO");
-    const geminiOmniViaRunway = providers.find((provider) => provider.id === "runway-gemini-omni" && provider.kind === "VIDEO");
-    const alephViaRunway = providers.find((provider) => provider.id === "runway-aleph" && provider.kind === "VIDEO");
-    const rubyViaRunway = providers.find((provider) => provider.id === "runway-ruby" && provider.kind === "VIDEO");
+    const legacyRunwayProviders = providers.filter((provider) => ["runway-seedance", "runway-gemini-omni", "runway-aleph", "runway-ruby"].includes(provider.id));
     const runwayImage = providers.find((provider) => provider.id === "runway-image" && provider.kind === "IMAGE");
 
     expect(runway?.defaultModelId).toBe("gen4.5");
-    expect(seedanceViaRunway?.defaultModelId).toBe("seedance2_5");
-    expect(geminiOmniViaRunway?.defaultModelId).toBe("gemini_omni_flash");
-    expect(alephViaRunway?.defaultModelId).toBe("aleph2");
-    expect(rubyViaRunway?.defaultModelId).toBe("ruby");
+    expect(legacyRunwayProviders).toHaveLength(0);
     expect(runwayImage?.defaultModelId).toBe("gpt_image_2");
   });
 
@@ -79,16 +73,17 @@ describe("provider model catalogs", () => {
       "Seedance 2.5",
       "Kling",
       "Veo",
-      "Runway Gen-4",
-      "Seedance 2.5 — Runway",
-      "Gemini Omni Flash 1.1 — Runway",
-      "Aleph 2.0 — Runway",
-      "Ruby HDR — Runway",
+      "Runway Gen-4.5",
+      "Runway Gen-4 Turbo",
+      "Gemini Omni Flash 1.1",
+      "Aleph 2.0",
+      "Ruby HDR",
       "Wan",
     ]) expect(studio).toContain(label);
 
     expect(studio).toContain('/api/api-connections');
-    expect(studio).toContain('🟢 พร้อมใช้งาน');
+    expect(studio).toContain('🟢 คีย์เชื่อมต่อแล้ว');
+    expect(studio).toContain('ระบบจะส่ง Model ID จริง:');
     expect(studio).toContain('🟠 ยังไม่ได้เชื่อมต่อ / Connection ไม่พร้อม');
     expect(studio).toContain('🔴 Adapter ยังไม่พร้อม');
     expect(studio).toContain('🖼 รับรูปอ้างอิง');
