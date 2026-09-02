@@ -12,6 +12,9 @@ export function decideAgentRecovery(input: { error: unknown; attempt: number; ma
   }
 
   const quotaExhausted =
+    normalized.includes("veo_http_429") ||
+    normalized.includes("http 429") ||
+    normalized.includes("rate limit") ||
     normalized.includes("exceeded your current quota") ||
     normalized.includes("check your plan and billing") ||
     normalized.includes("billing details") ||

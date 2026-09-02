@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { VIDEO_MODELS } from "@/lib/catalogs";
+import { AGENT_RUN_SELECTION_EVENT, readSelectedAgentRunId, selectAgentRun, selectedAgentRunIdFromEvent } from "@/lib/agent/run-selection";
 import { getVideoModelVersionLabel } from "@/lib/video-model-versions";
 import styles from "./agent-job-status-dock.module.css";
 
@@ -171,7 +172,7 @@ export default function AgentJobStatusDock() {
     setRuns(next);
     setSelectedId((current) => {
       if (current && next.some((run) => run.id === current)) return current;
-      const queryId = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("run") : null;
+       const queryId = readSelectedAgentRunId();
       if (queryId && next.some((run) => run.id === queryId)) return queryId;
       return next.find((run) => !["COMPLETED", "CANCELLED"].includes(run.status))?.id || next[0]?.id || "";
     });
@@ -203,6 +204,14 @@ export default function AgentJobStatusDock() {
     const timer = window.setInterval(() => void loadSelected(selectedId).catch(() => undefined), 3000);
     return () => window.clearInterval(timer);
   }, [selectedId, loadSelected]);
+  useEffect(() => {
+    const syncSelection = (event: Event) => {
+      const runId = selectedAgentRunIdFromEvent(event);
+      if (runId) setSelectedId(runId);
+    };
+    window.addEventListener(AGENT_RUN_SELECTION_EVENT, syncSelection);
+    return () => window.removeEventListener(AGENT_RUN_SELECTION_EVENT, syncSelection);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -272,7 +281,7 @@ export default function AgentJobStatusDock() {
           <div className={styles.toolbar}>
             <label className={styles.jobSelect}>
               <span>งานที่กำลังดู</span>
-              <select value={selectedId} onChange={(event) => setSelectedId(event.target.value)}>
+              <select value={selectedId} onChange={(event) => selectAgentRun(event.target.value)}>
                 {runs.map((item) => <option key={item.id} value={item.id}>{runTitle(item)} · {STATUS_LABELS[item.status] || item.status}</option>)}
               </select>
             </label>

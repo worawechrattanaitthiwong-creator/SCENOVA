@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { VIDEO_MODELS } from "@/lib/catalogs";
+import { AGENT_RUN_SELECTION_EVENT, readSelectedAgentRunId, selectAgentRun, selectedAgentRunIdFromEvent } from "@/lib/agent/run-selection";
 import { getVideoModelVersions } from "@/lib/video-model-versions";
 import styles from "./agent-run-model-editor.module.css";
 
@@ -48,6 +49,8 @@ function statusLabel(status: string) {
   if (status === "RUNNING") return "กำลังทำงาน";
   if (status === "QUEUED") return "รอ Worker";
   if (status === "WAITING_APPROVAL") return "รออนุมัติ";
+  if (status === "CANCELLED") return "ยกเลิกแล้ว";
+  if (status === "COMPLETED") return "เสร็จสมบูรณ์";
   return status;
 }
 
@@ -78,7 +81,7 @@ export default function AgentRunModelEditor() {
     setProviders(connectionsPayload.providers || []);
     setSelectedRunId((current) => {
       if (current && nextRuns.some((run) => run.id === current)) return current;
-      const requested = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("run") : null;
+       const requested = readSelectedAgentRunId();
       if (requested && nextRuns.some((run) => run.id === requested)) return requested;
       return nextRuns.find((run) => !["COMPLETED", "CANCELLED"].includes(run.status))?.id || nextRuns[0]?.id || "";
     });
@@ -87,6 +90,14 @@ export default function AgentRunModelEditor() {
   useEffect(() => {
     void load().catch((cause) => setError(cause instanceof Error ? cause.message : String(cause)));
   }, [load]);
+  useEffect(() => {
+    const syncSelection = (event: Event) => {
+      const runId = selectedAgentRunIdFromEvent(event);
+      if (runId) setSelectedRunId(runId);
+    };
+    window.addEventListener(AGENT_RUN_SELECTION_EVENT, syncSelection);
+    return () => window.removeEventListener(AGENT_RUN_SELECTION_EVENT, syncSelection);
+  }, []);
 
   const selectedRun = runs.find((run) => run.id === selectedRunId) || null;
   const currentProject = selectedRun?.inputJson?.project;
@@ -189,7 +200,7 @@ export default function AgentRunModelEditor() {
   if (!runs.length) return null;
 
   return (
-    <section className={styles.panel} aria-label="แก้โมเดลของงาน AI">
+    <section className={styles.panel} id="agent-model-editor" aria-label="แก้โมเดลของงาน AI">
       <div className={styles.head}>
         <div>
           <span className={styles.eyebrow}>MODEL OVERRIDE · งานเดิม</span>
@@ -202,8 +213,8 @@ export default function AgentRunModelEditor() {
       <div className={styles.body}>
         <label>
           <span>งานที่ต้องการแก้</span>
-          <select value={selectedRunId} onChange={(event) => setSelectedRunId(event.target.value)} disabled={busy}>
-            {runs.filter((run) => !["COMPLETED", "CANCELLED"].includes(run.status)).map((run) => (
+          <select value={selectedRunId} onChange={(event) => selectAgentRun(event.target.value)} disabled={busy}>
+            {runs.map((run) => (
               <option value={run.id} key={run.id}>{titleOf(run)} · {statusLabel(run.status)}</option>
             ))}
           </select>
@@ -231,6 +242,7 @@ export default function AgentRunModelEditor() {
         <span>โมเดลเดิม: <b>{VIDEO_MODELS.find((item) => item.id === currentProject?.mainModelId)?.name || currentProject?.mainModelId || "—"}</b></span>
         <span>รุ่นเดิม: <b>{currentProject?.mainModelVersionId || "Provider default"}</b></span>
         {!ready && selectedModel ? <strong>{selectedModel.name} ยังไม่พร้อมใช้งาน — เชื่อมต่อ/ทดสอบ Provider ก่อนจึงจะเลือกได้</strong> : null}
+        {selectedRun?.status === "CANCELLED" ? <strong>งานนี้ถูกยกเลิกแล้ว จึงแก้โมเดลหรือเริ่มต่อจาก Run เดิมไม่ได้ เพื่อป้องกัน Provider เรียกเก็บซ้ำ ให้สร้างงานใหม่จาก Studio</strong> : null}
       </div>
 
       {message ? <div className={styles.success}>{message}</div> : null}
@@ -243,6 +255,7 @@ export default function AgentRunModelEditor() {
           <button type="button" className={styles.primary} disabled={busy || !ready || !versionId} onClick={() => void saveModel(true)}>{busy ? "กำลังบันทึก..." : "บันทึกและทำงานต่อ →"}</button>
         </> : null}
         {!ready ? <Link href="/profile/api">ไปที่ API &amp; Models →</Link> : null}
+        {selectedRun?.status === "CANCELLED" ? <Link href="/studio">สร้างงานใหม่จาก Studio →</Link> : null}
       </div>
     </section>
   );

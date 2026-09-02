@@ -1,6 +1,6 @@
 .panel {
   margin: 0 auto 14px;
-  width: min(1320px, calc(100% - 40px));
+  width: min(1540px, calc(100% - 56px));
   border: 1px solid rgba(139, 92, 246, 0.24);
   border-radius: 16px;
   background: linear-gradient(135deg, rgba(19, 12, 32, 0.96), rgba(9, 7, 17, 0.98));

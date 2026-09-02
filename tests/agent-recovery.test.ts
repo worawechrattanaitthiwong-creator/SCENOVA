@@ -16,6 +16,18 @@ describe("Agent recovery", () => {
     expect(result.reason).toContain("โควตา");
   });
 
+  it("stops automatic retries for a generic Veo HTTP 429 response", () => {
+    const result = decideAgentRecovery({
+      error: new Error("VEO_HTTP_429: Too many requests"),
+      attempt: 1,
+      maxRetries: 3,
+      providerSwitches: 0,
+      maxProviderSwitches: 1,
+    });
+    expect(result.action).toBe("ASK_USER");
+    expect(result.delayMs).toBe(0);
+  });
+
   it("still retries an ordinary transient provider failure", () => {
     const result = decideAgentRecovery({
       error: new Error("VEO_HTTP_500: temporary provider failure"),

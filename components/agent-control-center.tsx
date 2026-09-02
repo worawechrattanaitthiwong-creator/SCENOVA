@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { AGENT_RUN_SELECTION_EVENT, readSelectedAgentRunId, selectAgentRun, selectedAgentRunIdFromEvent } from "@/lib/agent/run-selection";
 import styles from "./agent-control-center.module.css";
 import teamStyles from "./agent-team-workflow.module.css";
 
@@ -99,6 +100,14 @@ function friendlyAgentError(value?: string | null) {
   return raw;
 }
 
+function isQuotaError(value?: string | null) {
+  return /VEO_HTTP_429|RESOURCE_EXHAUSTED|EXCEEDED YOUR CURRENT QUOTA|RATE.?LIMIT|MODEL QUOTA|SPEND LIMIT/i.test(String(value || ""));
+}
+
+function needsProviderSettings(value?: string | null) {
+  return /PROVIDER_(NOT_FOUND|CONNECTION_REQUIRED)|INVALID_API_KEY|CREDENTIAL_REQUIRED/i.test(String(value || ""));
+}
+
 export default function AgentControlCenter() {
   const [runs, setRuns] = useState<Run[]>([]);
   const [selectedId, setSelectedId] = useState("");
@@ -113,7 +122,7 @@ export default function AgentControlCenter() {
     setRuns(data.runs || []);
     setSelectedId((current) => {
       if (current) return current;
-      const requestedId = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("run") : null;
+      const requestedId = readSelectedAgentRunId();
       return data.runs?.some((run: Run) => run.id === requestedId) ? requestedId || "" : data.runs?.[0]?.id || "";
     });
   }, []);
@@ -127,6 +136,17 @@ export default function AgentControlCenter() {
   }, []);
 
   useEffect(() => { void loadRuns().catch((error) => setMessage(error.message)); }, [loadRuns]);
+  useEffect(() => {
+    const syncSelection = (event: Event) => {
+      const runId = selectedAgentRunIdFromEvent(event);
+      if (runId) setSelectedId(runId);
+    };
+    window.addEventListener(AGENT_RUN_SELECTION_EVENT, syncSelection);
+    return () => window.removeEventListener(AGENT_RUN_SELECTION_EVENT, syncSelection);
+  }, []);
+  useEffect(() => {
+    if (selectedId) selectAgentRun(selectedId);
+  }, [selectedId]);
   useEffect(() => {
     if (!selectedId) { setDetails(null); return; }
     void loadDetails(selectedId).catch((error) => setMessage(error.message));
@@ -157,10 +177,16 @@ export default function AgentControlCenter() {
   const shotTasks = workflowTasks.filter((task) => task.stage === "GENERATE_SHOT");
   const workflowArtifacts = details?.workflow?.artifacts || [];
   const latestJobError = details?.jobs?.find((job) => job.lastError)?.lastError || null;
-  const stopMessage = run && ["FAILED", "PAUSED"].includes(run.status)
-    ? friendlyAgentError(latestJobError || run.stopReason)
-    : friendlyAgentError(run?.stopReason);
-  const canForceRetry = Boolean(run && (run.status === "FAILED" || (run.status === "PAUSED" && latestJobError)));
+  const failedWorkflowTask = [...workflowTasks].reverse().find((task) => task.lastError) || workflowTasks.find((task) => task.status === "FAILED") || null;
+  const rootError = failedWorkflowTask?.lastError || latestJobError || run?.stopReason || "";
+  const stopMessage = friendlyAgentError(rootError);
+  const canForceRetry = Boolean(run && (run.status === "FAILED" || (run.status === "PAUSED" && failedWorkflowTask?.lastError)));
+  const completedShots = shotTasks.filter((task) => task.status === "COMPLETED").length;
+  const pendingShot = shotTasks.find((task) => task.status !== "COMPLETED");
+  const pendingShotNumber = pendingShot?.scopeKey.split(":").at(-1);
+  const recoveryAgent = failedWorkflowTask ? AGENT_LABELS[failedWorkflowTask.agentKey] || failedWorkflowTask.agentKey : stageLabel(run?.stage || "");
+  const cancelledAfterFailure = run?.status === "CANCELLED" && Boolean(failedWorkflowTask?.lastError);
+  const showRecovery = Boolean(run && (rootError || ["FAILED", "PAUSED", "CANCELLED"].includes(run.status)));
 
   return <main className={styles.page}>
     <header className={styles.hero}><div><span>SCENOVA AI AGENT</span><h1>AI Agent — ศูนย์ควบคุมงานอัตโนมัติ</h1><p>ดูงานที่ AI กำลังทำ ตรวจจุดที่ต้องอนุมัติ ติดตามค่าใช้จ่าย และไปต่อยังคิวสร้างวิดีโอได้จากหน้าเดียว</p></div><Link href="/studio">เริ่มงานใน Studio →</Link></header>
@@ -175,10 +201,31 @@ export default function AgentControlCenter() {
     {message ? <div className={styles.message}>{message}</div> : null}
 
     <div className={styles.layout} id="runs">
-      <aside className={styles.runList}><div className={styles.runTitle}><div><b>งาน AI</b><small>{runs.length} รายการ</small></div><button onClick={() => void loadRuns()} aria-label="รีเฟรชงาน AI">↻</button></div>{runs.length ? runs.map((item) => <button key={item.id} className={item.id === selectedId ? styles.selected : ""} onClick={() => setSelectedId(item.id)}><span><b>{runTitle(item)}</b><i data-status={item.status}>{statusLabel(item.status)}</i></span><small>{stageLabel(item.stage)} · {time(item.createdAt)}</small></button>) : <div className={styles.emptyState}><span>✦</span><h2>ยังไม่มีงาน AI</h2><p>เริ่มสร้างงานจาก Studio ก่อน เมื่อมี Agent Run งานจะมาแสดงที่นี่อัตโนมัติ</p><Link href="/studio">เปิด Studio</Link></div>}</aside>
+      <aside className={styles.runList}><div className={styles.runTitle}><div><b>งาน AI</b><small>{runs.length} รายการ</small></div><button onClick={() => void loadRuns()} aria-label="รีเฟรชงาน AI">↻</button></div>{runs.length ? runs.map((item) => <button key={item.id} className={item.id === selectedId ? styles.selected : ""} onClick={() => selectAgentRun(item.id)}><span><b>{runTitle(item)}</b><i data-status={item.status}>{statusLabel(item.status)}</i></span><small>{stageLabel(item.stage)} · {time(item.createdAt)}</small></button>) : <div className={styles.emptyState}><span>✦</span><h2>ยังไม่มีงาน AI</h2><p>เริ่มสร้างงานจาก Studio ก่อน เมื่อมี Agent Run งานจะมาแสดงที่นี่อัตโนมัติ</p><Link href="/studio">เปิด Studio</Link></div>}</aside>
 
       <section className={styles.main}>{!run ? <div className={styles.welcomePanel}><span>AI AGENT WORKSPACE</span><h2>เลือกงาน AI เพื่อดูรายละเอียด</h2><p>เมื่อมีงาน ระบบจะแสดงขั้นตอน ค่าใช้จ่าย จุดรออนุมัติ และสถานะคิวแบบอัปเดตต่อเนื่อง</p><div><Link href="/studio">เริ่มจาก Studio</Link><Link href="/wallet">ดูเครดิต</Link></div></div> : <>
         <div className={styles.statusBar}><div><small>สถานะ</small><strong>{statusLabel(run.status)}</strong></div><div><small>ขั้นตอนปัจจุบัน</small><strong>{stageLabel(run.stage)}</strong></div><div><small>วงเงินสูงสุด</small><strong>฿{money(run.budgetThb)}</strong></div><div><small>คาดการณ์ / ใช้จริง</small><strong>฿{money(run.estimatedSpendThb)} / ฿{money(run.actualSpendThb)}</strong></div><div><small>ค่า AI วางแผน</small><strong>฿{money(llmCost)}</strong></div></div>
+
+        {showRecovery ? <section className={styles.recovery} data-tone={isQuotaError(rootError) ? "quota" : run.status === "CANCELLED" ? "cancelled" : "error"}>
+          <div className={styles.recoveryIcon} aria-hidden="true">{isQuotaError(rootError) ? "429" : run.status === "CANCELLED" ? "×" : "!"}</div>
+          <div className={styles.recoveryBody}>
+            <span>RECOVERY CENTER · {recoveryAgent || "AI Runtime"}</span>
+            <h2>{cancelledAfterFailure ? "งานถูกยกเลิกหลัง Render Operator หยุด" : isQuotaError(rootError) ? "Google Veo จำกัดคำขอของ Render Operator" : `${recoveryAgent || "งานนี้"} ต้องการการตรวจสอบ`}</h2>
+            <p>{isQuotaError(rootError) ? `${completedShots} จาก ${shotTasks.length || "ทั้งหมด"} Shot ทำสำเร็จแล้ว แต่คำขอถัดไปได้รับ HTTP 429 ระบบหยุดไว้เพื่อไม่ส่งคำขอซ้ำและไม่เสี่ยงคิดค่าใช้จ่ายซ้ำ${run.status === "CANCELLED" ? " จากนั้นงานนี้ถูกยกเลิก จึงไม่ส่งต่อไปยัง Agent ตัวถัดไป" : ""}` : stopMessage || "ตรวจสาเหตุและเลือกวิธีดำเนินการต่อด้านล่าง"}</p>
+            <div className={styles.recoveryFacts}>
+              <span><small>จุดที่หยุด</small><b>{recoveryAgent || stageLabel(run.stage)}</b></span>
+              <span><small>Render shots</small><b>{shotTasks.length ? `${completedShots}/${shotTasks.length} สำเร็จ` : "ยังไม่มี Shot"}</b></span>
+              <span><small>งานถัดไป</small><b>{pendingShotNumber ? `Shot ${Number(pendingShotNumber) + 1}` : stageLabel(run.stage)}</b></span>
+            </div>
+          </div>
+          <div className={styles.recoveryActions}>
+            {canForceRetry ? <button disabled={busy} onClick={() => void action("retry")}>{busy ? "กำลังนำกลับเข้าคิว..." : "ลองเฉพาะงานที่ค้างอีกครั้ง"}</button> : null}
+            {run.status === "PAUSED" && !canForceRetry ? <button disabled={busy} onClick={() => void action("resume")}>ทำงานต่อ</button> : null}
+            {run.status === "CANCELLED" ? <Link href="/studio">สร้างงานใหม่จาก Studio</Link> : null}
+            <button type="button" className={styles.secondaryAction} onClick={() => document.getElementById("agent-model-editor")?.scrollIntoView({ behavior: "smooth", block: "center" })}>เปลี่ยนโมเดล / รุ่น</button>
+            {needsProviderSettings(rootError) || isQuotaError(rootError) ? <Link className={styles.secondaryAction} href="/profile/api">ตรวจ API &amp; Models</Link> : null}
+          </div>
+        </section> : null}
 
         <div className={styles.timeline}>{STAGES.map((stage, index) => <div key={stage} className={index < currentStageIndex || run.stage === "COMPLETED" ? styles.done : index === currentStageIndex ? styles.current : ""}><i>{index < currentStageIndex || run.stage === "COMPLETED" ? "✓" : index + 1}</i><span>{stageLabel(stage)}</span></div>)}</div>
 
@@ -187,18 +234,18 @@ export default function AgentControlCenter() {
           <div className={teamStyles.agentGrid}>{primaryTasks.map((task) => {
             const artifacts = workflowArtifacts.filter((artifact) => artifact.taskId === task.id);
             const latest = artifacts.at(-1);
-            return <div key={task.id} className={teamStyles.agentCard} data-state={task.status}>
+            return <div key={task.id} className={teamStyles.agentCard} data-state={task.status} data-error={Boolean(task.lastError)}>
               <div><i>{task.sequence.toString().padStart(2, "0")}</i><span><b>{AGENT_LABELS[task.agentKey] || task.agentKey}</b><small>{stageLabel(task.stage)}</small></span><em>{statusLabel(task.status)}</em></div>
-              <p>{latest?.summary || (task.status === "PENDING" ? "รอรับ Artifact จาก Agent ก่อนหน้า" : "เตรียมดำเนินงานตามสัญญาส่งมอบ")}</p>
+              <p>{task.lastError ? friendlyAgentError(task.lastError) : latest?.summary || (task.status === "PENDING" ? "รอรับ Artifact จาก Agent ก่อนหน้า" : "เตรียมดำเนินงานตามสัญญาส่งมอบ")}</p>
               <footer><span>{latest ? `${artifacts.length} Artifact · v${latest.version}` : "ยังไม่มี Artifact"}</span><span>{task.attempt ? `ทำงาน ${task.attempt}/${task.maxAttempts}` : "ยังไม่เริ่ม"}</span></footer>
             </div>;
           })}</div>
-          {shotTasks.length ? <div className={teamStyles.shotRail}><div><b>Render Shot Tasks</b><span>{shotTasks.filter((task) => task.status === "COMPLETED").length}/{shotTasks.length} สำเร็จ</span></div><div>{shotTasks.map((task) => <span key={task.id} data-state={task.status} title={`${task.scopeKey} · ${statusLabel(task.status)}`}>{task.scopeKey.split(":").at(-1)}</span>)}</div></div> : null}
+          {shotTasks.length ? <div className={teamStyles.shotRail}><div><b>Render Shot Tasks</b><span>{completedShots}/{shotTasks.length} สำเร็จ</span></div><div>{shotTasks.map((task) => <span key={task.id} data-state={task.status} title={`${task.scopeKey} · ${statusLabel(task.status)}`}><i>{task.status === "COMPLETED" ? "✓" : Number(task.scopeKey.split(":").at(-1) || 0) + 1}</i><b>Shot {Number(task.scopeKey.split(":").at(-1) || 0) + 1}</b><small>{statusLabel(task.status)}</small></span>)}</div></div> : null}
         </article> : null}
 
         {pendingApproval ? <div className={styles.approval} id="approvals"><span>ต้องการการอนุมัติจากคุณ</span><h2>AI พร้อมทำขั้นตอนถัดไป แต่จะยังไม่ใช้ทรัพยากรจนกว่าคุณจะอนุมัติ</h2><p>{pendingApproval.summary}</p><strong>ประมาณ ฿{money(pendingApproval.estimatedCostThb)}</strong><small>วงเงินงานสูงสุด ฿{money(run.budgetThb)} · AI ไม่สามารถเพิ่มวงเงินเองได้</small><div><button disabled={busy} onClick={() => void action("approve")}>อนุมัติและทำต่อ</button><button disabled={busy} className={styles.danger} onClick={() => void action("reject")}>ไม่อนุมัติ</button></div></div> : <div id="approvals" />}
 
-        {stopMessage ? <div className={styles.stopReason}><b>ข้อมูลเพิ่มเติม</b><span>{stopMessage}</span>{/PROVIDER_(NOT_FOUND|CONNECTION_REQUIRED)|INVALID_API_KEY|CREDENTIAL_REQUIRED/i.test(String(latestJobError || "")) ? <Link href="/profile/api">ตรวจ API & Models →</Link> : null}</div> : null}
+        {stopMessage && !showRecovery ? <div className={styles.stopReason}><b>ข้อมูลเพิ่มเติม</b><span>{stopMessage}</span>{needsProviderSettings(rootError) ? <Link href="/profile/api">ตรวจ API & Models →</Link> : null}</div> : null}
         <div className={styles.controls}>
           {canForceRetry ? <button disabled={busy} onClick={() => void action("retry")}>{busy ? "กำลังนำงานกลับเข้าคิว..." : "▶ บังคับเริ่มงานนี้"}</button> : run.status === "PAUSED" ? <button disabled={busy} onClick={() => void action("resume")}>▶ ทำงานต่อ</button> : !["COMPLETED","CANCELLED","WAITING_APPROVAL"].includes(run.status) ? <button disabled={busy} onClick={() => void action("pause")}>Ⅱ พักงาน</button> : null}
           <button disabled={busy || ["COMPLETED","FAILED","CANCELLED"].includes(run.status)} className={styles.danger} onClick={() => void action("cancel")}>ยกเลิกงาน</button>

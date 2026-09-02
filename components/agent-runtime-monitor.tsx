@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AGENT_RUN_SELECTION_EVENT, readSelectedAgentRunId, selectedAgentRunIdFromEvent } from "@/lib/agent/run-selection";
 import styles from "./agent-runtime-status.module.css";
 
 type RuntimeHealth = {
@@ -90,8 +91,8 @@ export default function AgentRuntimeMonitor() {
   const [repairing, setRepairing] = useState(false);
   const mounted = useRef(true);
 
-  const load = useCallback(async () => {
-    const runId = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("run") : null;
+  const load = useCallback(async (requestedRunId?: string) => {
+    const runId = requestedRunId || readSelectedAgentRunId();
     const suffix = runId ? `?run=${encodeURIComponent(runId)}` : "";
     const response = await fetch(`/api/agent/runtime${suffix}`, { cache: "no-store", credentials: "same-origin" });
     const payload = await response.json() as RuntimeHealth & { error?: string };
@@ -132,6 +133,14 @@ export default function AgentRuntimeMonitor() {
       mounted.current = false;
       window.clearInterval(timer);
     };
+  }, [load]);
+  useEffect(() => {
+    const syncSelection = (event: Event) => {
+      const runId = selectedAgentRunIdFromEvent(event);
+      if (runId) void load(runId).catch((cause) => setError(cause instanceof Error ? cause.message : String(cause)));
+    };
+    window.addEventListener(AGENT_RUN_SELECTION_EVENT, syncSelection);
+    return () => window.removeEventListener(AGENT_RUN_SELECTION_EVENT, syncSelection);
   }, [load]);
 
   const state = health?.runtimeState || "idle";
