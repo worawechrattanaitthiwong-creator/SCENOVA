@@ -20,7 +20,14 @@ type AgentArtifact = { id: string; taskId: string; type: string; version: number
 type AgentHandoff = { id: string; fromTaskId: string; toTaskId: string; status: string; createdAt: string };
 type HumanCheckpoint = { id: string; kind: string; status: string; summary: string; requestedAt: string };
 type Workflow = { id: string; status: string; workflowKey: string; version: number; tasks: AgentTask[]; artifacts: AgentArtifact[]; handoffs: AgentHandoff[]; checkpoints: HumanCheckpoint[] };
-type Details = { run: Run; decisions: Decision[]; approvals: Approval[]; jobs: Job[]; llmUsage: LlmUsage[]; workflow?: Workflow | null };
+type VideoGeneration = {
+  id: string;
+  shotOrder: number;
+  providerId: string;
+  status: string;
+  outputUrl?: string | null;
+};
+type Details = { run: Run; decisions: Decision[]; approvals: Approval[]; jobs: Job[]; llmUsage: LlmUsage[]; videoGenerations?: VideoGeneration[]; workflow?: Workflow | null };
 
 const STAGES = ["PLAN_STORY", "STORY_ARCHITECT", "SCRIPT_WRITE", "SCRIPT_EDIT", "DIRECT_SCENES", "PLAN_CINEMATOGRAPHY", "SELECT_STYLE", "BUILD_PROMPTS", "STORYBOARD", "AWAIT_APPROVAL", "GENERATE", "VERIFY_CONTINUITY", "POST_PRODUCTION", "FINAL_QUALITY", "NEXT_EPISODE", "COMPLETED"];
 const STAGE_LABELS: Record<string, string> = {
@@ -235,6 +242,7 @@ export default function AgentControlCenter() {
   const rootError = failedWorkflowTask?.lastError || latestJobError || run?.stopReason || "";
   const stopMessage = friendlyAgentError(rootError);
   const completedShots = shotTasks.filter((task) => task.status === "COMPLETED").length;
+  const completedClips = (details?.videoGenerations || []).filter((generation) => Boolean(generation.outputUrl));
   const pendingShot = shotTasks.find((task) => task.status !== "COMPLETED");
   const pendingShotNumber = pendingShot?.scopeKey.split(":").at(-1);
   const recoveryAgent = failedWorkflowTask ? AGENT_LABELS[failedWorkflowTask.agentKey] || failedWorkflowTask.agentKey : stageLabel(run?.stage || "");
@@ -291,6 +299,23 @@ export default function AgentControlCenter() {
         </section> : null}
 
         <div className={styles.timeline}>{STAGES.map((stage, index) => <div key={stage} className={index < currentStageIndex || run.stage === "COMPLETED" ? styles.done : index === currentStageIndex ? styles.current : ""}><i>{index < currentStageIndex || run.stage === "COMPLETED" ? "✓" : index + 1}</i><span>{stageLabel(stage)}</span></div>)}</div>
+
+        {completedClips.length ? <section className={styles.clipResults} aria-label="คลิปที่สร้างเสร็จแล้ว">
+          <div className={styles.clipResultsTitle}>
+            <div><span>VIDEO OUTPUT</span><h2>คลิปที่สร้างแล้ว</h2><p>ผลลัพธ์จริงจากงานนี้ เปิดดูหรือดาวน์โหลดได้ทันที</p></div>
+            <strong>{completedClips.length} คลิป</strong>
+          </div>
+          <div className={styles.clipGrid}>{completedClips.map((clip) => <article className={styles.clipCard} key={clip.id}>
+            <video controls preload="metadata" src={clip.outputUrl || undefined}>เบราว์เซอร์นี้ไม่รองรับการเล่นวิดีโอ</video>
+            <div className={styles.clipMeta}>
+              <span><b>Shot {clip.shotOrder + 1}</b><small>{clip.providerId.toUpperCase()} · {clip.status}</small></span>
+              <div>
+                <a href={clip.outputUrl || "#"} target="_blank" rel="noreferrer">เปิดคลิป</a>
+                <a href={clip.outputUrl || "#"} download={`scenova-shot-${clip.shotOrder + 1}.mp4`}>ดาวน์โหลด</a>
+              </div>
+            </div>
+          </article>)}</div>
+        </section> : null}
 
         {details.workflow ? <article className={teamStyles.teamPanel}>
           <div className={teamStyles.panelTitle}><div><h2>ทีมผลิตภาพยนตร์ AI</h2><p>แต่ละฝ่ายรับ Artifact จากงานก่อนหน้า ตรวจตามหน้าที่ แล้วส่งต่อผ่าน Handoff ที่ตรวจสอบย้อนหลังได้</p></div><span>{workflowArtifacts.length} Artifacts · {details.workflow.handoffs.length} Handoffs</span></div>
