@@ -24,10 +24,14 @@ type VideoGeneration = {
   id: string;
   shotOrder: number;
   providerId: string;
+  billingMode?: string;
+  reservedCredits?: number;
+  estimatedProviderCost?: number;
   status: string;
   outputUrl?: string | null;
 };
-type Details = { run: Run; decisions: Decision[]; approvals: Approval[]; jobs: Job[]; llmUsage: LlmUsage[]; videoGenerations?: VideoGeneration[]; workflow?: Workflow | null };
+type CostSummary = { providerCostThb: number; llmCostThb: number; totalCostThb: number; chargedCredits: number; creditsPerThb: number; revenueThb: number; grossProfitThb: number; note?: string };
+type Details = { run: Run; decisions: Decision[]; approvals: Approval[]; jobs: Job[]; llmUsage: LlmUsage[]; videoGenerations?: VideoGeneration[]; workflow?: Workflow | null; costSummary?: CostSummary };
 
 const STAGES = ["PLAN_STORY", "STORY_ARCHITECT", "SCRIPT_WRITE", "SCRIPT_EDIT", "DIRECT_SCENES", "PLAN_CINEMATOGRAPHY", "SELECT_STYLE", "BUILD_PROMPTS", "STORYBOARD", "AWAIT_APPROVAL", "GENERATE", "VERIFY_CONTINUITY", "POST_PRODUCTION", "FINAL_QUALITY", "NEXT_EPISODE", "COMPLETED"];
 const STAGE_LABELS: Record<string, string> = {
@@ -81,6 +85,11 @@ const AGENT_LABELS: Record<string, string> = {
 
 function money(value: unknown) { return Number(value || 0).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 4 }); }
 function time(value: string) { return new Date(value).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" }); }
+function playableVideoUrl(generation: VideoGeneration) {
+  const raw = generation.outputUrl || "";
+  if (generation.providerId.toLowerCase() === "veo" && /^https:\/\//i.test(raw)) return `/api/provider-media?provider=veo&url=${encodeURIComponent(raw)}`;
+  return raw;
+}
 function stageLabel(value: string) { return STAGE_LABELS[value] || value; }
 function statusLabel(value: string) { return STATUS_LABELS[value] || value; }
 function runTitle(run: Run) { return run.inputJson?.project?.episodes?.[0]?.title || run.inputJson?.project?.title || "งาน AI"; }
@@ -120,7 +129,7 @@ function runCardActionState(run: Run) {
   if (["FAILED", "PAUSED"].includes(run.status)) return { label: "▶ เริ่มงาน", kind: "start", enabled: true };
   if (["QUEUED", "RUNNING"].includes(run.status)) return { label: "กำลังทำงาน", kind: "active", enabled: false };
   if (run.status === "WAITING_APPROVAL") return { label: "รออนุมัติ", kind: "waiting", enabled: false };
-  if (run.status === "COMPLETED") return { label: "เสร็จแล้ว", kind: "done", enabled: false };
+  if (run.status === "COMPLETED") return { label: "ดูคลิป", kind: "view", enabled: true };
   return { label: "เริ่มงาน", kind: "start", enabled: false };
 }
 
@@ -187,6 +196,10 @@ export default function AgentControlCenter() {
   async function runCardAction(item: Run) {
     const state = runCardActionState(item);
     if (!state.enabled || busy) return;
+    if (state.kind === "view") {
+      window.location.assign(`/libraries?tab=videos&run=${encodeURIComponent(item.id)}`);
+      return;
+    }
     setSelectedId(item.id);
     selectAgentRun(item.id);
     setBusy(true);
@@ -243,6 +256,7 @@ export default function AgentControlCenter() {
   const stopMessage = friendlyAgentError(rootError);
   const completedShots = shotTasks.filter((task) => task.status === "COMPLETED").length;
   const completedClips = (details?.videoGenerations || []).filter((generation) => Boolean(generation.outputUrl));
+  const costSummary = details?.costSummary;
   const pendingShot = shotTasks.find((task) => task.status !== "COMPLETED");
   const pendingShotNumber = pendingShot?.scopeKey.split(":").at(-1);
   const recoveryAgent = failedWorkflowTask ? AGENT_LABELS[failedWorkflowTask.agentKey] || failedWorkflowTask.agentKey : stageLabel(run?.stage || "");
@@ -279,6 +293,8 @@ export default function AgentControlCenter() {
       <section className={styles.main}>{!run ? <div className={styles.welcomePanel}><span>AI AGENT WORKSPACE</span><h2>เลือกงาน AI เพื่อดูรายละเอียด</h2><p>เมื่อมีงาน ระบบจะแสดงขั้นตอน ค่าใช้จ่าย จุดรออนุมัติ และสถานะคิวแบบอัปเดตต่อเนื่อง</p><div><Link href="/studio">เริ่มจาก Studio</Link><Link href="/wallet">ดูเครดิต</Link></div></div> : <>
         <div className={styles.statusBar}><div><small>สถานะ</small><strong>{statusLabel(run.status)}</strong></div><div><small>ขั้นตอนปัจจุบัน</small><strong>{stageLabel(run.stage)}</strong></div><div><small>วงเงินสูงสุด</small><strong>฿{money(run.budgetThb)}</strong></div><div><small>คาดการณ์ / ใช้จริง</small><strong>฿{money(run.estimatedSpendThb)} / ฿{money(run.actualSpendThb)}</strong></div><div><small>ค่า AI วางแผน</small><strong>฿{money(llmCost)}</strong></div></div>
 
+        {costSummary ? <section className={styles.costSummary} aria-label="สรุปค่าใช้จ่ายงานนี้"><div><small>เครดิตที่ตัดจริง</small><strong>{costSummary.chargedCredits.toLocaleString("th-TH")} เครดิต</strong></div><div><small>ต้นทุน Provider</small><strong>฿{money(costSummary.providerCostThb)}</strong></div><div><small>รายรับจากงาน</small><strong>฿{money(costSummary.revenueThb)}</strong></div><div data-profit={costSummary.grossProfitThb >= 0 ? "positive" : "negative"}><small>กำไรขั้นต้น</small><strong>฿{money(costSummary.grossProfitThb)}</strong></div><p>{costSummary.note}</p></section> : null}
+
         {showRecovery ? <section className={styles.recovery} data-tone={isQuotaError(rootError) ? "quota" : run.status === "CANCELLED" ? "cancelled" : "error"}>
           <div className={styles.recoveryIcon} aria-hidden="true">{isQuotaError(rootError) ? "429" : run.status === "CANCELLED" ? "×" : "!"}</div>
           <div className={styles.recoveryBody}>
@@ -303,18 +319,18 @@ export default function AgentControlCenter() {
         {completedClips.length ? <section className={styles.clipResults} aria-label="คลิปที่สร้างเสร็จแล้ว">
           <div className={styles.clipResultsTitle}>
             <div><span>VIDEO OUTPUT</span><h2>คลิปที่สร้างแล้ว</h2><p>ผลลัพธ์จริงจากงานนี้ เปิดดูหรือดาวน์โหลดได้ทันที</p></div>
-            <strong>{completedClips.length} คลิป</strong>
+            <div className={styles.clipTitleActions}><strong>{completedClips.length} คลิป</strong><Link href={`/libraries?tab=videos&run=${encodeURIComponent(run.id)}`}>เปิดคลัง / รวมคลิป →</Link></div>
           </div>
-          <div className={styles.clipGrid}>{completedClips.map((clip) => <article className={styles.clipCard} key={clip.id}>
-            <video controls preload="metadata" src={clip.outputUrl || undefined}>เบราว์เซอร์นี้ไม่รองรับการเล่นวิดีโอ</video>
+          <div className={styles.clipGrid}>{completedClips.map((clip) => { const clipUrl = playableVideoUrl(clip); return <article className={styles.clipCard} key={clip.id}>
+            <video controls preload="metadata" src={clipUrl || undefined}>เบราว์เซอร์นี้ไม่รองรับการเล่นวิดีโอ</video>
             <div className={styles.clipMeta}>
               <span><b>Shot {clip.shotOrder + 1}</b><small>{clip.providerId.toUpperCase()} · {clip.status}</small></span>
               <div>
-                <a href={clip.outputUrl || "#"} target="_blank" rel="noreferrer">เปิดคลิป</a>
-                <a href={clip.outputUrl || "#"} download={`scenova-shot-${clip.shotOrder + 1}.mp4`}>ดาวน์โหลด</a>
+                <a href={clipUrl || "#"} target="_blank" rel="noreferrer">เปิดคลิป</a>
+                <a href={clipUrl || "#"} download={`scenova-shot-${clip.shotOrder + 1}.mp4`}>ดาวน์โหลด</a>
               </div>
             </div>
-          </article>)}</div>
+          </article>; })}</div>
         </section> : null}
 
         {details.workflow ? <article className={teamStyles.teamPanel}>

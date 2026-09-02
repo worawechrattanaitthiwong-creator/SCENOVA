@@ -29,8 +29,9 @@ type LibraryMetadata = {
   referenceImages?: string[];
 };
 type ApiItem = { id: string; kind: string; title: string; description: string; assetUrl?: string; source?: "SYSTEM" | "ADMIN"; metadata?: LibraryMetadata; createdAt?: string };
-type VideoItem = { id: string; ep: number; epTitle: string; projectTitle: string; duration: number; createdAt: string; url?: string; status: "completed" | "processing" };
-type Item = { id: string; title: string; description: string; tag: string; visual: string; icon: string; url?: string; ep?: number; duration?: number; source?: string; metadata?: LibraryMetadata };
+type VideoClip = { id: string; url: string; shotOrder: number; providerId: string; duration: number };
+type VideoItem = { id: string; runId?: string; episodeRef?: string; ep: number; epTitle: string; projectTitle: string; duration: number; createdAt: string; url?: string; status: "completed" | "processing"; kind?: "clip" | "combined"; clips?: VideoClip[] };
+type Item = { id: string; title: string; description: string; tag: string; visual: string; icon: string; url?: string; ep?: number; duration?: number; source?: string; metadata?: LibraryMetadata; runId?: string; kind?: "clip" | "combined"; clips?: VideoClip[] };
 type DetailInfo = { typeLabel: string; visualLanguage: string; lighting: string; colorMood: string; bestFor: string; promptHint: string; referenceUsage: string; compatibility: string; lockNote: string };
 
 const TABS: { id: Tab; label: string; desc: string; icon: string }[] = [
@@ -118,6 +119,7 @@ export default function LibrariesPage() {
   const [tab, setTab] = useState<Tab>("images");
   const [apiItems, setApiItems] = useState<ApiItem[]>([]);
   const [videos, setVideos] = useState<VideoItem[]>([]);
+  const [videoLoading, setVideoLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [imagePreview, setImagePreview] = useState<Item | null>(null);
@@ -167,8 +169,28 @@ export default function LibrariesPage() {
   }, [libraryReloadKey]);
 
   useEffect(() => {
-    const load = () => { try { setVideos(JSON.parse(localStorage.getItem("scenova-video-library-v1") || "[]")); } catch { setVideos([]); } };
-    load(); window.addEventListener("scenova-video-library-updated", load); return () => window.removeEventListener("scenova-video-library-updated", load);
+    let active = true;
+    const readLocal = (): VideoItem[] => {
+      try {
+        const value = JSON.parse(localStorage.getItem("scenova-video-library-v1") || "[]");
+        return Array.isArray(value) ? value : [];
+      } catch { return []; }
+    };
+    const load = async () => {
+      setVideoLoading(true);
+      try {
+        const response = await fetch("/api/library/videos", { cache: "no-store", credentials: "same-origin" });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || "VIDEO_LIBRARY_UNAVAILABLE");
+        if (active) setVideos([...(Array.isArray(data.videos) ? data.videos : []), ...readLocal()]);
+      } catch {
+        if (active) setVideos(readLocal());
+      } finally { if (active) setVideoLoading(false); }
+    };
+    void load();
+    const onUpdate = () => { if (active) setVideos(readLocal()); };
+    window.addEventListener("scenova-video-library-updated", onUpdate);
+    return () => { active = false; window.removeEventListener("scenova-video-library-updated", onUpdate); };
   }, []);
 
   useEffect(() => {
@@ -189,9 +211,17 @@ export default function LibrariesPage() {
 
   const current = TABS.find((item) => item.id === tab)!;
   const items = useMemo<Item[]>(() => {
-    if (tab === "videos") return videos.map((video) => ({ id: video.id, title: `EP.${String(video.ep).padStart(2, "0")} — ${video.epTitle}`, description: `${video.projectTitle} • ${video.duration} วินาที`, tag: video.status === "completed" ? "สร้างเสร็จแล้ว" : "กำลังประมวลผล", visual: "video", icon: "▶", url: video.url, ep: video.ep, duration: video.duration }));
+    if (tab === "videos") return videos.map((video) => ({ id: video.id, runId: video.runId, kind: video.kind || "clip", clips: video.clips, title: video.kind === "combined" ? `รวมคลิป — ${video.epTitle}` : `EP.${String(video.ep).padStart(2, "0")} — ${video.epTitle}`, description: `${video.projectTitle} • ${video.duration} วินาที`, tag: video.kind === "combined" ? "เล่นต่อเนื่องทั้งตอน" : video.status === "completed" ? "สร้างเสร็จแล้ว" : "กำลังประมวลผล", visual: "video", icon: "▶", url: video.url, ep: video.ep, duration: video.duration }));
     return apiItems.filter((item) => item.kind === tab).map((item) => ({ id: item.id, title: item.title, description: item.description, tag: item.source === "ADMIN" ? "Admin Upload" : "SCENOVA System", visual: visualFor(tab), icon: current.icon, url: item.assetUrl, source: item.source, metadata: item.metadata }));
   }, [tab, videos, apiItems, current.icon]);
+
+  useEffect(() => {
+    if (tab !== "videos") return;
+    const runId = new URLSearchParams(window.location.search).get("run");
+    if (!runId) return;
+    const target = items.find((item) => item.runId === runId && item.kind === "combined") || items.find((item) => item.runId === runId);
+    if (target) window.setTimeout(() => document.getElementById(`video-${target.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
+  }, [tab, items]);
 
   const filtered = items.filter((item) => `${item.title} ${item.description} ${item.tag} ${item.metadata?.role || ""} ${item.metadata?.ageRange || ""}`.toLowerCase().includes(search.toLowerCase()));
   const selectedDetail = selectedItem ? detailFor(tab, selectedItem) : null;
@@ -251,7 +281,7 @@ export default function LibrariesPage() {
 
       <section className={styles.section}>
         <div className={styles.sectionHead}><div><h2>{current.label}</h2><p>{current.desc} — {tab === "characters" ? "เลือก Character Profile แล้วส่งเข้า Studio ได้โดยไม่ต้องพิมพ์ Character Bible ซ้ำ" : tab === "voices" ? "เสียงตัวอย่างใช้เสียงที่อุปกรณ์มีอยู่ พร้อมปรับโทนและจังหวะให้แต่ละโปรไฟล์แตกต่างกัน" : "ดูตัวอย่างก่อนนำไปใช้ใน Studio หรือ Series"}</p></div><small>{filtered.length} รายการ</small></div>
-        {libraryLoading && tab !== "videos" ? <div className={styles.statusBox}>กำลังโหลด Asset Library...</div> : null}{libraryWarning && tab !== "videos" ? <div className={`${styles.statusBox} ${styles.statusWarning}`}>{libraryWarning}</div> : null}{loadError && tab !== "videos" ? <div className={`${styles.statusBox} ${styles.statusError}`}><span>{loadError}</span><button className={styles.retryButton} onClick={() => setLibraryReloadKey((value) => value + 1)}>ลองโหลดอีกครั้ง</button></div> : null}
+        {videoLoading && tab === "videos" ? <div className={styles.statusBox}>กำลังโหลดคลิปที่สร้างเสร็จจากงาน AI...</div> : null}{libraryLoading && tab !== "videos" ? <div className={styles.statusBox}>กำลังโหลด Asset Library...</div> : null}{libraryWarning && tab !== "videos" ? <div className={`${styles.statusBox} ${styles.statusWarning}`}>{libraryWarning}</div> : null}{loadError && tab !== "videos" ? <div className={`${styles.statusBox} ${styles.statusError}`}><span>{loadError}</span><button className={styles.retryButton} onClick={() => setLibraryReloadKey((value) => value + 1)}>ลองโหลดอีกครั้ง</button></div> : null}
         <div className={styles.toolbar}><input className={styles.search} placeholder={`ค้นหาใน${current.label}...`} value={search} onChange={(e) => setSearch(e.target.value)} /><span className={styles.count}>SCENOVA System • สีเขียว = Admin Upload</span></div>
         <div className={styles.grid}>
           {filtered.map((item) => {
@@ -259,13 +289,13 @@ export default function LibrariesPage() {
             const isCharacter = tab === "characters";
             const quality = isCharacter ? characterQuality(item) : 0;
             return (
-              <article className={`${styles.card} ${isPlaying ? styles.playingCard : ""}`} key={item.id}>
-                {(tab === "images" || tab === "characters") && item.url ? <button className={styles.previewImageButton} onClick={() => setImagePreview(item)} aria-label={`ดูรูป ${item.title} แบบเต็ม`}><img className={styles.previewImage} src={item.url} alt={item.title} loading="lazy" decoding="async" onError={(event) => { event.currentTarget.style.display = "none"; event.currentTarget.parentElement?.classList.add(styles.imageFailed); }} /></button> : <div className={`${styles.preview} ${styles[item.visual as keyof typeof styles] || ""} ${isPlaying ? styles.voicePlaying : ""}`} style={item.url && tab !== "videos" ? { backgroundImage: `url(${item.url})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}>{tab === "voices" ? <div className={styles.voiceVisualizer} aria-live="polite"><span className={styles.voiceDisc}>{isPlaying ? "■" : "♫"}</span><div className={styles.waveBars} aria-hidden="true">{[0,1,2,3,4,5,6].map((bar) => <i key={bar} style={{ animationDelay:`${bar * 70}ms` }} />)}</div><small>{isPlaying ? "กำลังเล่นตัวอย่างเสียง..." : "แตะเพื่อฟังตัวอย่าง"}</small></div> : <span className={styles.previewIcon}>{item.icon}</span>}</div>}
+              <article id={tab === "videos" ? `video-${item.id}` : undefined} className={`${styles.card} ${isPlaying ? styles.playingCard : ""}`} key={item.id}>
+                {tab === "videos" && item.kind === "combined" && item.clips?.length ? <CombinedVideoPlayer clips={item.clips} /> : (tab === "images" || tab === "characters") && item.url ? <button className={styles.previewImageButton} onClick={() => setImagePreview(item)} aria-label={`ดูรูป ${item.title} แบบเต็ม`}><img className={styles.previewImage} src={item.url} alt={item.title} loading="lazy" decoding="async" onError={(event) => { event.currentTarget.style.display = "none"; event.currentTarget.parentElement?.classList.add(styles.imageFailed); }} /></button> : <div className={`${styles.preview} ${styles[item.visual as keyof typeof styles] || ""} ${isPlaying ? styles.voicePlaying : ""}`} style={item.url && tab !== "videos" ? { backgroundImage: `url(${item.url})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}>{tab === "voices" ? <div className={styles.voiceVisualizer} aria-live="polite"><span className={styles.voiceDisc}>{isPlaying ? "■" : "♫"}</span><div className={styles.waveBars} aria-hidden="true">{[0,1,2,3,4,5,6].map((bar) => <i key={bar} style={{ animationDelay:`${bar * 70}ms` }} />)}</div><small>{isPlaying ? "กำลังเล่นตัวอย่างเสียง..." : "แตะเพื่อฟังตัวอย่าง"}</small></div> : <span className={styles.previewIcon}>{item.icon}</span>}</div>}
                 <div className={styles.content}><b>{item.title}</b><p>{item.description}</p><span className={styles.tag} style={item.source === "ADMIN" ? { color: "#8bcf98", background: "#101b12", boxShadow: "inset 0 0 0 1px #28432e" } : undefined}>{item.tag}</span>
                   {isCharacter ? <><div className={characterStyles.characterCardMeta}><span><b>Role</b>{item.metadata?.role || "กำหนดใน Studio"}</span><span><b>Age</b>{item.metadata?.ageRange || "Flexible"}</span><span><b>Voice</b>{item.metadata?.voiceProfile || "เลือกภายหลัง"}</span></div><div className={characterStyles.qualityWrap}><div className={characterStyles.qualityHead}><span>Reference Quality — ความพร้อมอ้างอิง</span><strong>{quality}%</strong></div><div className={characterStyles.qualityTrack}><i style={{ width: `${quality}%` }} /></div></div></> : null}
                   {tab === "videos" ? <div className={styles.videoMeta}><span>EP {item.ep}</span><span>{item.duration}s</span></div> : null}
                   <div className={styles.actions}>
-                    {tab === "voices" ? <button className={isPlaying ? styles.playingButton : ""} onClick={() => playVoice(item)} aria-pressed={isPlaying}>{isPlaying ? "■ หยุดเสียง" : "▶ ฟังตัวอย่าง"}</button> : tab === "videos" && item.url ? <a className={styles.primary} href={item.url} download={`SCENOVA-${item.title}.mp4`}>↓ ดาวน์โหลด</a> : isCharacter ? <button className={styles.primary} onClick={() => useCharacter(item)}>ใช้ตัวละครนี้</button> : tab === "images" ? <button className={styles.primary} onClick={() => useStyle(item)}>ใช้เป็นสไตล์</button> : <button className={styles.primary} onClick={() => setSelectedItem(item)}>ดูรายละเอียด</button>}
+                    {tab === "voices" ? <button className={isPlaying ? styles.playingButton : ""} onClick={() => playVoice(item)} aria-pressed={isPlaying}>{isPlaying ? "■ หยุดเสียง" : "▶ ฟังตัวอย่าง"}</button> : tab === "videos" && item.kind !== "combined" && item.url ? <a className={styles.primary} href={item.url} target="_blank" rel="noreferrer" download={`SCENOVA-${item.title}.mp4`}>↓ เปิด / ดาวน์โหลด</a> : tab === "videos" && item.kind === "combined" ? <span className={styles.combinedHint}>เล่นต่อเนื่อง {item.clips?.length || 0} Shot</span> : isCharacter ? <button className={styles.primary} onClick={() => useCharacter(item)}>ใช้ตัวละครนี้</button> : tab === "images" ? <button className={styles.primary} onClick={() => useStyle(item)}>ใช้เป็นสไตล์</button> : <button className={styles.primary} onClick={() => setSelectedItem(item)}>ดูรายละเอียด</button>}
                     {(tab === "voices" || tab === "images" || isCharacter) ? <button onClick={() => setSelectedItem(item)}>ดูรายละเอียด</button> : null}
                   </div>
                 </div>
@@ -308,4 +338,19 @@ function CharacterDetail({ item, onPreview }: { item: Item; onPreview: (url: str
     <div className={characterStyles.lockPills}><span>✓ Character Lock — ล็อกตัวละคร</span><span>✓ Costume Lock — ล็อกชุด</span><span>✓ Voice Lock — ล็อกเสียง</span></div>
     <div className={characterStyles.referenceSection}><div className={characterStyles.referenceHead}><div><b>Reference Pack — ชุดภาพอ้างอิง</b><span>กดภาพเพื่อดูต้นฉบับเต็ม ใช้หลายมุมช่วยลด Character Drift</span></div><small>{references.length} ภาพ</small></div><div className={characterStyles.referenceGrid}>{references.length ? references.map((url, index) => <button className={characterStyles.referenceButton} key={`${url}-${index}`} onClick={() => onPreview(url)}><img src={url} alt={`${item.title} reference ${index + 1}`} /><span>{index === 0 ? "Main Reference" : `Reference ${index}`}</span></button>) : <div className={characterStyles.emptyReference}>ยังไม่มีภาพ Reference จริง — Character Profile ยังใช้เป็น Template ได้ แต่ควร Upload Main Reference และเพิ่ม 3/4 / Side / Full Body / Expression ก่อนงานที่ต้องการความต่อเนื่องสูง</div>}</div></div>
   </>;
+}
+
+function CombinedVideoPlayer({ clips }: { clips: VideoClip[] }) {
+  const [index, setIndex] = useState(0);
+  const current = clips[index];
+  if (!current) return null;
+  return <div className={styles.combinedPlayer}>
+    <video controls preload="metadata" src={current.url} onEnded={() => setIndex((value) => value + 1 < clips.length ? value + 1 : 0)}>
+      เบราว์เซอร์นี้ไม่รองรับการเล่นวิดีโอ
+    </video>
+    <div className={styles.combinedControls}>
+      <span>รวม Shot {index + 1} / {clips.length}</span>
+      <div><button type="button" onClick={() => setIndex((value) => (value - 1 + clips.length) % clips.length)} aria-label="Shot ก่อนหน้า">‹</button><button type="button" onClick={() => setIndex((value) => (value + 1) % clips.length)} aria-label="Shot ถัดไป">›</button></div>
+    </div>
+  </div>;
 }

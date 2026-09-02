@@ -14,5 +14,20 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   const details = await getAgentRunDetails(id, user.id);
   if (!details) return NextResponse.json({ error: "AGENT_RUN_NOT_FOUND" }, { status: 404 });
   const workflow = await getWorkflowSnapshot(id);
-  return NextResponse.json({ ...details, workflow });
+  const generations = details.videoGenerations || [];
+  const systemGenerations = generations.filter((generation) => generation.billingMode === "SYSTEM");
+  const settledSystem = systemGenerations.filter((generation) => generation.status === "SETTLED");
+  const providerCostThb = settledSystem.reduce((sum, generation) => sum + Number(generation.estimatedProviderCost || 0), 0);
+  const chargedCredits = settledSystem.reduce((sum, generation) => sum + Number(generation.reservedCredits || 0), 0);
+  const creditsPerThb = Math.max(0.01, Number(process.env.SCENOVA_CREDITS_PER_THB || 1));
+  const revenueThb = chargedCredits / creditsPerThb;
+  const llmCostThb = details.llmUsage.reduce((sum, item) => sum + Number(item.costThb || 0), 0);
+  const hasByok = generations.some((generation) => generation.billingMode === "BYOK");
+  return NextResponse.json({ ...details, workflow, costSummary: {
+    providerCostThb, llmCostThb, totalCostThb: providerCostThb + llmCostThb,
+    chargedCredits, creditsPerThb, revenueThb, grossProfitThb: revenueThb - providerCostThb - llmCostThb,
+    note: hasByok && chargedCredits === 0
+      ? "งานนี้ใช้ BYOK: SCENOVA ไม่หัก Wallet และค่า Provider จะอยู่ในบัญชี API ของคุณโดยตรง"
+      : "ต้นทุน Provider ใช้ยอดที่บันทึกใน Generation; หาก Provider คิดเงินภายนอก SCENOVA ต้องตรวจใบแจ้งหนี้ Provider เพิ่มเติม",
+  } });
 }
