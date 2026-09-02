@@ -35,10 +35,6 @@
   padding: 9px 14px 7px;
 }
 
-.panel[aria-label="จัดการงาน AI ที่ยกเลิก"] .body {
-  grid-template-columns: 1fr;
-}
-
 .body label { display: grid; gap: 4px; min-width: 0; }
 .body label > span { color: #897e96; font-size: 10px; font-weight: 800; }
 .body select {
@@ -52,6 +48,7 @@
   font: inherit;
   font-size: 11px;
 }
+.body select:not(:disabled) { cursor: pointer; }
 .body select:disabled { opacity: .56; cursor: not-allowed; }
 
 .meta {
