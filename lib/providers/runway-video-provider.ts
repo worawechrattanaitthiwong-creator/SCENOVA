@@ -8,6 +8,29 @@ const DEFAULT_BASE_URL = "https://api.dev.runwayml.com/v1";
 const DEFAULT_MODEL = "gen4.5";
 const RUNWAY_VERSION = "2024-11-06";
 
+export function formatRunwayApiError(payload: Record<string, unknown>) {
+  const rawPrimary = errorMessage(payload).trim();
+  const primary = rawPrimary && rawPrimary !== "{}" ? rawPrimary : "Runway API request failed";
+  const issues = Array.isArray(payload.issues) ? payload.issues : [];
+  if (!issues.length) return primary;
+
+  const details = issues.slice(0, 6).map((issue) => {
+    if (typeof issue === "string") return issue.trim();
+    const record = asRecord(issue);
+    const rawPath = record.path ?? record.field ?? record.param;
+    const path = Array.isArray(rawPath)
+      ? rawPath.map((part) => String(part)).join(".")
+      : typeof rawPath === "string"
+        ? rawPath
+        : "";
+    const rawDetail = errorMessage(record).trim();
+    const detail = rawDetail && rawDetail !== "{}" ? rawDetail : JSON.stringify(record);
+    return path ? `${path}: ${detail}` : detail;
+  }).filter(Boolean);
+
+  return details.length ? `${primary} | issues: ${details.join(" | ")}` : primary;
+}
+
 export class RunwayVideoProvider implements VideoProvider {
   id = "runway";
   credentialProviderId = "runway";
@@ -80,7 +103,7 @@ export class RunwayVideoProvider implements VideoProvider {
       signal: AbortSignal.timeout(30_000),
     });
     const json = asRecord(await response.json().catch(() => ({})));
-    if (!response.ok) throw new Error(`RUNWAY_HTTP_${response.status}:${errorMessage(json).slice(0, 500)}`);
+    if (!response.ok) throw new Error(`RUNWAY_HTTP_${response.status}:${formatRunwayApiError(json).slice(0, 1000)}`);
     const id = typeof json.id === "string" ? json.id : "";
     if (!id) throw new Error("RUNWAY_INVALID_RESPONSE:MISSING_TASK_ID");
     return { providerTaskId: id, status: "queued" };
@@ -93,7 +116,7 @@ export class RunwayVideoProvider implements VideoProvider {
       signal: AbortSignal.timeout(20_000),
     });
     const json = asRecord(await response.json().catch(() => ({})));
-    if (!response.ok) throw new Error(`RUNWAY_HTTP_${response.status}:${errorMessage(json).slice(0, 500)}`);
+    if (!response.ok) throw new Error(`RUNWAY_HTTP_${response.status}:${formatRunwayApiError(json).slice(0, 1000)}`);
     const raw = String(json.status || "PENDING").toUpperCase();
     const outputs = Array.isArray(json.output) ? json.output : [];
     const status: GenerateVideoResult["status"] = raw === "SUCCEEDED" ? "completed" : raw === "FAILED" || raw === "CANCELED" || raw === "CANCELLED" ? "failed" : raw === "RUNNING" || raw === "IN_PROGRESS" ? "generating" : "queued";
