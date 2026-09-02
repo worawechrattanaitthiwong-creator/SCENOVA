@@ -1,5 +1,6 @@
 import type { ModelDefinition } from "@/lib/domain";
 import { assertEmergencyCapability, enforceEmergencyRateLimit } from "@/lib/emergency-security";
+import { readCharacterReference, verifyCharacterReferenceSignature } from "@/lib/character-reference-storage";
 import type { GenerateVideoRequest, GenerateVideoResult, ProviderRuntimeCredential, VideoProvider } from "@/lib/providers/video-provider";
 import { resolveVideoApiModelId } from "@/lib/video-model-versions";
 import { asRecord, buildCompiledVideoPrompt, byokAwareEstimate, clampInt, errorMessage, runwayRatio } from "@/lib/providers/video-provider-utils";
@@ -8,9 +9,97 @@ const DEFAULT_BASE_URL = "https://api.dev.runwayml.com/v1";
 const DEFAULT_MODEL = "gen4.5";
 const RUNWAY_VERSION = "2024-11-06";
 const RUNWAY_PROMPT_MAX_CHARS = 1000;
+const CHARACTER_REFERENCE_PREFIX = "/api/character-references/";
+const RUNWAY_EPHEMERAL_CACHE_MS = 23 * 60 * 60 * 1000;
+
+const runwayEphemeralCache = new Map<string, { uri: string; expiresAt: number }>();
 
 export function normalizeRunwayPromptText(value: string) {
   return value.trim().slice(0, RUNWAY_PROMPT_MAX_CHARS);
+}
+
+export function parseSignedCharacterReference(value: string) {
+  try {
+    const url = new URL(value, "https://scenova.invalid");
+    if (!url.pathname.startsWith(CHARACTER_REFERENCE_PREFIX)) return null;
+    const id = decodeURIComponent(url.pathname.slice(CHARACTER_REFERENCE_PREFIX.length));
+    const owner = url.searchParams.get("o") || "";
+    const signature = url.searchParams.get("sig") || "";
+    if (!id || !owner || !signature) return null;
+    return { id, owner, signature };
+  } catch {
+    return null;
+  }
+}
+
+async function loadSignedCharacterReference(value: string) {
+  const parsed = parseSignedCharacterReference(value);
+  if (!parsed) return null;
+  if (!verifyCharacterReferenceSignature(parsed.owner, parsed.id, parsed.signature)) {
+    throw new Error("RUNWAY_PROMPT_IMAGE_REFERENCE_INVALID:Character reference signature is invalid or expired");
+  }
+  const file = await readCharacterReference(parsed.owner, parsed.id);
+  if (!file) throw new Error("RUNWAY_PROMPT_IMAGE_REFERENCE_NOT_FOUND:Character reference file is missing");
+  return { ...parsed, ...file };
+}
+
+function filenameForMime(id: string, mime: string) {
+  if (/\.(jpg|jpeg|png|webp)$/i.test(id)) return id;
+  if (mime === "image/png") return `${id}.png`;
+  if (mime === "image/webp") return `${id}.webp`;
+  return `${id}.jpg`;
+}
+
+async function uploadRunwayEphemeralImage(input: {
+  apiKey: string;
+  baseUrl: string;
+  sourceKey: string;
+  id: string;
+  mime: string;
+  data: Buffer;
+}) {
+  const cached = runwayEphemeralCache.get(input.sourceKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.uri;
+
+  const filename = filenameForMime(input.id, input.mime);
+  const startResponse = await fetch(`${input.baseUrl}/uploads`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${input.apiKey}`,
+      "Content-Type": "application/json",
+      "X-Runway-Version": RUNWAY_VERSION,
+    },
+    body: JSON.stringify({ filename, type: "ephemeral" }),
+    signal: AbortSignal.timeout(20_000),
+  });
+  const startJson = asRecord(await startResponse.json().catch(() => ({})));
+  if (!startResponse.ok) {
+    throw new Error(`RUNWAY_UPLOAD_INIT_HTTP_${startResponse.status}:${formatRunwayApiError(startJson).slice(0, 800)}`);
+  }
+
+  const uploadUrl = typeof startJson.uploadUrl === "string" ? startJson.uploadUrl : "";
+  const runwayUri = typeof startJson.runwayUri === "string" ? startJson.runwayUri : "";
+  const fields = asRecord(startJson.fields);
+  if (!uploadUrl || !runwayUri) throw new Error("RUNWAY_UPLOAD_INVALID_RESPONSE:MISSING_UPLOAD_URL_OR_URI");
+
+  const form = new FormData();
+  for (const [key, value] of Object.entries(fields)) {
+    if (typeof value === "string" || typeof value === "number") form.append(key, String(value));
+  }
+  form.append("file", new Blob([Uint8Array.from(input.data)], { type: input.mime }), filename);
+
+  const uploadResponse = await fetch(uploadUrl, {
+    method: "POST",
+    body: form,
+    signal: AbortSignal.timeout(60_000),
+  });
+  if (!uploadResponse.ok) {
+    const detail = (await uploadResponse.text().catch(() => "")).replace(/\s+/g, " ").trim();
+    throw new Error(`RUNWAY_UPLOAD_HTTP_${uploadResponse.status}:${detail.slice(0, 800) || "Ephemeral image upload failed"}`);
+  }
+
+  runwayEphemeralCache.set(input.sourceKey, { uri: runwayUri, expiresAt: Date.now() + RUNWAY_EPHEMERAL_CACHE_MS });
+  return runwayUri;
 }
 
 export function formatRunwayApiError(payload: Record<string, unknown>) {
@@ -61,6 +150,22 @@ export class RunwayVideoProvider implements VideoProvider {
     };
   }
 
+  private async preparePromptImage(value?: string) {
+    if (!value) return undefined;
+    if (value.startsWith("runway://") || value.startsWith("data:")) return value;
+
+    const file = await loadSignedCharacterReference(value);
+    if (!file) return value;
+    return uploadRunwayEphemeralImage({
+      apiKey: this.apiKey,
+      baseUrl: this.baseUrl,
+      sourceKey: `${file.owner}:${file.id}`,
+      id: file.id,
+      mime: file.mime,
+      data: file.data,
+    });
+  }
+
   getModelDefinition(): ModelDefinition {
     return {
       id: "runway-gen4.5",
@@ -93,13 +198,14 @@ export class RunwayVideoProvider implements VideoProvider {
     const duration = clampInt(request.renderSegment.duration, 2, 10);
     const modelId = resolveVideoApiModelId("Runway", request.modelVersionId) || this.modelId;
     if (modelId === "gen4_turbo" && !request.imageReferences[0]) throw new Error("RUNWAY_GEN4_TURBO_REQUIRES_IMAGE_REFERENCE");
+    const promptImage = await this.preparePromptImage(request.imageReferences[0]);
     const body: Record<string, unknown> = {
       model: modelId,
       promptText: normalizeRunwayPromptText(buildCompiledVideoPrompt(request)),
       ratio: runwayRatio(request.aspectRatio),
       duration,
     };
-    if (request.imageReferences[0]) body.promptImage = request.imageReferences[0];
+    if (promptImage) body.promptImage = promptImage;
 
     const response = await fetch(`${this.baseUrl}/image_to_video`, {
       method: "POST",
