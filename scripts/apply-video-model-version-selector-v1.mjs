@@ -1,196 +1,46 @@
 import { readFileSync, writeFileSync } from "node:fs";
 
-function read(path) { return readFileSync(path, "utf8"); }
-function write(path, content) { writeFileSync(path, content, "utf8"); }
-function replaceOnce(content, from, to, path) {
-  if (!content.includes(from)) throw new Error(`PATCH_TARGET_NOT_FOUND:${path}:${from.slice(0, 90)}`);
-  return content.replace(from, to);
+const path = "components/single-episode-studio.tsx";
+let source = readFileSync(path, "utf8");
+
+if (source.includes("const MODEL_PROFILES: StudioModelProfile[]")) {
+  console.log("Single Episode model readiness UI already applied.");
+  process.exit(0);
 }
 
-const versionsFile = `export type VideoModelVersion = {
-  id: string;
-  label: string;
-  apiModelId: string;
-  note: string;
-  recommended?: boolean;
-};
-
-export const VIDEO_MODEL_VERSIONS: Record<string, VideoModelVersion[]> = {
-  "Seedance 2.5": [
-    { id: "seedance-2.5", label: "Seedance 2.5", apiModelId: "dreamina-seedance-2-5-260628", note: "คุณภาพหลัก · Multimodal", recommended: true },
-    { id: "seedance-2.0-fast", label: "Seedance 2.0 Fast", apiModelId: "dreamina-seedance-2-0-fast-260128", note: "เน้นความเร็ว" },
-    { id: "seedance-2.0-mini", label: "Seedance 2.0 Mini", apiModelId: "dreamina-seedance-2-0-mini-260615", note: "ประหยัดสำหรับ Preview" },
-  ],
-  Kling: [
-    { id: "kling-v3", label: "Kling V3", apiModelId: "kling-v3", note: "รุ่นหลัก · Motion / Multi-shot", recommended: true },
-    { id: "kling-v3-turbo", label: "Kling V3 Turbo", apiModelId: "kling-v3-turbo", note: "เร็วกว่า" },
-    { id: "kling-v2-6", label: "Kling V2.6", apiModelId: "kling-v2-6", note: "รุ่นเสถียรพร้อมเสียง" },
-  ],
-  Veo: [
-    { id: "veo-3.1-lite", label: "Veo 3.1 Lite", apiModelId: "veo-3.1-lite-generate-preview", note: "ประหยัด · เหมาะกับการเริ่มทดสอบ", recommended: true },
-    { id: "veo-3.1-fast", label: "Veo 3.1 Fast", apiModelId: "veo-3.1-fast-generate-preview", note: "สมดุลความเร็วและคุณภาพ" },
-    { id: "veo-3.1-standard", label: "Veo 3.1 Standard", apiModelId: "veo-3.1-generate-preview", note: "คุณภาพสูง" },
-  ],
-  Runway: [
-    { id: "runway-gen4.5", label: "Runway Gen-4.5", apiModelId: "gen4.5", note: "รุ่นหลัก · Text / Image to Video", recommended: true },
-    { id: "runway-gen4-turbo", label: "Runway Gen-4 Turbo", apiModelId: "gen4_turbo", note: "เร็วและประหยัดกว่า · เหมาะกับ Image to Video" },
-  ],
-  Wan: [
-    { id: "wan3-standard", label: "Wan 3.0 Standard", apiModelId: "wan3.0-video", note: "ประหยัด · All-in-One", recommended: true },
-    { id: "wan3-prime", label: "Wan 3.0 Prime", apiModelId: "wan3.0-video-prime", note: "รุ่นเร่งความเร็ว" },
-  ],
-};
-
-export function getVideoModelVersions(modelName: string) {
-  return VIDEO_MODEL_VERSIONS[modelName] || [];
+function replaceOnce(before, after, label) {
+  const count = source.split(before).length - 1;
+  if (count !== 1) throw new Error(`${label}: expected exactly one anchor, found ${count}`);
+  source = source.replace(before, after);
 }
 
-export function getDefaultVideoModelVersion(modelName: string) {
-  const versions = getVideoModelVersions(modelName);
-  return versions.find((item) => item.recommended) || versions[0];
-}
+replaceOnce(
+`type SelectedCharacterPayload = {\n  id?: string;\n  title?: string;\n  metadata?: {\n    role?: string;\n    appearance?: string;\n    personality?: string;\n    costume?: string;\n    voiceProfile?: string;\n    promptHint?: string;\n    referenceImages?: string[];\n  };\n};\n\nconst MODELS = ["Seedance 2.5", "Kling", "Veo", "Runway", "Wan"];`,
+`type SelectedCharacterPayload = {\n  id?: string;\n  title?: string;\n  metadata?: {\n    role?: string;\n    appearance?: string;\n    personality?: string;\n    costume?: string;\n    voiceProfile?: string;\n    promptHint?: string;\n    referenceImages?: string[];\n  };\n};\n\ntype StudioVideoConnection = {\n  provider: string;\n  kind: string;\n  modelId: string | null;\n  enabledModelIds: string[];\n  status: string;\n  enabled: boolean;\n};\n\ntype StudioVideoProvider = {\n  id: string;\n  kind: string;\n  status: string;\n  systemConfigured?: boolean;\n};\n\ntype StudioVideoConnectionsPayload = {\n  ok?: boolean;\n  connections?: StudioVideoConnection[];\n  providers?: StudioVideoProvider[];\n};\n\ntype StudioModelProfile = {\n  value: string;\n  label: string;\n  providerId: string;\n  image: "ready" | "adapter" | "no";\n  mode: "generate" | "video-edit" | "hdr";\n  nativeAudio?: boolean;\n};\n\nconst MODEL_PROFILES: StudioModelProfile[] = [\n  { value: "Seedance 2.5", label: "Seedance 2.5", providerId: "seedance", image: "ready", mode: "generate", nativeAudio: true },\n  { value: "Kling", label: "Kling", providerId: "kling", image: "ready", mode: "generate", nativeAudio: true },\n  { value: "Veo", label: "Veo", providerId: "veo", image: "adapter", mode: "generate", nativeAudio: true },\n  { value: "Runway", label: "Runway Gen-4", providerId: "runway", image: "ready", mode: "generate" },\n  { value: "Seedance 2.5 (Runway)", label: "Seedance 2.5 — Runway", providerId: "runway-seedance", image: "ready", mode: "generate", nativeAudio: true },\n  { value: "Gemini Omni Flash 1.1 (Runway)", label: "Gemini Omni Flash 1.1 — Runway", providerId: "runway-gemini-omni", image: "ready", mode: "generate", nativeAudio: true },\n  { value: "Aleph 2.0 (Runway)", label: "Aleph 2.0 — Runway", providerId: "runway-aleph", image: "no", mode: "video-edit" },\n  { value: "Ruby HDR (Runway)", label: "Ruby HDR — Runway", providerId: "runway-ruby", image: "no", mode: "hdr", nativeAudio: true },\n  { value: "Wan", label: "Wan", providerId: "wan", image: "ready", mode: "generate", nativeAudio: true },\n];\n\nconst MODELS = MODEL_PROFILES.map((item) => item.value);`,
+"model profiles",
+);
 
-export function getDefaultVideoModelVersionId(modelName: string) {
-  return getDefaultVideoModelVersion(modelName)?.apiModelId || "";
-}
+replaceOnce(
+`  const [sceneAiMeta, setSceneAiMeta] = useState<AiDirectorMeta | null>(null);\n  const [sceneAiUndo, setSceneAiUndo] = useState<StoryScene[] | null>(null);\n\n  useEffect(() => {\n    const raw = localStorage.getItem("scenova-selected-character-v1");`,
+`  const [sceneAiMeta, setSceneAiMeta] = useState<AiDirectorMeta | null>(null);\n  const [sceneAiUndo, setSceneAiUndo] = useState<StoryScene[] | null>(null);\n  const [videoConnections, setVideoConnections] = useState<StudioVideoConnection[]>([]);\n  const [videoProviders, setVideoProviders] = useState<StudioVideoProvider[]>([]);\n  const [videoConnectionLoading, setVideoConnectionLoading] = useState(true);\n\n  useEffect(() => {\n    let active = true;\n    void (async () => {\n      try {\n        const response = await fetch("/api/api-connections", { credentials: "same-origin", cache: "no-store" });\n        const data = await response.json() as StudioVideoConnectionsPayload;\n        if (!active || !response.ok) return;\n        setVideoConnections(Array.isArray(data.connections) ? data.connections.filter((item) => item.kind === "VIDEO") : []);\n        setVideoProviders(Array.isArray(data.providers) ? data.providers.filter((item) => item.kind === "VIDEO") : []);\n      } catch {\n        // Readiness indicators remain unavailable; generation controls still work normally.\n      } finally {\n        if (active) setVideoConnectionLoading(false);\n      }\n    })();\n    return () => { active = false; };\n  }, []);\n\n  useEffect(() => {\n    const raw = localStorage.getItem("scenova-selected-character-v1");`,
+"connection readiness state",
+);
 
-export function resolveVideoApiModelId(modelName: string, selected?: string | null) {
-  if (!selected) return undefined;
-  const version = getVideoModelVersions(modelName).find((item) => item.apiModelId === selected || item.id === selected);
-  return version?.apiModelId;
-}
+replaceOnce(
+`  const selectedScene = scenes.find((scene) => scene.id === selectedSceneId) || scenes[0];\n  const modelVersions = useMemo(() => getVideoModelVersions(model), [model]);\n  const selectedModelVersion = modelVersions.find((item) => item.apiModelId === modelVersion) || modelVersions[0];\n  const videoCapability = getVideoUiCapability(model);`,
+`  const selectedScene = scenes.find((scene) => scene.id === selectedSceneId) || scenes[0];\n  const modelVersions = useMemo(() => getVideoModelVersions(model), [model]);\n  const selectedModelVersion = modelVersions.find((item) => item.apiModelId === modelVersion) || modelVersions[0];\n  const selectedModelProfile = MODEL_PROFILES.find((item) => item.value === model) || MODEL_PROFILES[0];\n  const modelConnectionStates = useMemo(() => Object.fromEntries(MODEL_PROFILES.map((profile) => {\n    const provider = videoProviders.find((item) => item.id === profile.providerId);\n    const connection = videoConnections.find((item) => item.provider === profile.providerId && item.kind === "VIDEO");\n    const adapterReady = provider?.status === "READY";\n    const userConnectionReady = Boolean(connection?.enabled && connection.status === "CONNECTED");\n    const credentialReady = userConnectionReady || Boolean(provider?.systemConfigured);\n    const operationalReady = adapterReady && credentialReady;\n    return [profile.value, { adapterReady, credentialReady, operationalReady, primaryReady: operationalReady && profile.mode === "generate" }];\n  })), [videoConnections, videoProviders]);\n  const selectedConnection = videoConnections.find((item) => item.provider === selectedModelProfile.providerId && item.kind === "VIDEO");\n  const selectedProvider = videoProviders.find((item) => item.id === selectedModelProfile.providerId);\n  const selectedConnectionState = modelConnectionStates[model];\n  const selectedEnabledIds = Array.isArray(selectedConnection?.enabledModelIds) ? selectedConnection.enabledModelIds : [];\n  const selectedVersionEnabled = Boolean(selectedProvider?.systemConfigured) || Boolean(\n    selectedConnection?.enabled\n    && selectedConnection.status === "CONNECTED"\n    && (selectedEnabledIds.length === 0\n      || !selectedModelVersion\n      || selectedEnabledIds.includes(selectedModelVersion.apiModelId)\n      || selectedConnection.modelId === selectedModelVersion.apiModelId)\n  );\n  const selectedModelReady = Boolean(selectedConnectionState?.primaryReady && selectedVersionEnabled);\n  const videoCapability = getVideoUiCapability(model);`,
+"model readiness computed state",
+);
 
-export function getVideoModelVersionLabel(modelName: string, selected?: string | null) {
-  if (!selected) return "Provider default";
-  const version = getVideoModelVersions(modelName).find((item) => item.apiModelId === selected || item.id === selected);
-  return version?.label || selected;
-}
-`;
-write("lib/video-model-versions.ts", versionsFile);
+replaceOnce(
+`            <div className={styles.field}><span>โมเดลวิดีโอ / รุ่น</span><div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1.2fr)", gap: 6 }}><select aria-label="โมเดลวิดีโอ" value={model} onChange={(event) => changeModel(event.target.value)}>{MODELS.map((item) => <option key={item}>{item}</option>)}</select><select aria-label="รุ่นโมเดล" value={modelVersion} onChange={(event) => setModelVersion(event.target.value)}>{modelVersions.map((item) => <option key={item.apiModelId} value={item.apiModelId}>{item.label}</option>)}</select></div><small>{selectedModelVersion ? \`รุ่นที่ใช้จริง: \${selectedModelVersion.label} · \${selectedModelVersion.note}\` : "เลือกรุ่นของ Provider ที่จะใช้สร้างคลิปจริง"}</small></div>`,
+`            <div className={styles.field}>\n              <span>โมเดลวิดีโอ / รุ่น</span>\n              <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1.2fr)", gap: 6 }}>\n                <select aria-label="โมเดลวิดีโอ" value={model} onChange={(event) => changeModel(event.target.value)}>\n                  {MODEL_PROFILES.map((item) => {\n                    const state = modelConnectionStates[item.value];\n                    const marker = videoConnectionLoading ? "⚪" : state?.operationalReady ? (item.mode === "generate" ? "🟢" : "🟣") : state?.adapterReady ? "🟠" : "🔴";\n                    const inputMarker = item.image === "ready" ? "🖼" : item.image === "adapter" ? "⚠️🖼" : item.mode === "generate" ? "" : "🎞";\n                    return <option key={item.value} value={item.value}>{marker} {inputMarker} {item.label}</option>;\n                  })}\n                </select>\n                <select aria-label="รุ่นโมเดล" value={modelVersion} onChange={(event) => setModelVersion(event.target.value)}>\n                  {modelVersions.map((item) => {\n                    const versionReady = Boolean(selectedProvider?.systemConfigured) || Boolean(selectedConnection?.enabled && selectedConnection.status === "CONNECTED" && (selectedEnabledIds.length === 0 || selectedEnabledIds.includes(item.apiModelId) || selectedConnection.modelId === item.apiModelId));\n                    return <option key={item.apiModelId} value={item.apiModelId}>{versionReady ? "🟢" : "⚪"} {item.label}</option>;\n                  })}\n                </select>\n              </div>\n              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, marginTop: 6 }}>\n                <span style={{ padding: "3px 7px", borderRadius: 999, border: "1px solid rgba(255,255,255,.12)", fontSize: 10 }}>\n                  {videoConnectionLoading ? "⚪ กำลังตรวจ Connection…" : selectedConnectionState?.operationalReady ? (selectedModelProfile.mode === "generate" ? "🟢 พร้อมใช้งาน" : "🟣 Connection พร้อม · เครื่องมือแปลงวิดีโอ") : selectedConnectionState?.adapterReady ? "🟠 ยังไม่ได้เชื่อมต่อ / Connection ไม่พร้อม" : "🔴 Adapter ยังไม่พร้อม"}\n                </span>\n                <span style={{ padding: "3px 7px", borderRadius: 999, border: "1px solid rgba(255,255,255,.12)", fontSize: 10 }}>\n                  {selectedModelProfile.image === "ready" ? "🖼 รับรูปอ้างอิง" : selectedModelProfile.image === "adapter" ? "⚠️🖼 Model รองรับรูป แต่ SCENOVA Adapter ยังไม่ส่งรูป" : "🎞 ใช้วิดีโอต้นฉบับ ไม่รับรูป"}\n                </span>\n                {selectedModelProfile.nativeAudio ? <span style={{ padding: "3px 7px", borderRadius: 999, border: "1px solid rgba(255,255,255,.12)", fontSize: 10 }}>🔊 Native Audio</span> : null}\n                {selectedModelProfile.mode === "video-edit" ? <span style={{ padding: "3px 7px", borderRadius: 999, border: "1px solid rgba(167,112,255,.35)", fontSize: 10 }}>🎞 Video Edit เท่านั้น · ต้องมีวิดีโอต้นฉบับ</span> : null}\n                {selectedModelProfile.mode === "hdr" ? <span style={{ padding: "3px 7px", borderRadius: 999, border: "1px solid rgba(167,112,255,.35)", fontSize: 10 }}>🎞 HDR Post-process เท่านั้น · ต้องมีวิดีโอต้นฉบับ</span> : null}\n                {!videoConnectionLoading && selectedModelProfile.mode === "generate" && !selectedModelReady ? <Link href="/profile/api" style={{ fontSize: 10, color: "#bd8cff" }}>ตั้งค่า Provider →</Link> : null}\n              </div>\n              <small>{selectedModelVersion ? \`รุ่นที่ใช้จริง: \${selectedModelVersion.label} · \${selectedModelVersion.note}\` : "เลือกรุ่นของ Provider ที่จะใช้สร้างคลิปจริง"}</small>\n            </div>`,
+"studio model selector",
+);
 
-{
-  const path = "lib/domain.ts";
-  let src = read(path);
-  src = replaceOnce(src, "  mainModelId: string;\n  modelMode: ModelMode;", "  mainModelId: string;\n  mainModelVersionId?: string;\n  modelMode: ModelMode;", path);
-  write(path, src);
-}
+if (!source.includes("Seedance 2.5 — Runway")) throw new Error("Split Runway model labels were not added");
+if (!source.includes("🖼 รับรูปอ้างอิง")) throw new Error("Image support indicator was not added");
+if (!source.includes("/api/api-connections")) throw new Error("Live connection readiness lookup was not added");
 
-{
-  const path = "lib/providers/video-provider.ts";
-  let src = read(path);
-  src = replaceOnce(src, "  episodeId: string;\n  renderSegment: RenderSegment;", "  episodeId: string;\n  modelVersionId?: string;\n  renderSegment: RenderSegment;", path);
-  write(path, src);
-}
-
-{
-  const path = "components/single-episode-studio.tsx";
-  let src = read(path);
-  src = replaceOnce(src,
-    'import { getVideoUiCapability } from "@/lib/providers/video-ui-capabilities";',
-    'import { getVideoUiCapability } from "@/lib/providers/video-ui-capabilities";\nimport { getDefaultVideoModelVersionId, getVideoModelVersions } from "@/lib/video-model-versions";', path);
-  src = replaceOnce(src,
-    '  const [model, setModel] = useState("Seedance 2.5");\n  const [aspect, setAspect] = useState("16:9 — Widescreen");',
-    '  const [model, setModel] = useState("Seedance 2.5");\n  const [modelVersion, setModelVersion] = useState(() => getDefaultVideoModelVersionId("Seedance 2.5"));\n  const [aspect, setAspect] = useState("16:9 — Widescreen");', path);
-  src = replaceOnce(src,
-    '  const selectedScene = scenes.find((scene) => scene.id === selectedSceneId) || scenes[0];\n  const videoCapability = getVideoUiCapability(model);',
-    '  const selectedScene = scenes.find((scene) => scene.id === selectedSceneId) || scenes[0];\n  const modelVersions = useMemo(() => getVideoModelVersions(model), [model]);\n  const selectedModelVersion = modelVersions.find((item) => item.apiModelId === modelVersion) || modelVersions[0];\n  const videoCapability = getVideoUiCapability(model);', path);
-  src = replaceOnce(src,
-    '    setModel(nextModel);\n    setScenes((current) => {',
-    '    setModel(nextModel);\n    setModelVersion(getDefaultVideoModelVersionId(nextModel));\n    setScenes((current) => {', path);
-  src = replaceOnce(src,
-    '        model,\n        aspect,',
-    '        model,\n        modelVersion,\n        aspect,', path);
-  src = replaceOnce(src,
-    '<label className={styles.field}><span>โมเดลวิดีโอ</span><select value={model} onChange={(event) => changeModel(event.target.value)}>{MODELS.map((item) => <option key={item}>{item}</option>)}</select><small>เลือก Provider ที่จะใช้สร้างคลิปจริง</small></label>',
-    '<div className={styles.field}><span>โมเดลวิดีโอ / รุ่น</span><div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1.2fr)", gap: 6 }}><select aria-label="โมเดลวิดีโอ" value={model} onChange={(event) => changeModel(event.target.value)}>{MODELS.map((item) => <option key={item}>{item}</option>)}</select><select aria-label="รุ่นโมเดล" value={modelVersion} onChange={(event) => setModelVersion(event.target.value)}>{modelVersions.map((item) => <option key={item.apiModelId} value={item.apiModelId}>{item.label}</option>)}</select></div><small>{selectedModelVersion ? `รุ่นที่ใช้จริง: ${selectedModelVersion.label} · ${selectedModelVersion.note}` : "เลือกรุ่นของ Provider ที่จะใช้สร้างคลิปจริง"}</small></div>', path);
-  write(path, src);
-}
-
-{
-  const path = "lib/agent/studio-project.ts";
-  let src = read(path);
-  src = replaceOnce(src,
-    '  model: string;\n  aspect: string;',
-    '  model: string;\n  modelVersion?: string;\n  aspect: string;', path);
-  src = replaceOnce(src,
-    '    mainModelId,\n    modelMode: "single",',
-    '    mainModelId,\n    mainModelVersionId: draft.modelVersion || undefined,\n    modelMode: "single",', path);
-  src = replaceOnce(src,
-    '      `โมเดลหลัก: ${draft.model}`,',
-    '      `โมเดลหลัก: ${draft.model}`,\n      `รุ่นโมเดล: ${draft.modelVersion || "Provider default"}`,', path);
-  write(path, src);
-}
-
-{
-  const path = "lib/prompt-engine.ts";
-  let src = read(path);
-  src = replaceOnce(src,
-    'TARGET MODEL: ${model.name}\\nPROMPT MODE:',
-    'TARGET MODEL: ${model.name}\\nMODEL VERSION: ${project.mainModelVersionId || "Provider default"}\\nPROMPT MODE:', path);
-  write(path, src);
-}
-
-{
-  const path = "lib/agent/worker-runtime.ts";
-  let src = read(path);
-  src = replaceOnce(src,
-    '        episodeId: episode.id,\n        renderSegment,',
-    '        episodeId: episode.id,\n        modelVersionId: project.mainModelVersionId,\n        renderSegment,', path);
-  write(path, src);
-}
-
-for (const [path, family, target, replacement] of [
-  ["lib/providers/veo-video-provider.ts", "Veo", 'const DEFAULT_MODEL = "veo-3.1-generate-preview";', 'const DEFAULT_MODEL = "veo-3.1-generate-preview";'],
-  ["lib/providers/seedance-video-provider.ts", "Seedance 2.5", 'const DEFAULT_MODEL = "dreamina-seedance-2-5-260628";', 'const DEFAULT_MODEL = "dreamina-seedance-2-5-260628";'],
-  ["lib/providers/kling-video-provider.ts", "Kling", 'const DEFAULT_MODEL = "kling-v3";', 'const DEFAULT_MODEL = "kling-v3";'],
-  ["lib/providers/runway-video-provider.ts", "Runway", 'const DEFAULT_MODEL = "gen4.5";', 'const DEFAULT_MODEL = "gen4.5";'],
-  ["lib/providers/wan-video-provider.ts", "Wan", 'const DEFAULT_MODEL = "wan2.6-t2v";', 'const DEFAULT_MODEL = "wan3.0-video";'],
-]) {
-  let src = read(path);
-  src = replaceOnce(src,
-    'import type { GenerateVideoRequest, GenerateVideoResult, ProviderRuntimeCredential, VideoProvider } from "@/lib/providers/video-provider";',
-    'import type { GenerateVideoRequest, GenerateVideoResult, ProviderRuntimeCredential, VideoProvider } from "@/lib/providers/video-provider";\nimport { resolveVideoApiModelId } from "@/lib/video-model-versions";', path);
-  src = replaceOnce(src, target, replacement, path);
-  if (family === "Veo") {
-    src = replaceOnce(src,
-      '    const instances: Array<Record<string, unknown>> = [{ prompt: buildCompiledVideoPrompt(request).slice(0, 8000) }];',
-      '    const modelId = resolveVideoApiModelId("Veo", request.modelVersionId) || this.modelId;\n    const instances: Array<Record<string, unknown>> = [{ prompt: buildCompiledVideoPrompt(request).slice(0, 8000) }];', path);
-    src = replaceOnce(src, '${this.baseUrl}/models/${encodeURIComponent(this.modelId)}:predictLongRunning', '${this.baseUrl}/models/${encodeURIComponent(modelId)}:predictLongRunning', path);
-  } else if (family === "Seedance 2.5") {
-    src = replaceOnce(src,
-      '    const duration = Math.round(request.renderSegment.duration);',
-      '    const duration = Math.round(request.renderSegment.duration);\n    const modelId = resolveVideoApiModelId("Seedance 2.5", request.modelVersionId) || this.modelId;', path);
-    src = replaceOnce(src, '        model: this.modelId,', '        model: modelId,', path);
-  } else if (family === "Kling") {
-    src = replaceOnce(src,
-      '    const hasImage = Boolean(request.imageReferences[0]);',
-      '    const modelId = resolveVideoApiModelId("Kling", request.modelVersionId) || this.modelId;\n    const hasImage = Boolean(request.imageReferences[0]);', path);
-    src = replaceOnce(src, '      model_name: this.modelId,', '      model_name: modelId,', path);
-  } else if (family === "Runway") {
-    src = replaceOnce(src,
-      '    const duration = clampInt(request.renderSegment.duration, 2, 10);\n    const body: Record<string, unknown> = {',
-      '    const duration = clampInt(request.renderSegment.duration, 2, 10);\n    const modelId = resolveVideoApiModelId("Runway", request.modelVersionId) || this.modelId;\n    if (modelId === "gen4_turbo" && !request.imageReferences[0]) throw new Error("RUNWAY_GEN4_TURBO_REQUIRES_IMAGE_REFERENCE");\n    const body: Record<string, unknown> = {', path);
-    src = replaceOnce(src, '      model: this.modelId,', '      model: modelId,', path);
-  } else if (family === "Wan") {
-    src = replaceOnce(src,
-      '    const input: Record<string, unknown> = { prompt: buildCompiledVideoPrompt(request).slice(0, 5000) };',
-      '    const modelId = resolveVideoApiModelId("Wan", request.modelVersionId) || this.modelId;\n    const input: Record<string, unknown> = { prompt: buildCompiledVideoPrompt(request).slice(0, 5000) };', path);
-    src = replaceOnce(src, '        model: this.modelId,', '        model: modelId,', path);
-    src = replaceOnce(src, '          audio: request.audioReferences.length > 0 || /2\\.6|2\\.7/.test(this.modelId),', '          audio: request.audioReferences.length > 0 || /2\\.6|2\\.7|3\\.0/.test(modelId),', path);
-  }
-  write(path, src);
-}
-
-{
-  const path = "app/models/page.tsx";
-  let src = read(path);
-  src = replaceOnce(src,
-    'import { VIDEO_MODELS } from "@/lib/catalogs";',
-    'import { VIDEO_MODELS } from "@/lib/catalogs";\nimport { getVideoModelVersions } from "@/lib/video-model-versions";', path);
-  src = replaceOnce(src,
-    '          <p className={styles.description}>{model.descriptionTh}</p>\n          <div className={styles.specs}>',
-    '          <p className={styles.description}>{model.descriptionTh}</p>\n          <div className={styles.tags}>{getVideoModelVersions(model.name).map((version) => <span key={version.apiModelId}>{version.label}{version.recommended ? " · แนะนำ" : ""}</span>)}</div>\n          <div className={styles.specs}>', path);
-  write(path, src);
-}
-
-console.log("Applied video model version selector and provider routing.");
+writeFileSync(path, source, "utf8");
+console.log("Applied complete video model readiness and image-input indicators to Single Episode Studio.");
