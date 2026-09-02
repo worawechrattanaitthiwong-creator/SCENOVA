@@ -163,6 +163,19 @@ export function formatRunwayApiError(payload: Record<string, unknown>) {
   return details.length ? `${primary} | issues: ${details.join(" | ")}` : primary;
 }
 
+function explicitRenderSegmentImage(renderSegment: GenerateVideoRequest["renderSegment"]) {
+  const raw = (renderSegment as GenerateVideoRequest["renderSegment"] & { imageReferences?: unknown }).imageReferences;
+  if (!Array.isArray(raw)) return undefined;
+  return raw.find((value): value is string => typeof value === "string" && Boolean(value.trim()))?.trim();
+}
+
+export function runwayPromptImageSource(request: GenerateVideoRequest) {
+  // Agent text-to-video must never inherit an image reference from another layer.
+  // An Agent render uses an image only when that exact RenderSegment explicitly carries one.
+  if (request.idempotencyKey.startsWith("agent:")) return explicitRenderSegmentImage(request.renderSegment);
+  return request.imageReferences[0];
+}
+
 export class RunwayVideoProvider implements VideoProvider {
   id = "runway";
   credentialProviderId = "runway";
@@ -243,12 +256,14 @@ export class RunwayVideoProvider implements VideoProvider {
 
     const duration = clampInt(request.renderSegment.duration, 2, 10);
     const modelId = resolveVideoApiModelId("Runway", request.modelVersionId) || this.modelId;
-    if (modelId === "gen4_turbo" && !request.imageReferences[0]) throw new Error("RUNWAY_GEN4_TURBO_REQUIRES_IMAGE_REFERENCE");
-    const promptImage = await this.preparePromptImage(request.imageReferences[0]);
+    const promptImageSource = runwayPromptImageSource(request);
+    if (modelId === "gen4_turbo" && !promptImageSource) throw new Error("RUNWAY_GEN4_TURBO_REQUIRES_IMAGE_REFERENCE");
+    const promptImage = await this.preparePromptImage(promptImageSource);
+    const ratio = runwayRatio(request.aspectRatio);
     const body: Record<string, unknown> = {
       model: modelId,
       promptText: normalizeRunwayPromptText(buildCompiledVideoPrompt(request)),
-      ratio: runwayRatio(request.aspectRatio),
+      ratio,
       duration,
     };
     if (promptImage) body.promptImage = promptImage;
@@ -260,7 +275,10 @@ export class RunwayVideoProvider implements VideoProvider {
       signal: AbortSignal.timeout(30_000),
     });
     const json = asRecord(await response.json().catch(() => ({})));
-    if (!response.ok) throw new Error(`RUNWAY_HTTP_${response.status}:${formatRunwayApiError(json).slice(0, 1000)}`);
+    if (!response.ok) {
+      const diagnostic = `model=${modelId};ratio=${ratio};promptImage=${promptImage ? "yes" : "no"};agent=${request.idempotencyKey.startsWith("agent:") ? "yes" : "no"}`;
+      throw new Error(`RUNWAY_HTTP_${response.status}:${formatRunwayApiError(json).slice(0, 850)} | request: ${diagnostic}`);
+    }
     const id = typeof json.id === "string" ? json.id : "";
     if (!id) throw new Error("RUNWAY_INVALID_RESPONSE:MISSING_TASK_ID");
     return { providerTaskId: id, status: "queued" };
