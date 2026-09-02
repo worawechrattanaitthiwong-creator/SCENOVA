@@ -2,6 +2,19 @@
   display: contents;
 }
 
+.topRow {
+  width: min(1540px, calc(100% - 56px));
+  margin: 0 auto 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.topRow > * {
+  min-width: 0;
+}
+
 .root :global(.sc-system-info-trigger) {
   display: none !important;
 }
@@ -10,4 +23,17 @@
    Keep Recovery Center diagnostic-only so resume/delete are not duplicated. */
 .root :global(section[data-tone="cancelled"] > div:last-child) {
   display: none !important;
+}
+
+@media (max-width: 1050px) {
+  .topRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .topRow {
+    width: calc(100% - 20px);
+    gap: 10px;
+  }
 }
