@@ -1,6 +1,17 @@
 import type { ApiConnectionKind } from "@/lib/api-connections/store";
 import { getApiRouteStage } from "@/lib/api-connections/routing";
 import { createKlingAuthorization } from "@/lib/providers/kling-video-provider";
+import { getVideoModelVersions } from "@/lib/video-model-versions";
+
+export type ProviderModelAvailability = "AVAILABLE" | "SUPPORTED" | "UNVERIFIED";
+
+export type ProviderModelOption = {
+  apiModelId: string;
+  label: string;
+  note?: string;
+  recommended?: boolean;
+  availability: ProviderModelAvailability;
+};
 
 export type ProviderDefinition = {
   id: string;
@@ -20,6 +31,7 @@ export type PublicProviderDefinition = Omit<ProviderDefinition, "systemKeyEnv"> 
   stageLabelTh: string;
   status: "READY" | "ADAPTER_PENDING";
   systemConfigured: boolean;
+  models: ProviderModelOption[];
 };
 
 export const API_PROVIDER_DEFINITIONS: ProviderDefinition[] = [
@@ -33,7 +45,7 @@ export const API_PROVIDER_DEFINITIONS: ProviderDefinition[] = [
     ready: true,
     purposeTh: "สมองวิเคราะห์คำสั่งหลัก",
     capabilityTh: "วิเคราะห์ Prompt, Locks, กล้อง, ฉาก, ตัวละคร และคืน Structured JSON",
-    credentialHintTh: "ใส่ Groq API Key แล้วระบบจะใช้เป็น Analyzer ของบัญชีนี้โดยตรง",
+    credentialHintTh: "ใส่ Groq API Key แล้วระบบจะตรวจรุ่นที่บัญชีนี้มองเห็นให้อัตโนมัติ",
   },
   {
     id: "openrouter",
@@ -45,7 +57,7 @@ export const API_PROVIDER_DEFINITIONS: ProviderDefinition[] = [
     ready: true,
     purposeTh: "Analyzer สำรองหลายโมเดล",
     capabilityTh: "Analyzer จริงผ่าน OpenAI-compatible API พร้อม Structured JSON และ Default Connection",
-    credentialHintTh: "ใส่ OpenRouter API Key และเปลี่ยน Model ได้ตามโมเดลที่บัญชีคุณเปิดใช้",
+    credentialHintTh: "ใส่ OpenRouter API Key แล้วระบบจะดึงรายชื่อโมเดลที่บัญชีมองเห็นมาให้เลือก",
   },
   {
     id: "gemini",
@@ -57,7 +69,7 @@ export const API_PROVIDER_DEFINITIONS: ProviderDefinition[] = [
     ready: true,
     purposeTh: "Analyzer / Multimodal",
     capabilityTh: "วิเคราะห์คำสั่งจริงผ่าน Gemini generateContent พร้อม Structured JSON และ Locks",
-    credentialHintTh: "ใส่ Gemini API Key; สามารถเปลี่ยน Model ในช่อง Model ได้โดยไม่เปลี่ยน Adapter",
+    credentialHintTh: "ใส่ Gemini API Key ระบบจะอ่านรายชื่อ Gemini ที่ Key นี้เข้าถึงได้โดยไม่ Generate งานเสียเงิน",
   },
   {
     id: "openai-image",
@@ -69,7 +81,7 @@ export const API_PROVIDER_DEFINITIONS: ProviderDefinition[] = [
     ready: true,
     purposeTh: "ภาพ Preview / Reference",
     capabilityTh: "สร้างภาพจริงผ่าน Image Generation API และคืน Reference ให้ Workflow ใช้ต่อ",
-    credentialHintTh: "ใส่ OpenAI API Key ที่มีสิทธิ์ใช้ Image Generation; Default ใช้ gpt-image-2",
+    credentialHintTh: "ใส่ OpenAI API Key ที่มีสิทธิ์ Image Generation ระบบจะค้นหารุ่นภาพที่ Key มองเห็น",
   },
   {
     id: "gemini-image",
@@ -81,7 +93,7 @@ export const API_PROVIDER_DEFINITIONS: ProviderDefinition[] = [
     ready: true,
     purposeTh: "ภาพ Preview / Reference",
     capabilityTh: "สร้างและแก้ภาพ Reference จริงผ่าน Gemini Interactions พร้อมรับภาพอ้างอิงหลายภาพ",
-    credentialHintTh: "ใส่ Gemini API Key; Default ใช้ gemini-3.1-flash-image และรองรับ Reference Image",
+    credentialHintTh: "ใส่ Gemini API Key ระบบจะกรองรุ่น Image ที่บัญชีเข้าถึงได้มาให้เลือก",
   },
   {
     id: "seedance",
@@ -93,7 +105,7 @@ export const API_PROVIDER_DEFINITIONS: ProviderDefinition[] = [
     ready: true,
     purposeTh: "Video Generator หลัก",
     capabilityTh: "สร้างคลิปจริงจาก Production Prompt พร้อม Image/Video/Audio Reference และ Poll สถานะจนเสร็จ",
-    credentialHintTh: "ใส่ BytePlus/Seedance API Key แล้วกดทดสอบ ระบบจะใช้ Key นี้กับงานวิดีโอของบัญชีคุณโดยตรง",
+    credentialHintTh: "ใส่ BytePlus/Seedance API Key แล้วระบบจะทดสอบ Credential และให้เลือกรุ่นที่ Adapter รองรับ",
   },
   {
     id: "kling",
@@ -112,12 +124,12 @@ export const API_PROVIDER_DEFINITIONS: ProviderDefinition[] = [
     label: "Veo",
     kind: "VIDEO",
     defaultBaseUrl: "https://generativelanguage.googleapis.com/v1beta",
-    defaultModelId: "veo-3.1-generate-preview",
+    defaultModelId: "veo-3.1-lite-generate-preview",
     systemKeyEnv: "VEO_API_KEY",
     ready: true,
     purposeTh: "Video Generator คุณภาพสูง",
     capabilityTh: "สร้าง Veo แบบ Long-running operation, Poll จนเสร็จ และ Proxy media ฝั่ง Server โดยไม่เปิดเผย Key",
-    credentialHintTh: "ใส่ Gemini API Key ที่มีสิทธิ์ใช้ Veo ระบบจะใช้ Key ฝั่ง Server เท่านั้น",
+    credentialHintTh: "ใส่ Gemini API Key ที่มีสิทธิ์ใช้ Veo ระบบจะดึงเฉพาะรุ่น Veo ที่ Key มองเห็นมาให้เลือก",
   },
   {
     id: "runway",
@@ -129,19 +141,19 @@ export const API_PROVIDER_DEFINITIONS: ProviderDefinition[] = [
     ready: true,
     purposeTh: "Video Generator ทางเลือก",
     capabilityTh: "สร้าง Gen-4.5 Text/Image-to-Video จริงและ Poll task จาก Runway Developer API",
-    credentialHintTh: "ใส่ Runway Developer API Key; SCENOVA จะส่ง API Version และ Bearer token ให้อัตโนมัติ",
+    credentialHintTh: "ใส่ Runway Developer API Key; SCENOVA จะเติม Base URL, API Version และรุ่นที่ Adapter รองรับให้เอง",
   },
   {
     id: "wan",
     label: "Wan",
     kind: "VIDEO",
     defaultBaseUrl: "https://dashscope-intl.aliyuncs.com/api/v1",
-    defaultModelId: "wan2.6-t2v",
+    defaultModelId: "wan3.0-video",
     systemKeyEnv: "WAN_API_KEY",
     ready: true,
     purposeTh: "Video Generator ทางเลือก",
     capabilityTh: "สร้าง Wan Text/Image-to-Video แบบ asynchronous และ Poll task ผ่าน Alibaba Model Studio / DashScope",
-    credentialHintTh: "ใส่ DashScope/Model Studio API Key; ถ้าบัญชีใช้ Workspace URL ใหม่ เปลี่ยน API Base URL ให้ตรง Region ได้",
+    credentialHintTh: "ใส่ DashScope/Model Studio API Key; SCENOVA ใช้ International Base URL มาตรฐานให้อัตโนมัติ",
   },
   {
     id: "elevenlabs",
@@ -153,7 +165,7 @@ export const API_PROVIDER_DEFINITIONS: ProviderDefinition[] = [
     ready: true,
     purposeTh: "Voice / TTS",
     capabilityTh: "สร้างเสียงพูดจริงตาม Voice ID และ Dialogue ผ่าน ElevenLabs Text-to-Speech",
-    credentialHintTh: "ใส่ ElevenLabs API Key; ตอนสร้างเสียงให้เลือก Voice ID จาก Voice Library ของบัญชีคุณ",
+    credentialHintTh: "ใส่ ElevenLabs API Key ระบบจะอ่านรายการ Voice models ที่บัญชีมองเห็นมาให้เลือก",
   },
   {
     id: "openai-voice",
@@ -165,13 +177,46 @@ export const API_PROVIDER_DEFINITIONS: ProviderDefinition[] = [
     ready: true,
     purposeTh: "Voice / TTS",
     capabilityTh: "สร้างเสียงพูดจริงผ่าน Audio Speech API พร้อม Voice และ Instructions",
-    credentialHintTh: "ใส่ OpenAI API Key; Default ใช้ gpt-4o-mini-tts และ voice=alloy หากยังไม่เลือกเสียง",
+    credentialHintTh: "ใส่ OpenAI API Key ระบบจะค้นหารุ่น TTS/Audio ที่ Key นี้มองเห็น",
   },
 ];
+
+function videoOptions(name: string): ProviderModelOption[] {
+  return getVideoModelVersions(name).map((model) => ({
+    apiModelId: model.apiModelId,
+    label: model.label,
+    note: model.note,
+    recommended: model.recommended,
+    availability: "SUPPORTED" as const,
+  }));
+}
+
+const STATIC_MODEL_CATALOG: Record<string, ProviderModelOption[]> = {
+  groq: [{ apiModelId: "openai/gpt-oss-20b", label: "GPT OSS 20B", recommended: true, availability: "UNVERIFIED" }],
+  openrouter: [{ apiModelId: "openai/gpt-oss-20b", label: "GPT OSS 20B", recommended: true, availability: "UNVERIFIED" }],
+  gemini: [{ apiModelId: "gemini-2.5-flash", label: "Gemini 2.5 Flash", recommended: true, availability: "UNVERIFIED" }],
+  "openai-image": [{ apiModelId: "gpt-image-2", label: "GPT Image 2", recommended: true, availability: "UNVERIFIED" }],
+  "gemini-image": [{ apiModelId: "gemini-3.1-flash-image", label: "Gemini 3.1 Flash Image", recommended: true, availability: "UNVERIFIED" }],
+  seedance: videoOptions("Seedance 2.5"),
+  kling: videoOptions("Kling"),
+  veo: videoOptions("Veo"),
+  runway: videoOptions("Runway"),
+  wan: videoOptions("Wan"),
+  elevenlabs: [{ apiModelId: "eleven_multilingual_v2", label: "Eleven Multilingual v2", recommended: true, availability: "UNVERIFIED" }],
+  "openai-voice": [
+    { apiModelId: "gpt-4o-mini-tts", label: "GPT-4o mini TTS", recommended: true, availability: "UNVERIFIED" },
+    { apiModelId: "tts-1", label: "TTS-1", availability: "UNVERIFIED" },
+    { apiModelId: "tts-1-hd", label: "TTS-1 HD", availability: "UNVERIFIED" },
+  ],
+};
 
 export function getProviderDefinition(providerId: string, kind?: ApiConnectionKind) {
   const id = providerId.trim().toLowerCase();
   return API_PROVIDER_DEFINITIONS.find((item) => item.id === id && (!kind || item.kind === kind)) || null;
+}
+
+export function getProviderModelCatalog(providerId: string) {
+  return (STATIC_MODEL_CATALOG[providerId.trim().toLowerCase()] || []).map((model) => ({ ...model }));
 }
 
 export function getPublicProviderCatalog(): PublicProviderDefinition[] {
@@ -183,6 +228,7 @@ export function getPublicProviderCatalog(): PublicProviderDefinition[] {
       stageLabelTh: stage?.labelTh || definition.kind,
       status: definition.ready ? "READY" : "ADAPTER_PENDING",
       systemConfigured: Boolean(systemKeyEnv && process.env[systemKeyEnv]?.trim()),
+      models: getProviderModelCatalog(definition.id),
     };
   });
 }
@@ -191,7 +237,6 @@ function classifyProbe(response: Response | null, providerLabel: string) {
   if (!response) return { ok: false as const, code: "PROVIDER_UNREACHABLE", message: `เชื่อมต่อ ${providerLabel} ไม่สำเร็จ` };
   if (response.status === 401 || response.status === 403) return { ok: false as const, code: "INVALID_API_KEY", message: "Credential ไม่ถูกต้อง ไม่มีสิทธิ์ หรือ Key ถูกจำกัด Scope" };
   if (response.status === 429) return { ok: false as const, code: "RATE_LIMITED", message: `${providerLabel} จำกัดการเรียกชั่วคราว กรุณาลองอีกครั้ง` };
-  // Credential probes use harmless reads / nonexistent task IDs. 400/404/405 can mean authentication passed.
   if (response.ok || response.status === 400 || response.status === 404 || response.status === 405) return { ok: true as const };
   return { ok: false as const, code: `PROVIDER_HTTP_${response.status}`, message: `${providerLabel} ตอบกลับผิดปกติ (HTTP ${response.status})` };
 }
@@ -204,8 +249,8 @@ async function probeBearer(baseUrl: string, path: string, apiKey: string, extraH
   }).catch(() => null);
 }
 
-async function probeGemini(baseUrl: string, apiKey: string) {
-  return fetch(`${baseUrl}/models?pageSize=1`, {
+async function probeGemini(baseUrl: string, apiKey: string, pageSize = 1) {
+  return fetch(`${baseUrl}/models?pageSize=${pageSize}`, {
     headers: { "x-goog-api-key": apiKey.trim() },
     signal: AbortSignal.timeout(12_000),
   }).catch(() => null);
@@ -255,13 +300,107 @@ export async function testProviderConnection(input: {
   return { ok: true as const, baseUrl, modelId: definition.defaultModelId || null };
 }
 
+function modelIdFromUnknown(value: unknown) {
+  if (!value || typeof value !== "object") return "";
+  const item = value as Record<string, unknown>;
+  const candidate = item.id ?? item.name ?? item.model_id ?? item.modelId;
+  if (typeof candidate !== "string") return "";
+  return candidate.replace(/^models\//, "").trim();
+}
+
+function modelLabelFromUnknown(value: unknown, fallback: string) {
+  if (!value || typeof value !== "object") return fallback;
+  const item = value as Record<string, unknown>;
+  const candidate = item.displayName ?? item.display_name ?? item.name;
+  if (typeof candidate !== "string" || candidate.startsWith("models/")) return fallback;
+  return candidate.trim() || fallback;
+}
+
+function providerAcceptsDiscoveredModel(providerId: string, modelId: string) {
+  const id = modelId.toLowerCase();
+  if (providerId === "veo") return id.includes("veo");
+  if (providerId === "gemini-image") return id.includes("gemini") && id.includes("image");
+  if (providerId === "gemini") return id.includes("gemini") && !id.includes("image") && !id.includes("veo");
+  if (providerId === "openai-image") return id.includes("image");
+  if (providerId === "openai-voice") return id.includes("tts") || id.includes("audio");
+  return true;
+}
+
+async function discoverRemoteModels(definition: ProviderDefinition, baseUrl: string, apiKey: string): Promise<ProviderModelOption[]> {
+  let response: Response | null = null;
+  if (["groq", "openrouter", "openai-image", "openai-voice"].includes(definition.id)) {
+    response = await probeBearer(baseUrl, "/models", apiKey);
+  } else if (["gemini", "gemini-image", "veo"].includes(definition.id)) {
+    response = await probeGemini(baseUrl, apiKey, 1000);
+  } else if (definition.id === "elevenlabs") {
+    response = await fetch(`${baseUrl}/models`, {
+      headers: { "xi-api-key": apiKey.trim() },
+      signal: AbortSignal.timeout(12_000),
+    }).catch(() => null);
+  } else {
+    return [];
+  }
+  if (!response?.ok) return [];
+  const payload = await response.json().catch(() => null);
+  const record = payload && typeof payload === "object" && !Array.isArray(payload) ? payload as Record<string, unknown> : {};
+  const items = Array.isArray(payload)
+    ? payload
+    : Array.isArray(record.data)
+      ? record.data
+      : Array.isArray(record.models)
+        ? record.models
+        : [];
+  const seen = new Set<string>();
+  const result: ProviderModelOption[] = [];
+  for (const raw of items) {
+    const apiModelId = modelIdFromUnknown(raw);
+    if (!apiModelId || seen.has(apiModelId) || !providerAcceptsDiscoveredModel(definition.id, apiModelId)) continue;
+    seen.add(apiModelId);
+    result.push({
+      apiModelId,
+      label: modelLabelFromUnknown(raw, apiModelId),
+      availability: "AVAILABLE",
+      recommended: apiModelId === definition.defaultModelId,
+    });
+  }
+  return result.sort((left, right) => Number(Boolean(right.recommended)) - Number(Boolean(left.recommended)) || left.label.localeCompare(right.label));
+}
+
+export async function discoverProviderModels(input: {
+  provider: string;
+  kind: ApiConnectionKind;
+  apiKey: string;
+  baseUrl?: string | null;
+}) {
+  const definition = getProviderDefinition(input.provider, input.kind);
+  if (!definition) return { ok: false as const, code: "UNSUPPORTED_PROVIDER", message: "Provider นี้ยังไม่รองรับ" };
+  const tested = await testProviderConnection(input);
+  if (!tested.ok) return tested;
+  const baseUrl = tested.baseUrl;
+  const remote = await discoverRemoteModels(definition, baseUrl, input.apiKey);
+  const staticModels = getProviderModelCatalog(definition.id);
+  let models: ProviderModelOption[];
+  if (remote.length) {
+    models = remote;
+  } else {
+    models = staticModels.map((model) => ({ ...model, availability: staticModels.length ? "SUPPORTED" : "UNVERIFIED" }));
+  }
+  if (!models.length && definition.defaultModelId) {
+    models = [{ apiModelId: definition.defaultModelId, label: definition.defaultModelId, recommended: true, availability: "UNVERIFIED" }];
+  }
+  const defaultModelId = models.find((model) => model.apiModelId === definition.defaultModelId)?.apiModelId
+    || models.find((model) => model.recommended)?.apiModelId
+    || models[0]?.apiModelId
+    || null;
+  return { ok: true as const, baseUrl, defaultModelId, models };
+}
+
 export function getSystemProviderCredential(providerId: string, kind: ApiConnectionKind) {
   const definition = getProviderDefinition(providerId, kind);
   if (!definition?.systemKeyEnv) return null;
   const apiKey = process.env[definition.systemKeyEnv]?.trim();
   if (!apiKey) return null;
   return {
-    provider: definition.id,
     apiKey,
     baseUrl: definition.defaultBaseUrl,
     modelId: definition.defaultModelId || null,

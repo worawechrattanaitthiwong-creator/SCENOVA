@@ -5,11 +5,14 @@ import { getPublicProviderCatalog } from "@/lib/api-connections/providers";
 import { createKlingAuthorization, createKlingJwt } from "@/lib/providers/kling-video-provider";
 
 function connection(overrides: Partial<SafeApiConnection> & Pick<SafeApiConnection, "id" | "provider" | "kind">): SafeApiConnection {
+  const modelId = overrides.modelId ?? null;
   return {
     id: overrides.id,
     provider: overrides.provider,
     kind: overrides.kind,
-    modelId: overrides.modelId ?? null,
+    modelId,
+    enabledModelIds: overrides.enabledModelIds ?? (modelId ? [modelId] : []),
+    availableModels: overrides.availableModels ?? (modelId ? [{ apiModelId: modelId, label: modelId, recommended: true, availability: "UNVERIFIED" }] : []),
     baseUrl: overrides.baseUrl ?? null,
     maskedKey: overrides.maskedKey ?? "••••abcd",
     status: overrides.status ?? "CONNECTED",
