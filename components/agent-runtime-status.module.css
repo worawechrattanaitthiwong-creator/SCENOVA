@@ -1,6 +1,9 @@
 .panel {
   margin: 0;
   width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
   border: 1px solid rgba(139, 92, 246, 0.24);
   border-radius: 14px;
   background: linear-gradient(135deg, rgba(19, 12, 32, 0.96), rgba(9, 7, 17, 0.98));
@@ -19,18 +22,18 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  padding: 10px 12px 9px;
+  padding: 12px 14px 10px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.titleRow { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.titleRow h2 { margin: 0; font-size: 12px; color: #f5f0ff; }
-.titleRow small { display: block; margin-top: 2px; color: #8f859f; font-size: 8px; line-height: 1.35; }
+.titleRow { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.titleRow h2 { margin: 0; font-size: 14px; color: #f5f0ff; line-height: 1.3; }
+.titleRow small { display: block; margin-top: 2px; color: #8f859f; font-size: 10px; line-height: 1.4; }
 
 .dot {
-  width: 8px;
-  height: 8px;
-  flex: 0 0 8px;
+  width: 9px;
+  height: 9px;
+  flex: 0 0 9px;
   border-radius: 999px;
   background: #8b5cf6;
   box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.1);
@@ -42,14 +45,14 @@
 
 .actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 .actions button, .actions a {
-  min-height: 27px;
+  min-height: 31px;
   border: 1px solid rgba(139, 92, 246, 0.36);
   border-radius: 8px;
   background: rgba(139, 92, 246, 0.1);
   color: #d9c7ff;
-  padding: 5px 8px;
+  padding: 6px 9px;
   font: inherit;
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 800;
   text-decoration: none;
   cursor: pointer;
@@ -63,10 +66,10 @@
   display: flex;
   gap: 8px;
   align-items: flex-start;
-  padding: 8px 12px;
+  padding: 9px 14px;
   color: #cfc5dc;
-  font-size: 9px;
-  line-height: 1.35;
+  font-size: 11px;
+  line-height: 1.4;
 }
 .message strong { color: #fff; }
 .message span { color: #9b90aa; }
@@ -75,19 +78,20 @@
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 1px;
+  margin-top: auto;
   background: rgba(255,255,255,.05);
   border-top: 1px solid rgba(255,255,255,.04);
 }
-.cell { min-width: 0; padding: 7px 8px; background: rgba(10, 7, 18, .96); }
-.cell small { display: block; color: #766c83; font-size: 7px; text-transform: uppercase; letter-spacing: .05em; }
-.cell b { display: block; margin-top: 2px; color: #dcd3e8; font-size: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cell em { display: block; margin-top: 1px; color: #7f748c; font-size: 7px; font-style: normal; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cell { min-width: 0; padding: 8px 9px; background: rgba(10, 7, 18, .96); }
+.cell small { display: block; color: #766c83; font-size: 9px; text-transform: uppercase; letter-spacing: .04em; }
+.cell b { display: block; margin-top: 2px; color: #dcd3e8; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cell em { display: block; margin-top: 1px; color: #7f748c; font-size: 9px; font-style: normal; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .notice {
-  padding: 6px 12px 7px;
+  padding: 7px 14px 8px;
   color: #857b91;
-  font-size: 8px;
-  line-height: 1.3;
+  font-size: 9px;
+  line-height: 1.35;
   border-top: 1px solid rgba(255,255,255,.04);
 }
 .notice[data-error="true"] { color: #ff91a4; }
