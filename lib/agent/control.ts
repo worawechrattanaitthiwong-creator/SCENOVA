@@ -69,9 +69,6 @@ export async function retryFailedRunByUser(run: AgentRunRecord) {
     orderBy: { updatedAt: "desc" },
   });
 
-  // A PAUSED run can be manually resumed when it is healthy. Force retry is only
-  // valid for PAUSED runs that actually contain a failed/error task, such as a
-  // provider 429 that deliberately paused automatic retries.
   const nextTask = failedTask || (run.status === "FAILED" ? await prisma.agentTask.findFirst({
     where: {
       runId: run.id,
@@ -145,8 +142,6 @@ export async function restoreCancelledRunByUser(run: AgentRunRecord) {
   const episodeIndex = typeof state.currentEpisodeIndex === "number" ? state.currentEpisodeIndex : Number(state.startEpisodeIndex || 0);
   const scopeKey = episodeScopeKey(episodeIndex);
 
-  // If cancellation happened while waiting for an approval, restore the same
-  // checkpoint instead of jumping ahead and spending without approval.
   if (run.stage === "AWAIT_APPROVAL") {
     const pendingApproval = await prisma.agentApproval.findFirst({
       where: { runId: run.id, status: "PENDING" },
@@ -156,7 +151,7 @@ export async function restoreCancelledRunByUser(run: AgentRunRecord) {
       await prisma.agentWorkflow.updateMany({ where: { runId: run.id }, data: { status: "ACTIVE" } });
       delete state.resumeStage;
       run.status = "WAITING_APPROVAL";
-      run.stopReason = "คืนงานกลับมาที่จุดรออนุมัติเดิม";
+      run.stopReason = "เรียกคืนงานแล้ว รอการอนุมัติเดิม โดยยังไม่เริ่มประมวลผลต่อ";
       run.finishedAt = null;
       run.stateJson = state;
       const updated = await saveAgentRun(run);
@@ -164,7 +159,7 @@ export async function restoreCancelledRunByUser(run: AgentRunRecord) {
         runId: updated.id,
         stage: updated.stage,
         action: "USER_RESTORED_CANCELLED",
-        reason: "ผู้ใช้เรียกคืนงานที่ยกเลิกกลับมาที่ Human Approval เดิม โดยไม่สร้างงานใหม่",
+        reason: "ผู้ใช้เรียกคืนงานที่ยกเลิกกลับมาที่ Human Approval เดิม โดยยังไม่เริ่มงานต่อ",
         metadata: { episodeIndex, pendingApprovalId: pendingApproval.id },
       });
       return updated;
@@ -182,9 +177,6 @@ export async function restoreCancelledRunByUser(run: AgentRunRecord) {
   const resumeStage = resumeTask.stage as AgentStage;
   if (["COMPLETED", "FAILED"].includes(resumeStage)) throw new Error("AGENT_CANCELLED_RESUME_STAGE_INVALID");
 
-  // Provider work that was queued/generating was cancelled/refunded when the
-  // user cancelled the run. Keep only reusable completed outputs so the worker
-  // never polls a cancelled providerTaskId. Missing shots receive a new attempt.
   const previousOutputs = state.outputsByEpisode?.[String(episodeIndex)] || [];
   const reusableOutputs = previousOutputs.filter((output) =>
     output.status === "completed"
@@ -197,8 +189,6 @@ export async function restoreCancelledRunByUser(run: AgentRunRecord) {
 
   await prisma.$transaction([
     prisma.agentWorkflow.updateMany({ where: { runId: run.id }, data: { status: "ACTIVE" } }),
-    // Completed tasks and their immutable Artifacts stay untouched. Everything
-    // unfinished returns to PENDING, then the exact resume task becomes READY.
     prisma.agentTask.updateMany({
       where: { runId: run.id, scopeKey, status: { not: "COMPLETED" } },
       data: { status: "PENDING", attempt: 0, lastError: null, startedAt: null, completedAt: null },
@@ -221,25 +211,17 @@ export async function restoreCancelledRunByUser(run: AgentRunRecord) {
   ]);
 
   run.stage = resumeStage;
-  run.status = "QUEUED";
-  run.stopReason = null;
+  run.status = "PAUSED";
+  run.stopReason = "เรียกคืนงานแล้ว รอผู้ใช้กดเริ่มงาน";
   run.finishedAt = null;
   run.stateJson = state;
   const updated = await saveAgentRun(run);
 
-  const policy = getAgentPolicy();
-  await enqueueAgentStep(
-    updated.id,
-    { reason: "user-restore-cancelled", stage: resumeStage, episodeIndex, sequence: state.queueSequence },
-    0,
-    policy.maxRetriesPerStep + 1,
-    `${updated.id}:${episodeIndex}:${resumeStage}:user-restore-cancelled:${Date.now()}`,
-  );
   await recordAgentDecision({
     runId: updated.id,
     stage: resumeStage,
     action: "USER_RESTORED_CANCELLED",
-    reason: `ผู้ใช้เรียกคืนงานที่ยกเลิกและเริ่มต่อจากขั้น ${resumeStage} โดยเก็บงานและ Artifact ที่สำเร็จแล้วไว้`,
+    reason: `ผู้ใช้เรียกคืนงานที่ยกเลิกกลับมาที่ขั้น ${resumeStage} แต่ยังไม่เริ่มประมวลผล จนกว่าจะกดเริ่มงาน`,
     metadata: {
       episodeIndex,
       taskId: resumeTask.id,
