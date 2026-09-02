@@ -8,39 +8,158 @@ if (source.includes("const MODEL_PROFILES: StudioModelProfile[]")) {
   process.exit(0);
 }
 
-function replaceOnce(before, after, label) {
-  const count = source.split(before).length - 1;
-  if (count !== 1) throw new Error(`${label}: expected exactly one anchor, found ${count}`);
-  source = source.replace(before, after);
+function requireAnchor(anchor, label) {
+  const index = source.indexOf(anchor);
+  if (index < 0) throw new Error(`PATCH_ANCHOR_NOT_FOUND:${label}`);
+  return index;
 }
 
-replaceOnce(
-`type SelectedCharacterPayload = {\n  id?: string;\n  title?: string;\n  metadata?: {\n    role?: string;\n    appearance?: string;\n    personality?: string;\n    costume?: string;\n    voiceProfile?: string;\n    promptHint?: string;\n    referenceImages?: string[];\n  };\n};\n\nconst MODELS = ["Seedance 2.5", "Kling", "Veo", "Runway", "Wan"];`,
-`type SelectedCharacterPayload = {\n  id?: string;\n  title?: string;\n  metadata?: {\n    role?: string;\n    appearance?: string;\n    personality?: string;\n    costume?: string;\n    voiceProfile?: string;\n    promptHint?: string;\n    referenceImages?: string[];\n  };\n};\n\ntype StudioVideoConnection = {\n  provider: string;\n  kind: string;\n  modelId: string | null;\n  enabledModelIds: string[];\n  status: string;\n  enabled: boolean;\n};\n\ntype StudioVideoProvider = {\n  id: string;\n  kind: string;\n  status: string;\n  systemConfigured?: boolean;\n};\n\ntype StudioVideoConnectionsPayload = {\n  ok?: boolean;\n  connections?: StudioVideoConnection[];\n  providers?: StudioVideoProvider[];\n};\n\ntype StudioModelProfile = {\n  value: string;\n  label: string;\n  providerId: string;\n  image: "ready" | "adapter" | "no";\n  mode: "generate" | "video-edit" | "hdr";\n  nativeAudio?: boolean;\n};\n\nconst MODEL_PROFILES: StudioModelProfile[] = [\n  { value: "Seedance 2.5", label: "Seedance 2.5", providerId: "seedance", image: "ready", mode: "generate", nativeAudio: true },\n  { value: "Kling", label: "Kling", providerId: "kling", image: "ready", mode: "generate", nativeAudio: true },\n  { value: "Veo", label: "Veo", providerId: "veo", image: "adapter", mode: "generate", nativeAudio: true },\n  { value: "Runway", label: "Runway Gen-4", providerId: "runway", image: "ready", mode: "generate" },\n  { value: "Seedance 2.5 (Runway)", label: "Seedance 2.5 — Runway", providerId: "runway-seedance", image: "ready", mode: "generate", nativeAudio: true },\n  { value: "Gemini Omni Flash 1.1 (Runway)", label: "Gemini Omni Flash 1.1 — Runway", providerId: "runway-gemini-omni", image: "ready", mode: "generate", nativeAudio: true },\n  { value: "Aleph 2.0 (Runway)", label: "Aleph 2.0 — Runway", providerId: "runway-aleph", image: "no", mode: "video-edit" },\n  { value: "Ruby HDR (Runway)", label: "Ruby HDR — Runway", providerId: "runway-ruby", image: "no", mode: "hdr", nativeAudio: true },\n  { value: "Wan", label: "Wan", providerId: "wan", image: "ready", mode: "generate", nativeAudio: true },\n];\n\nconst MODELS = MODEL_PROFILES.map((item) => item.value);`,
-"model profiles",
-);
+const oldModels = 'const MODELS = ["Seedance 2.5", "Kling", "Veo", "Runway", "Wan"];';
+requireAnchor(oldModels, "MODELS");
+const modelBlock = `type StudioVideoConnection = {
+  provider: string;
+  kind: string;
+  modelId: string | null;
+  enabledModelIds: string[];
+  status: string;
+  enabled: boolean;
+};
 
-replaceOnce(
-`  const [sceneAiMeta, setSceneAiMeta] = useState<AiDirectorMeta | null>(null);\n  const [sceneAiUndo, setSceneAiUndo] = useState<StoryScene[] | null>(null);\n\n  useEffect(() => {\n    const raw = localStorage.getItem("scenova-selected-character-v1");`,
-`  const [sceneAiMeta, setSceneAiMeta] = useState<AiDirectorMeta | null>(null);\n  const [sceneAiUndo, setSceneAiUndo] = useState<StoryScene[] | null>(null);\n  const [videoConnections, setVideoConnections] = useState<StudioVideoConnection[]>([]);\n  const [videoProviders, setVideoProviders] = useState<StudioVideoProvider[]>([]);\n  const [videoConnectionLoading, setVideoConnectionLoading] = useState(true);\n\n  useEffect(() => {\n    let active = true;\n    void (async () => {\n      try {\n        const response = await fetch("/api/api-connections", { credentials: "same-origin", cache: "no-store" });\n        const data = await response.json() as StudioVideoConnectionsPayload;\n        if (!active || !response.ok) return;\n        setVideoConnections(Array.isArray(data.connections) ? data.connections.filter((item) => item.kind === "VIDEO") : []);\n        setVideoProviders(Array.isArray(data.providers) ? data.providers.filter((item) => item.kind === "VIDEO") : []);\n      } catch {\n        // Readiness indicators remain unavailable; generation controls still work normally.\n      } finally {\n        if (active) setVideoConnectionLoading(false);\n      }\n    })();\n    return () => { active = false; };\n  }, []);\n\n  useEffect(() => {\n    const raw = localStorage.getItem("scenova-selected-character-v1");`,
-"connection readiness state",
-);
+type StudioVideoProvider = {
+  id: string;
+  kind: string;
+  status: string;
+  systemConfigured?: boolean;
+};
 
-replaceOnce(
-`  const selectedScene = scenes.find((scene) => scene.id === selectedSceneId) || scenes[0];\n  const modelVersions = useMemo(() => getVideoModelVersions(model), [model]);\n  const selectedModelVersion = modelVersions.find((item) => item.apiModelId === modelVersion) || modelVersions[0];\n  const videoCapability = getVideoUiCapability(model);`,
-`  const selectedScene = scenes.find((scene) => scene.id === selectedSceneId) || scenes[0];\n  const modelVersions = useMemo(() => getVideoModelVersions(model), [model]);\n  const selectedModelVersion = modelVersions.find((item) => item.apiModelId === modelVersion) || modelVersions[0];\n  const selectedModelProfile = MODEL_PROFILES.find((item) => item.value === model) || MODEL_PROFILES[0];\n  const modelConnectionStates = useMemo(() => Object.fromEntries(MODEL_PROFILES.map((profile) => {\n    const provider = videoProviders.find((item) => item.id === profile.providerId);\n    const connection = videoConnections.find((item) => item.provider === profile.providerId && item.kind === "VIDEO");\n    const adapterReady = provider?.status === "READY";\n    const userConnectionReady = Boolean(connection?.enabled && connection.status === "CONNECTED");\n    const credentialReady = userConnectionReady || Boolean(provider?.systemConfigured);\n    const operationalReady = adapterReady && credentialReady;\n    return [profile.value, { adapterReady, credentialReady, operationalReady, primaryReady: operationalReady && profile.mode === "generate" }];\n  })), [videoConnections, videoProviders]);\n  const selectedConnection = videoConnections.find((item) => item.provider === selectedModelProfile.providerId && item.kind === "VIDEO");\n  const selectedProvider = videoProviders.find((item) => item.id === selectedModelProfile.providerId);\n  const selectedConnectionState = modelConnectionStates[model];\n  const selectedEnabledIds = Array.isArray(selectedConnection?.enabledModelIds) ? selectedConnection.enabledModelIds : [];\n  const selectedVersionEnabled = Boolean(selectedProvider?.systemConfigured) || Boolean(\n    selectedConnection?.enabled\n    && selectedConnection.status === "CONNECTED"\n    && (selectedEnabledIds.length === 0\n      || !selectedModelVersion\n      || selectedEnabledIds.includes(selectedModelVersion.apiModelId)\n      || selectedConnection.modelId === selectedModelVersion.apiModelId)\n  );\n  const selectedModelReady = Boolean(selectedConnectionState?.primaryReady && selectedVersionEnabled);\n  const videoCapability = getVideoUiCapability(model);`,
-"model readiness computed state",
-);
+type StudioVideoConnectionsPayload = {
+  ok?: boolean;
+  connections?: StudioVideoConnection[];
+  providers?: StudioVideoProvider[];
+};
 
-replaceOnce(
-`            <div className={styles.field}><span>โมเดลวิดีโอ / รุ่น</span><div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1.2fr)", gap: 6 }}><select aria-label="โมเดลวิดีโอ" value={model} onChange={(event) => changeModel(event.target.value)}>{MODELS.map((item) => <option key={item}>{item}</option>)}</select><select aria-label="รุ่นโมเดล" value={modelVersion} onChange={(event) => setModelVersion(event.target.value)}>{modelVersions.map((item) => <option key={item.apiModelId} value={item.apiModelId}>{item.label}</option>)}</select></div><small>{selectedModelVersion ? \`รุ่นที่ใช้จริง: \${selectedModelVersion.label} · \${selectedModelVersion.note}\` : "เลือกรุ่นของ Provider ที่จะใช้สร้างคลิปจริง"}</small></div>`,
-`            <div className={styles.field}>\n              <span>โมเดลวิดีโอ / รุ่น</span>\n              <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1.2fr)", gap: 6 }}>\n                <select aria-label="โมเดลวิดีโอ" value={model} onChange={(event) => changeModel(event.target.value)}>\n                  {MODEL_PROFILES.map((item) => {\n                    const state = modelConnectionStates[item.value];\n                    const marker = videoConnectionLoading ? "⚪" : state?.operationalReady ? (item.mode === "generate" ? "🟢" : "🟣") : state?.adapterReady ? "🟠" : "🔴";\n                    const inputMarker = item.image === "ready" ? "🖼" : item.image === "adapter" ? "⚠️🖼" : item.mode === "generate" ? "" : "🎞";\n                    return <option key={item.value} value={item.value}>{marker} {inputMarker} {item.label}</option>;\n                  })}\n                </select>\n                <select aria-label="รุ่นโมเดล" value={modelVersion} onChange={(event) => setModelVersion(event.target.value)}>\n                  {modelVersions.map((item) => {\n                    const versionReady = Boolean(selectedProvider?.systemConfigured) || Boolean(selectedConnection?.enabled && selectedConnection.status === "CONNECTED" && (selectedEnabledIds.length === 0 || selectedEnabledIds.includes(item.apiModelId) || selectedConnection.modelId === item.apiModelId));\n                    return <option key={item.apiModelId} value={item.apiModelId}>{versionReady ? "🟢" : "⚪"} {item.label}</option>;\n                  })}\n                </select>\n              </div>\n              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, marginTop: 6 }}>\n                <span style={{ padding: "3px 7px", borderRadius: 999, border: "1px solid rgba(255,255,255,.12)", fontSize: 10 }}>\n                  {videoConnectionLoading ? "⚪ กำลังตรวจ Connection…" : selectedConnectionState?.operationalReady ? (selectedModelProfile.mode === "generate" ? "🟢 พร้อมใช้งาน" : "🟣 Connection พร้อม · เครื่องมือแปลงวิดีโอ") : selectedConnectionState?.adapterReady ? "🟠 ยังไม่ได้เชื่อมต่อ / Connection ไม่พร้อม" : "🔴 Adapter ยังไม่พร้อม"}\n                </span>\n                <span style={{ padding: "3px 7px", borderRadius: 999, border: "1px solid rgba(255,255,255,.12)", fontSize: 10 }}>\n                  {selectedModelProfile.image === "ready" ? "🖼 รับรูปอ้างอิง" : selectedModelProfile.image === "adapter" ? "⚠️🖼 Model รองรับรูป แต่ SCENOVA Adapter ยังไม่ส่งรูป" : "🎞 ใช้วิดีโอต้นฉบับ ไม่รับรูป"}\n                </span>\n                {selectedModelProfile.nativeAudio ? <span style={{ padding: "3px 7px", borderRadius: 999, border: "1px solid rgba(255,255,255,.12)", fontSize: 10 }}>🔊 Native Audio</span> : null}\n                {selectedModelProfile.mode === "video-edit" ? <span style={{ padding: "3px 7px", borderRadius: 999, border: "1px solid rgba(167,112,255,.35)", fontSize: 10 }}>🎞 Video Edit เท่านั้น · ต้องมีวิดีโอต้นฉบับ</span> : null}\n                {selectedModelProfile.mode === "hdr" ? <span style={{ padding: "3px 7px", borderRadius: 999, border: "1px solid rgba(167,112,255,.35)", fontSize: 10 }}>🎞 HDR Post-process เท่านั้น · ต้องมีวิดีโอต้นฉบับ</span> : null}\n                {!videoConnectionLoading && selectedModelProfile.mode === "generate" && !selectedModelReady ? <Link href="/profile/api" style={{ fontSize: 10, color: "#bd8cff" }}>ตั้งค่า Provider →</Link> : null}\n              </div>\n              <small>{selectedModelVersion ? \`รุ่นที่ใช้จริง: \${selectedModelVersion.label} · \${selectedModelVersion.note}\` : "เลือกรุ่นของ Provider ที่จะใช้สร้างคลิปจริง"}</small>\n            </div>`,
-"studio model selector",
-);
+type StudioModelProfile = {
+  value: string;
+  label: string;
+  providerId: string;
+  image: "ready" | "adapter" | "no";
+  mode: "generate" | "video-edit" | "hdr";
+  nativeAudio?: boolean;
+};
 
-if (!source.includes("Seedance 2.5 — Runway")) throw new Error("Split Runway model labels were not added");
-if (!source.includes("🖼 รับรูปอ้างอิง")) throw new Error("Image support indicator was not added");
-if (!source.includes("/api/api-connections")) throw new Error("Live connection readiness lookup was not added");
+const MODEL_PROFILES: StudioModelProfile[] = [
+  { value: "Seedance 2.5", label: "Seedance 2.5", providerId: "seedance", image: "ready", mode: "generate", nativeAudio: true },
+  { value: "Kling", label: "Kling", providerId: "kling", image: "ready", mode: "generate", nativeAudio: true },
+  { value: "Veo", label: "Veo", providerId: "veo", image: "adapter", mode: "generate", nativeAudio: true },
+  { value: "Runway", label: "Runway Gen-4", providerId: "runway", image: "ready", mode: "generate" },
+  { value: "Seedance 2.5 (Runway)", label: "Seedance 2.5 — Runway", providerId: "runway-seedance", image: "ready", mode: "generate", nativeAudio: true },
+  { value: "Gemini Omni Flash 1.1 (Runway)", label: "Gemini Omni Flash 1.1 — Runway", providerId: "runway-gemini-omni", image: "ready", mode: "generate", nativeAudio: true },
+  { value: "Aleph 2.0 (Runway)", label: "Aleph 2.0 — Runway", providerId: "runway-aleph", image: "no", mode: "video-edit" },
+  { value: "Ruby HDR (Runway)", label: "Ruby HDR — Runway", providerId: "runway-ruby", image: "no", mode: "hdr", nativeAudio: true },
+  { value: "Wan", label: "Wan", providerId: "wan", image: "ready", mode: "generate", nativeAudio: true },
+];
+
+const MODELS = MODEL_PROFILES.map((item) => item.value);`;
+source = source.replace(oldModels, modelBlock);
+
+const stateAnchor = '  const [sceneAiUndo, setSceneAiUndo] = useState<StoryScene[] | null>(null);';
+requireAnchor(stateAnchor, "AI_STATE");
+const connectionState = `${stateAnchor}
+  const [videoConnections, setVideoConnections] = useState<StudioVideoConnection[]>([]);
+  const [videoProviders, setVideoProviders] = useState<StudioVideoProvider[]>([]);
+  const [videoConnectionLoading, setVideoConnectionLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const response = await fetch("/api/api-connections", { credentials: "same-origin", cache: "no-store" });
+        const data = await response.json() as StudioVideoConnectionsPayload;
+        if (!active || !response.ok) return;
+        setVideoConnections(Array.isArray(data.connections) ? data.connections.filter((item) => item.kind === "VIDEO") : []);
+        setVideoProviders(Array.isArray(data.providers) ? data.providers.filter((item) => item.kind === "VIDEO") : []);
+      } catch {
+        // Status UI falls back to unavailable without changing generation behavior.
+      } finally {
+        if (active) setVideoConnectionLoading(false);
+      }
+    })();
+    return () => { active = false; };
+  }, []);`;
+source = source.replace(stateAnchor, connectionState);
+
+const computeAnchor = '  const selectedModelVersion = modelVersions.find((item) => item.apiModelId === modelVersion) || modelVersions[0];\n  const videoCapability = getVideoUiCapability(model);';
+requireAnchor(computeAnchor, "MODEL_COMPUTE");
+const computed = `  const selectedModelVersion = modelVersions.find((item) => item.apiModelId === modelVersion) || modelVersions[0];
+  const selectedModelProfile = MODEL_PROFILES.find((item) => item.value === model) || MODEL_PROFILES[0];
+  const modelConnectionStates = useMemo(() => Object.fromEntries(MODEL_PROFILES.map((profile) => {
+    const provider = videoProviders.find((item) => item.id === profile.providerId);
+    const connection = videoConnections.find((item) => item.provider === profile.providerId && item.kind === "VIDEO");
+    const adapterReady = provider?.status === "READY";
+    const userConnectionReady = Boolean(connection?.enabled && connection.status === "CONNECTED");
+    const credentialReady = userConnectionReady || Boolean(provider?.systemConfigured);
+    const operationalReady = adapterReady && credentialReady;
+    return [profile.value, { adapterReady, credentialReady, operationalReady, primaryReady: operationalReady && profile.mode === "generate" }];
+  })), [videoConnections, videoProviders]);
+  const selectedConnection = videoConnections.find((item) => item.provider === selectedModelProfile.providerId && item.kind === "VIDEO");
+  const selectedProvider = videoProviders.find((item) => item.id === selectedModelProfile.providerId);
+  const selectedConnectionState = modelConnectionStates[model];
+  const selectedEnabledIds = Array.isArray(selectedConnection?.enabledModelIds) ? selectedConnection.enabledModelIds : [];
+  const selectedVersionEnabled = Boolean(selectedProvider?.systemConfigured) || Boolean(
+    selectedConnection?.enabled
+    && selectedConnection.status === "CONNECTED"
+    && (selectedEnabledIds.length === 0
+      || !selectedModelVersion
+      || selectedEnabledIds.includes(selectedModelVersion.apiModelId)
+      || selectedConnection.modelId === selectedModelVersion.apiModelId)
+  );
+  const selectedModelReady = Boolean(selectedConnectionState?.primaryReady && selectedVersionEnabled);
+  const videoCapability = getVideoUiCapability(model);`;
+source = source.replace(computeAnchor, computed);
+
+const selectorStartAnchor = '        <div className={styles.field}><span>โมเดลวิดีโอ / รุ่น</span>';
+const selectorEndAnchor = '        <label className={styles.field}><span>อัตราส่วนภาพ</span>';
+const selectorStart = requireAnchor(selectorStartAnchor, "SELECTOR_START");
+const selectorEnd = requireAnchor(selectorEndAnchor, "SELECTOR_END");
+if (selectorEnd <= selectorStart) throw new Error("PATCH_SELECTOR_RANGE_INVALID");
+const selector = `        <div className={styles.field}>
+          <span>โมเดลวิดีโอ / รุ่น</span>
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1.2fr)", gap: 6 }}>
+            <select aria-label="โมเดลวิดีโอ" value={model} onChange={(event) => changeModel(event.target.value)}>
+              {MODEL_PROFILES.map((item) => {
+                const state = modelConnectionStates[item.value];
+                const marker = videoConnectionLoading ? "⚪" : state?.operationalReady ? (item.mode === "generate" ? "🟢" : "🟣") : state?.adapterReady ? "🟠" : "🔴";
+                const inputMarker = item.image === "ready" ? "🖼" : item.image === "adapter" ? "⚠️🖼" : item.mode === "generate" ? "" : "🎞";
+                return <option key={item.value} value={item.value}>{marker} {inputMarker} {item.label}</option>;
+              })}
+            </select>
+            <select aria-label="รุ่นโมเดล" value={modelVersion} onChange={(event) => setModelVersion(event.target.value)}>
+              {modelVersions.map((item) => {
+                const versionReady = Boolean(selectedProvider?.systemConfigured) || Boolean(selectedConnection?.enabled && selectedConnection.status === "CONNECTED" && (selectedEnabledIds.length === 0 || selectedEnabledIds.includes(item.apiModelId) || selectedConnection.modelId === item.apiModelId));
+                return <option key={item.apiModelId} value={item.apiModelId}>{versionReady ? "🟢" : "⚪"} {item.label}</option>;
+              })}
+            </select>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, marginTop: 6 }}>
+            <span style={{ padding: "3px 7px", borderRadius: 999, border: "1px solid rgba(255,255,255,.12)", fontSize: 10 }}>
+              {videoConnectionLoading ? "⚪ กำลังตรวจ Connection…" : selectedConnectionState?.operationalReady ? (selectedModelProfile.mode === "generate" ? "🟢 พร้อมใช้งาน" : "🟣 Connection พร้อม · เครื่องมือแปลงวิดีโอ") : selectedConnectionState?.adapterReady ? "🟠 ยังไม่ได้เชื่อมต่อ / Connection ไม่พร้อม" : "🔴 Adapter ยังไม่พร้อม"}
+            </span>
+            <span style={{ padding: "3px 7px", borderRadius: 999, border: "1px solid rgba(255,255,255,.12)", fontSize: 10 }}>
+              {selectedModelProfile.image === "ready" ? "🖼 รับรูปอ้างอิง" : selectedModelProfile.image === "adapter" ? "⚠️🖼 Model รองรับรูป แต่ SCENOVA Adapter ยังไม่ส่งรูป" : "🎞 ใช้วิดีโอต้นฉบับ ไม่รับรูป"}
+            </span>
+            {selectedModelProfile.nativeAudio ? <span style={{ padding: "3px 7px", borderRadius: 999, border: "1px solid rgba(255,255,255,.12)", fontSize: 10 }}>🔊 Native Audio</span> : null}
+            {selectedModelProfile.mode === "video-edit" ? <span style={{ padding: "3px 7px", borderRadius: 999, border: "1px solid rgba(167,112,255,.35)", fontSize: 10 }}>🎞 Video Edit เท่านั้น · ต้องมีวิดีโอต้นฉบับ</span> : null}
+            {selectedModelProfile.mode === "hdr" ? <span style={{ padding: "3px 7px", borderRadius: 999, border: "1px solid rgba(167,112,255,.35)", fontSize: 10 }}>🎞 HDR Post-process เท่านั้น · ต้องมีวิดีโอต้นฉบับ</span> : null}
+            {!videoConnectionLoading && selectedModelProfile.mode === "generate" && !selectedModelReady ? <Link href="/profile/api" style={{ fontSize: 10, color: "#bd8cff" }}>ตั้งค่า Provider →</Link> : null}
+          </div>
+          <small>{selectedModelVersion ? \`รุ่นที่ใช้จริง: \${selectedModelVersion.label} · \${selectedModelVersion.note}\` : "เลือกรุ่นของ Provider ที่จะใช้สร้างคลิปจริง"}</small>
+        </div>
+`;
+source = source.slice(0, selectorStart) + selector + source.slice(selectorEnd);
+
+if (!source.includes("Seedance 2.5 — Runway")) throw new Error("PATCH_VERIFY_SPLIT_MODELS_FAILED");
+if (!source.includes("🖼 รับรูปอ้างอิง")) throw new Error("PATCH_VERIFY_IMAGE_STATUS_FAILED");
+if (!source.includes("/api/api-connections")) throw new Error("PATCH_VERIFY_CONNECTION_STATUS_FAILED");
 
 writeFileSync(path, source, "utf8");
 console.log("Applied complete video model readiness and image-input indicators to Single Episode Studio.");
