@@ -24,10 +24,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   const { id } = await context.params;
   const run = await getAgentRunForUser(id, user.id);
   if (!run) return NextResponse.json({ error: "AGENT_RUN_NOT_FOUND" }, { status: 404 });
-  if (!["PAUSED", "FAILED"].includes(run.status)) {
+  if (!["PAUSED", "FAILED", "CANCELLED"].includes(run.status)) {
     return NextResponse.json({
-      error: "กรุณาพักงานก่อนแก้โมเดล งานเดิมและ Artifact ที่ทำเสร็จแล้วจะยังคงอยู่",
-      code: "AGENT_RUN_MUST_BE_PAUSED",
+      error: "กรุณาพักหรือยกเลิกงานก่อนแก้โมเดล งานเดิมและ Artifact ที่ทำเสร็จแล้วจะยังคงอยู่",
+      code: "AGENT_RUN_MUST_BE_STOPPED",
     }, { status: 409 });
   }
 
@@ -109,6 +109,8 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     runId: run.id,
     status: run.status,
     model: { id: model.id, name: model.name, versionId: version.apiModelId, versionLabel: version.label, providerId },
-    message: "บันทึกโมเดลและรุ่นใหม่แล้ว รายละเอียดงานเดิมยังอยู่ครบ",
+    message: run.status === "CANCELLED"
+      ? "บันทึกโมเดลและรุ่นใหม่แล้ว งานยังอยู่ในสถานะยกเลิกและจะยังไม่เริ่มจนกว่าจะเรียกกลับมาและกดเริ่มงาน"
+      : "บันทึกโมเดลและรุ่นใหม่แล้ว รายละเอียดงานเดิมยังอยู่ครบ",
   });
 }
