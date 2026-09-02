@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { resolveSession } from "@/lib/auth-core";
 import { getAgentRunForUser } from "@/lib/agent/store";
 import { resumeRunByUser } from "@/lib/agent/control";
+import { isolateOtherPausedRunQueues, isolatePausedRunQueue } from "@/lib/agent/run-queue-isolation";
 
 export const runtime = "nodejs";
 
@@ -14,6 +15,10 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
   const run = await getAgentRunForUser(id, user.id);
   if (!run) return NextResponse.json({ error: "AGENT_RUN_NOT_FOUND" }, { status: 404 });
   try {
+    // Clean queue residue before starting exactly this card. Other paused runs
+    // remain paused and are made ineligible for worker execution.
+    await isolateOtherPausedRunQueues(user.id, id);
+    await isolatePausedRunQueue(user.id, id, "TARGET_RUN_RESUME_QUEUE_REFRESH");
     const updated = await resumeRunByUser(run);
     return NextResponse.json({ ok: true, runId: updated.id, status: updated.status, stage: updated.stage });
   } catch (error) {
