@@ -11,6 +11,15 @@ export function decideAgentRecovery(input: { error: unknown; attempt: number; ma
     return { action: "ASK_USER", delayMs: 0, reason: "Provider ปฏิเสธเนื้อหา ต้องให้ผู้ใช้แก้ Prompt หรือ Scene ก่อน" };
   }
 
+  if (normalized.includes("runway_http_400")) {
+    const detail = message.replace(/^RUNWAY_HTTP_400:/i, "").trim();
+    return {
+      action: "ASK_USER",
+      delayMs: 0,
+      reason: `Runway ปฏิเสธข้อมูลของ Shot ด้วย HTTP 400 (Validation/Input Error) ระบบจะไม่ Retry อัตโนมัติเพื่อไม่ส่ง request เดิมซ้ำ${detail ? ` รายละเอียด: ${detail.slice(0, 700)}` : ""}`,
+    };
+  }
+
   const quotaExhausted =
     normalized.includes("veo_http_429") ||
     normalized.includes("http 429") ||
