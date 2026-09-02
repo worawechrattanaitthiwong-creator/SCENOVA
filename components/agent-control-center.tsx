@@ -109,7 +109,7 @@ function needsProviderSettings(value?: string | null) {
 }
 
 function runCardActionState(run: Run) {
-  if (run.status === "CANCELLED") return { label: "เรียกกลับมา", kind: "restore", enabled: true };
+  if (run.status === "CANCELLED") return { label: "ลบ", kind: "delete", enabled: true };
   if (["FAILED", "PAUSED"].includes(run.status)) return { label: "▶ เริ่มงาน", kind: "start", enabled: true };
   if (["QUEUED", "RUNNING"].includes(run.status)) return { label: "กำลังทำงาน", kind: "active", enabled: false };
   if (run.status === "WAITING_APPROVAL") return { label: "รออนุมัติ", kind: "waiting", enabled: false };
@@ -186,10 +186,19 @@ export default function AgentControlCenter() {
     setMessage("");
     try {
       if (item.status === "CANCELLED") {
-        const response = await fetch(`/api/agent/runs/${encodeURIComponent(item.id)}/restore`, { method: "POST", credentials: "same-origin" });
+        if (!window.confirm("ลบงานที่ยกเลิกนี้ออกจากรายการถาวรใช่หรือไม่?")) return;
+        const response = await fetch(`/api/agent/runs/${encodeURIComponent(item.id)}/delete`, { method: "POST", credentials: "same-origin" });
         const payload = await response.json();
-        if (!response.ok) throw new Error(payload.error || "เรียกคืนงานไม่สำเร็จ");
-        setMessage("เรียกคืนงานแล้ว งานกลับมาเป็นสถานะพักไว้และยังไม่เริ่มทำงาน กด “เริ่มงาน” ที่การ์ดนี้เมื่อพร้อม");
+        if (!response.ok) throw new Error(payload.error || "ลบงานที่ยกเลิกไม่สำเร็จ");
+        const remaining = runs.filter((runItem) => runItem.id !== item.id);
+        const next = remaining[0] || null;
+        setRuns(remaining);
+        setDetails(null);
+        setSelectedId(next?.id || "");
+        if (next) selectAgentRun(next.id);
+        setMessage("ลบงานที่ยกเลิกออกจากรายการแล้ว");
+        if (next) await loadDetails(next.id);
+        return;
       } else {
         let command: "retry" | "resume" = item.status === "FAILED" ? "retry" : "resume";
         if (item.status === "PAUSED") {
@@ -301,7 +310,7 @@ export default function AgentControlCenter() {
         {stopMessage && !showRecovery ? <div className={styles.stopReason}><b>ข้อมูลเพิ่มเติม</b><span>{stopMessage}</span>{needsProviderSettings(rootError) ? <Link href="/profile/api">ตรวจ API & Models →</Link> : null}</div> : null}
         <div className={styles.controls}>
           {!["PAUSED","FAILED","COMPLETED","CANCELLED","WAITING_APPROVAL"].includes(run.status) ? <button disabled={busy} onClick={() => void action("pause")}>Ⅱ พักงาน</button> : null}
-          <button disabled={busy || ["COMPLETED","FAILED","CANCELLED"].includes(run.status)} className={styles.danger} onClick={() => void action("cancel")}>ยกเลิกงาน</button>
+          {run.status === "CANCELLED" ? <button disabled={busy} className={styles.danger} onClick={() => void runCardAction(run)}>ลบงานนี้</button> : <button disabled={busy || ["COMPLETED","FAILED"].includes(run.status)} className={styles.danger} onClick={() => void action("cancel")}>ยกเลิกงาน</button>}
         </div>
 
         <div className={styles.grid}>
