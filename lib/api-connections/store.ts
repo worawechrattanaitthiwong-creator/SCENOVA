@@ -5,12 +5,22 @@ import { decryptApiSecret, encryptApiSecret, maskApiKey } from "@/lib/api-connec
 export type ApiConnectionKind = "ANALYZER" | "VIDEO" | "IMAGE" | "VOICE";
 export type ApiConnectionStatus = "CONNECTED" | "INVALID" | "RATE_LIMITED" | "ERROR";
 
+export type ApiConnectionModel = {
+  apiModelId: string;
+  label: string;
+  note?: string;
+  recommended?: boolean;
+  availability?: "AVAILABLE" | "SUPPORTED" | "UNVERIFIED";
+};
+
 export type ApiConnectionRow = {
   id: string;
   userId: string;
   provider: string;
   kind: string;
   modelId: string | null;
+  enabledModelIds: unknown;
+  availableModels: unknown;
   baseUrl: string | null;
   secretCiphertext: string;
   secretIv: string;
@@ -29,6 +39,8 @@ export type SafeApiConnection = {
   provider: string;
   kind: ApiConnectionKind;
   modelId: string | null;
+  enabledModelIds: string[];
+  availableModels: ApiConnectionModel[];
   baseUrl: string | null;
   maskedKey: string;
   status: ApiConnectionStatus;
@@ -40,12 +52,51 @@ export type SafeApiConnection = {
   updatedAt: string;
 };
 
+function stringArray(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return Array.from(new Set(value.filter((item): item is string => typeof item === "string").map((item) => item.trim()).filter(Boolean)));
+}
+
+function connectionModels(value: unknown): ApiConnectionModel[] {
+  if (!Array.isArray(value)) return [];
+  const result: ApiConnectionModel[] = [];
+  const seen = new Set<string>();
+  for (const raw of value) {
+    if (!raw || typeof raw !== "object") continue;
+    const item = raw as Record<string, unknown>;
+    const apiModelId = typeof item.apiModelId === "string" ? item.apiModelId.trim() : "";
+    if (!apiModelId || seen.has(apiModelId)) continue;
+    seen.add(apiModelId);
+    const availability = item.availability === "AVAILABLE" || item.availability === "SUPPORTED" || item.availability === "UNVERIFIED"
+      ? item.availability
+      : undefined;
+    result.push({
+      apiModelId,
+      label: typeof item.label === "string" && item.label.trim() ? item.label.trim() : apiModelId,
+      note: typeof item.note === "string" && item.note.trim() ? item.note.trim() : undefined,
+      recommended: item.recommended === true || undefined,
+      availability,
+    });
+  }
+  return result;
+}
+
 function safe(row: ApiConnectionRow): SafeApiConnection {
+  const enabledModelIds = stringArray(row.enabledModelIds);
+  const availableModels = connectionModels(row.availableModels);
+  const fallbackEnabled = enabledModelIds.length ? enabledModelIds : row.modelId ? [row.modelId] : [];
+  const fallbackAvailable = availableModels.length
+    ? availableModels
+    : row.modelId
+      ? [{ apiModelId: row.modelId, label: row.modelId, recommended: true, availability: "UNVERIFIED" as const }]
+      : [];
   return {
     id: row.id,
     provider: row.provider,
     kind: row.kind as ApiConnectionKind,
     modelId: row.modelId,
+    enabledModelIds: fallbackEnabled,
+    availableModels: fallbackAvailable,
     baseUrl: row.baseUrl,
     maskedKey: maskApiKey(row.keyLast4),
     status: row.status as ApiConnectionStatus,
@@ -73,6 +124,8 @@ export async function upsertUserApiConnection(input: {
   kind: ApiConnectionKind;
   apiKey: string;
   modelId?: string | null;
+  enabledModelIds?: string[];
+  availableModels?: ApiConnectionModel[];
   baseUrl?: string | null;
   status?: ApiConnectionStatus;
   enabled?: boolean;
@@ -87,6 +140,10 @@ export async function upsertUserApiConnection(input: {
   const isDefault = input.isDefault ?? true;
   const status = input.status || "CONNECTED";
   const modelId = input.modelId?.trim() || null;
+  const enabledModelIds = stringArray(input.enabledModelIds || (modelId ? [modelId] : []));
+  const availableModels = connectionModels(input.availableModels || []);
+  const enabledModelIdsJson = JSON.stringify(enabledModelIds);
+  const availableModelsJson = JSON.stringify(availableModels);
   const baseUrl = input.baseUrl?.trim().replace(/\/$/, "") || null;
   const lastError = input.lastError || null;
 
@@ -101,16 +158,18 @@ export async function upsertUserApiConnection(input: {
 
     await tx.$executeRaw`
       INSERT INTO "UserApiConnection" (
-        "id", "userId", "provider", "kind", "modelId", "baseUrl",
+        "id", "userId", "provider", "kind", "modelId", "enabledModelIds", "availableModels", "baseUrl",
         "secretCiphertext", "secretIv", "keyLast4", "status", "enabled",
         "isDefault", "lastTestedAt", "lastError", "createdAt", "updatedAt"
       ) VALUES (
-        ${id}, ${input.userId}, ${input.provider}, ${input.kind}, ${modelId}, ${baseUrl},
+        ${id}, ${input.userId}, ${input.provider}, ${input.kind}, ${modelId}, ${enabledModelIdsJson}::jsonb, ${availableModelsJson}::jsonb, ${baseUrl},
         ${encrypted.ciphertext}, ${encrypted.iv}, ${keyLast4}, ${status}, ${enabled},
         ${isDefault}, CURRENT_TIMESTAMP, ${lastError}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
       )
       ON CONFLICT ("userId", "provider", "kind") DO UPDATE SET
         "modelId" = EXCLUDED."modelId",
+        "enabledModelIds" = EXCLUDED."enabledModelIds",
+        "availableModels" = EXCLUDED."availableModels",
         "baseUrl" = EXCLUDED."baseUrl",
         "secretCiphertext" = EXCLUDED."secretCiphertext",
         "secretIv" = EXCLUDED."secretIv",
@@ -154,6 +213,20 @@ export async function getUserApiConnectionSecret(input: {
   };
 }
 
+export async function getUserApiConnectionSecretById(userId: string, id: string) {
+  const rows = await prisma.$queryRaw<ApiConnectionRow[]>`
+    SELECT * FROM "UserApiConnection"
+    WHERE "id" = ${id} AND "userId" = ${userId}
+    LIMIT 1
+  `;
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    connection: safe(row),
+    apiKey: decryptApiSecret({ ciphertext: row.secretCiphertext, iv: row.secretIv }),
+  };
+}
+
 export async function getDefaultUserApiConnectionSecret(userId: string, kind: ApiConnectionKind) {
   const rows = await prisma.$queryRaw<ApiConnectionRow[]>`
     SELECT * FROM "UserApiConnection"
@@ -175,6 +248,11 @@ export async function patchUserApiConnection(input: {
   enabled?: boolean;
   isDefault?: boolean;
   modelId?: string | null;
+  enabledModelIds?: string[];
+  availableModels?: ApiConnectionModel[];
+  baseUrl?: string | null;
+  status?: ApiConnectionStatus;
+  lastError?: string | null;
 }) {
   await prisma.$transaction(async (tx) => {
     if (input.isDefault === true) {
@@ -204,6 +282,36 @@ export async function patchUserApiConnection(input: {
     if (input.modelId !== undefined) {
       await tx.$executeRaw`
         UPDATE "UserApiConnection" SET "modelId" = ${input.modelId?.trim() || null}, "updatedAt" = CURRENT_TIMESTAMP
+        WHERE "id" = ${input.id} AND "userId" = ${input.userId}
+      `;
+    }
+    if (input.enabledModelIds !== undefined) {
+      const enabledModelIdsJson = JSON.stringify(stringArray(input.enabledModelIds));
+      await tx.$executeRaw`
+        UPDATE "UserApiConnection" SET "enabledModelIds" = ${enabledModelIdsJson}::jsonb, "updatedAt" = CURRENT_TIMESTAMP
+        WHERE "id" = ${input.id} AND "userId" = ${input.userId}
+      `;
+    }
+    if (input.availableModels !== undefined) {
+      const availableModelsJson = JSON.stringify(connectionModels(input.availableModels));
+      await tx.$executeRaw`
+        UPDATE "UserApiConnection" SET "availableModels" = ${availableModelsJson}::jsonb, "updatedAt" = CURRENT_TIMESTAMP
+        WHERE "id" = ${input.id} AND "userId" = ${input.userId}
+      `;
+    }
+    if (input.baseUrl !== undefined) {
+      await tx.$executeRaw`
+        UPDATE "UserApiConnection" SET "baseUrl" = ${input.baseUrl?.trim().replace(/\/$/, "") || null}, "updatedAt" = CURRENT_TIMESTAMP
+        WHERE "id" = ${input.id} AND "userId" = ${input.userId}
+      `;
+    }
+    if (input.status !== undefined || input.lastError !== undefined) {
+      await tx.$executeRaw`
+        UPDATE "UserApiConnection"
+        SET "status" = COALESCE(${input.status || null}, "status"),
+            "lastError" = ${input.lastError || null},
+            "lastTestedAt" = CURRENT_TIMESTAMP,
+            "updatedAt" = CURRENT_TIMESTAMP
         WHERE "id" = ${input.id} AND "userId" = ${input.userId}
       `;
     }
