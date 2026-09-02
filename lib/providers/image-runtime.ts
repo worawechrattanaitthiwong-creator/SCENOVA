@@ -33,6 +33,19 @@ function asImageProvider(value: string): ImageProviderId | null {
   return id === "openai-image" || id === "gemini-image" || id === "runway-image" ? id : null;
 }
 
+async function explicitRunwayImageCredential(userId: string): Promise<ResolvedImageCredential | null> {
+  const byok = await getUserApiConnectionSecret({ userId, provider: "runway-image", kind: "IMAGE" });
+  if (byok?.connection.status !== "CONNECTED") return null;
+  return {
+    provider: "runway-image",
+    apiKey: byok.apiKey,
+    baseUrl: byok.connection.baseUrl || RUNWAY_BASE_URL,
+    modelId: byok.connection.modelId || RUNWAY_IMAGE_MODEL,
+    billingMode: "BYOK",
+    connectionId: byok.connection.id,
+  };
+}
+
 async function sharedRunwayCredential(userId: string): Promise<ResolvedImageCredential | null> {
   const byok = await getUserApiConnectionSecret({ userId, provider: "runway", kind: "VIDEO" });
   if (byok?.connection.status === "CONNECTED") {
@@ -53,8 +66,10 @@ async function resolveCredential(userId: string, mode: ImageBillingMode, preferr
   if (mode !== "SYSTEM") {
     const preferredProvider = preferred ? asImageProvider(preferred) : null;
     if (preferredProvider === "runway-image") {
-      const runway = await sharedRunwayCredential(userId);
-      if (runway) return runway;
+      const explicit = await explicitRunwayImageCredential(userId);
+      if (explicit) return explicit;
+      const shared = await sharedRunwayCredential(userId);
+      if (shared) return shared;
       if (mode === "BYOK") throw new Error("BYOK_RUNWAY_IMAGE_CONNECTION_REQUIRED");
     } else {
       const byok = preferredProvider
@@ -75,6 +90,8 @@ async function resolveCredential(userId: string, mode: ImageBillingMode, preferr
         }
       }
 
+      const explicit = await explicitRunwayImageCredential(userId);
+      if (!preferredProvider && explicit) return explicit;
       // A connected Runway VIDEO key is organization-scoped and can call Runway
       // image endpoints too. Reuse it instead of asking the user for another key.
       if (!preferredProvider) {
