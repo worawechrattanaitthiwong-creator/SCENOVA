@@ -358,7 +358,9 @@ export class RunwayVideoProvider implements VideoProvider {
       }
     } else if (modelId === "seedance2_5") {
       body.promptText = compiledPrompt;
-      body.audio = audioReferences.length > 0;
+      // Seedance 2.5 supports native audio. Keep it on by default so dialogue,
+      // ambience and SFX authored by SCENOVA can be rendered with the shot.
+      body.audio = process.env.RUNWAY_SEEDANCE_NATIVE_AUDIO !== "false";
       body.duration = duration;
       body.ratio = ratio;
       if (endpoint === "video_to_video") {
