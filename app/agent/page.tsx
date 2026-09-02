@@ -8,8 +8,10 @@ import styles from "./agent-page.module.css";
 export default function AgentPage() {
   return <div className={styles.root} data-sc-agent-page>
     <AgentLocalNav />
-    <AgentRuntimeMonitor />
-    <AgentRunModelEditor />
+    <div className={styles.topRow}>
+      <AgentRuntimeMonitor />
+      <AgentRunModelEditor />
+    </div>
     <AgentControlCenter />
     <AgentJobStatusDock />
   </div>;
