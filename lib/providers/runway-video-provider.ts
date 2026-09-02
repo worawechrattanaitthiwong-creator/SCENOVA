@@ -9,6 +9,7 @@ const DEFAULT_BASE_URL = "https://api.dev.runwayml.com/v1";
 const DEFAULT_MODEL = "gen4.5";
 const RUNWAY_VERSION = "2024-11-06";
 const RUNWAY_PROMPT_MAX_CHARS = 1000;
+const RUNWAY_IMAGE_DATA_URI_MAX_BYTES = 5 * 1024 * 1024;
 const CHARACTER_REFERENCE_PREFIX = "/api/character-references/";
 const RUNWAY_EPHEMERAL_CACHE_MS = 23 * 60 * 60 * 1000;
 
@@ -41,6 +42,43 @@ async function loadSignedCharacterReference(value: string) {
   const file = await readCharacterReference(parsed.owner, parsed.id);
   if (!file) throw new Error("RUNWAY_PROMPT_IMAGE_REFERENCE_NOT_FOUND:Character reference file is missing");
   return { ...parsed, ...file };
+}
+
+function normalizeRunwayImageMime(mime: string) {
+  return mime === "image/jpg" ? "image/jpeg" : mime;
+}
+
+export function isSupportedRunwayImageData(mime: string, data: Uint8Array) {
+  const normalizedMime = normalizeRunwayImageMime(mime);
+  if (normalizedMime === "image/jpeg") {
+    return data.length >= 3 && data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff;
+  }
+  if (normalizedMime === "image/png") {
+    return data.length >= 8
+      && data[0] === 0x89
+      && data[1] === 0x50
+      && data[2] === 0x4e
+      && data[3] === 0x47
+      && data[4] === 0x0d
+      && data[5] === 0x0a
+      && data[6] === 0x1a
+      && data[7] === 0x0a;
+  }
+  if (normalizedMime === "image/webp") {
+    return data.length >= 12
+      && Buffer.from(data.subarray(0, 4)).toString("ascii") === "RIFF"
+      && Buffer.from(data.subarray(8, 12)).toString("ascii") === "WEBP";
+  }
+  return false;
+}
+
+export function buildRunwayImageDataUri(mime: string, data: Buffer) {
+  const normalizedMime = normalizeRunwayImageMime(mime);
+  if (!isSupportedRunwayImageData(normalizedMime, data)) {
+    throw new Error(`RUNWAY_PROMPT_IMAGE_REFERENCE_INVALID_FILE:Expected JPEG, PNG, or WebP bytes for ${normalizedMime || "unknown MIME"}`);
+  }
+  const dataUri = `data:${normalizedMime};base64,${data.toString("base64")}`;
+  return Buffer.byteLength(dataUri, "utf8") <= RUNWAY_IMAGE_DATA_URI_MAX_BYTES ? dataUri : null;
 }
 
 function filenameForMime(id: string, mime: string) {
@@ -156,6 +194,14 @@ export class RunwayVideoProvider implements VideoProvider {
 
     const file = await loadSignedCharacterReference(value);
     if (!file) return value;
+
+    // Prefer a data URI for SCENOVA-owned references. It is accepted directly by
+    // image_to_video and does not depend on Runway ephemeral-upload entitlement.
+    const dataUri = buildRunwayImageDataUri(file.mime, file.data);
+    if (dataUri) return dataUri;
+
+    // Only large local references fall back to ephemeral upload. Runway limits
+    // encoded image data URIs to 5 MB while ephemeral uploads allow larger files.
     return uploadRunwayEphemeralImage({
       apiKey: this.apiKey,
       baseUrl: this.baseUrl,
