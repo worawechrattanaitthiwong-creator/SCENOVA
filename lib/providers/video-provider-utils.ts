@@ -27,7 +27,7 @@ export function ratioToLandscapePortrait(value?: string) {
 }
 
 export function runwayRatio(value?: string) {
-  return value === "9:16" || value === "4:5" ? "768:1280" : "1280:720";
+  return value === "9:16" || value === "4:5" ? "720:1280" : "1280:720";
 }
 
 export function wanSize(value?: string) {
