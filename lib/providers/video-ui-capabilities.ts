@@ -1,6 +1,6 @@
 export type VideoUiCapability = {
   model: string;
-  providerId: "seedance" | "kling" | "veo" | "runway" | "wan";
+  providerId: "seedance" | "kling" | "veo" | "runway" | "runway-seedance" | "runway-gemini-omni" | "runway-aleph" | "runway-ruby" | "wan";
   durationSeconds: number[];
   defaultDurationSeconds: number;
   ratioValues: string[];
@@ -43,6 +43,38 @@ export const VIDEO_UI_CAPABILITIES: Record<string, VideoUiCapability> = {
     defaultDurationSeconds: 5,
     ratioValues: ["16:9 — Widescreen", "9:16 — Vertical"],
     durationLabel: "2–10 วินาทีต่อ Generation",
+  },
+  "Seedance 2.5 (Runway)": {
+    model: "Seedance 2.5 (Runway)",
+    providerId: "runway-seedance",
+    durationSeconds: range(4, 30),
+    defaultDurationSeconds: 10,
+    ratioValues: ["16:9 — Widescreen", "9:16 — Vertical", "1:1 — Square"],
+    durationLabel: "4–30 วินาทีต่อ Generation",
+  },
+  "Gemini Omni Flash 1.1 (Runway)": {
+    model: "Gemini Omni Flash 1.1 (Runway)",
+    providerId: "runway-gemini-omni",
+    durationSeconds: range(3, 10),
+    defaultDurationSeconds: 5,
+    ratioValues: ["16:9 — Widescreen", "9:16 — Vertical"],
+    durationLabel: "3–10 วินาทีต่อ Generation",
+  },
+  "Aleph 2.0 (Runway)": {
+    model: "Aleph 2.0 (Runway)",
+    providerId: "runway-aleph",
+    durationSeconds: range(2, 30),
+    defaultDurationSeconds: 10,
+    ratioValues: ["16:9 — Widescreen", "9:16 — Vertical"],
+    durationLabel: "2–30 วินาที · ต้องมีวิดีโอต้นฉบับ",
+  },
+  "Ruby HDR (Runway)": {
+    model: "Ruby HDR (Runway)",
+    providerId: "runway-ruby",
+    durationSeconds: range(1, 30),
+    defaultDurationSeconds: 10,
+    ratioValues: ["16:9 — Widescreen", "9:16 — Vertical"],
+    durationLabel: "1–30 วินาที · ใช้อัตราส่วนจากวิดีโอต้นฉบับ",
   },
   Wan: {
     model: "Wan",
