@@ -163,7 +163,7 @@ export default function AgentControlCenter() {
     return () => window.clearInterval(timer);
   }, [selectedId, loadDetails, loadRuns]);
 
-  async function action(name: "approve" | "reject" | "pause" | "resume" | "retry" | "cancel") {
+  async function action(name: "approve" | "reject" | "pause" | "resume" | "retry" | "cancel" | "accept-continuity") {
     if (!selectedId || busy) return;
     if ((name === "cancel" || name === "reject") && !window.confirm(name === "cancel" ? "ยืนยันยกเลิกงาน AI นี้? งานที่ยังไม่คิดเงินจริงจะถูกพยายามคืนเครดิตตามสถานะจริง" : "ไม่อนุมัติแผนนี้และยกเลิกงานใช่หรือไม่?")) return;
     setBusy(true); setMessage("");
@@ -171,7 +171,7 @@ export default function AgentControlCenter() {
       const response = await fetch(`/api/agent/runs/${selectedId}/${name}`, { method: "POST", credentials: "same-origin" });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || `${name} ไม่สำเร็จ`);
-      setMessage(name === "approve" ? "อนุมัติแล้ว ระบบจะทำงานต่อ" : name === "reject" ? "ไม่อนุมัติและหยุดงานแล้ว" : name === "pause" ? "พักงานแล้ว" : name === "resume" ? "เริ่มทำงานต่อแล้ว" : name === "retry" ? "นำขั้นที่ล้มเหลวของงานที่เลือกกลับเข้าคิวแล้ว" : "ยกเลิกงานแล้ว");
+      setMessage(name === "approve" ? "อนุมัติแล้ว ระบบจะทำงานต่อ" : name === "reject" ? "ไม่อนุมัติและหยุดงานแล้ว" : name === "pause" ? "พักงานแล้ว" : name === "resume" ? "เริ่มทำงานต่อแล้ว" : name === "retry" ? "นำขั้นที่ล้มเหลวของงานที่เลือกกลับเข้าคิวแล้ว" : name === "accept-continuity" ? "ยืนยัน Continuity แล้ว ระบบทำ Post-production ต่อ" : "ยกเลิกงานแล้ว");
       await Promise.all([loadRuns(), loadDetails(selectedId)]);
     } catch (error) { setMessage(error instanceof Error ? friendlyAgentError(error.message) : String(error)); }
     finally { setBusy(false); }
@@ -284,6 +284,7 @@ export default function AgentControlCenter() {
             </div>
           </div>
           <div className={styles.recoveryActions}>
+            {run.status === "PAUSED" && run.stage === "VERIFY_CONTINUITY" ? <button type="button" className={styles.primaryAction} disabled={busy} onClick={() => void action("accept-continuity")}>ยืนยันผลตรวจและทำต่อ</button> : null}
             <button type="button" className={styles.secondaryAction} onClick={() => document.getElementById("agent-model-editor")?.scrollIntoView({ behavior: "smooth", block: "center" })}>เปลี่ยนโมเดล / รุ่น</button>
             {needsProviderSettings(rootError) || isQuotaError(rootError) ? <Link className={styles.secondaryAction} href="/profile/api">ตรวจ API &amp; Models</Link> : null}
           </div>

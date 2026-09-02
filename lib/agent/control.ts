@@ -12,7 +12,7 @@ import {
   saveAgentRun,
 } from "@/lib/agent/store";
 import { getAgentPolicy } from "@/lib/agent/policy";
-import { cancelWorkflow } from "@/lib/agent/workflow-store";
+import { cancelWorkflow, completeWorkflowStageTask } from "@/lib/agent/workflow-store";
 import { episodeScopeKey } from "@/lib/agent/contracts";
 
 type PersistedOutput = {
@@ -132,6 +132,49 @@ export async function retryFailedRunByUser(run: AgentRunRecord) {
     reason: `ผู้ใช้สั่งบังคับเริ่มใหม่จากขั้น ${retryStage} โดยเก็บ Artifact ที่ทำสำเร็จแล้วไว้`,
     metadata: { episodeIndex, taskId: nextTask.id, previousError: nextTask.lastError },
   });
+  return updated;
+}
+
+/**
+ * Continuity findings are a review gate, not a paid render failure.  Allow the
+ * owner to acknowledge the report and continue while preserving the report and
+ * an auditable decision; this never touches Generation V2 or resubmits a shot.
+ */
+export async function acceptContinuityByUser(run: AgentRunRecord, userId: string) {
+  if (run.status !== "PAUSED" || run.stage !== "VERIFY_CONTINUITY") throw new Error("AGENT_RUN_NOT_WAITING_CONTINUITY_REVIEW");
+  const state = { ...(run.stateJson || {}), continuityOverride: true } as ControlState & Record<string, unknown>;
+  const episodeIndex = typeof state.currentEpisodeIndex === "number" ? state.currentEpisodeIndex : Number(state.startEpisodeIndex || 0);
+  await completeWorkflowStageTask({
+    runId: run.id,
+    episodeIndex,
+    stage: "VERIFY_CONTINUITY",
+    summary: "ผู้ใช้ยืนยันผ่าน Continuity เพื่อทำงานขั้นถัดไป",
+    content: {
+      summary: "ผู้ใช้ตรวจสอบรายงาน Continuity แล้วอนุญาตให้ทำงานต่อ",
+      verdict: "PASS",
+      confidence: Number(state.continuityScore || 75),
+      decisions: ["ผู้ใช้ยืนยันให้ทำงานต่อโดยคงผล Render ที่สำเร็จแล้ว"],
+      issues: [],
+      payload: { override: true, acknowledgedBy: userId },
+    },
+    review: {
+      reviewerAgentKey: "CONTINUITY_SUPERVISOR",
+      verdict: "PASS",
+      score: Number(state.continuityScore || 75),
+      summary: "ผู้ใช้ยืนยันผ่าน Continuity",
+    },
+  });
+  state.queueSequence = Number(state.queueSequence || 0) + 1;
+  delete state.resumeStage;
+  run.stage = "POST_PRODUCTION";
+  run.status = "QUEUED";
+  run.stopReason = null;
+  run.finishedAt = null;
+  run.stateJson = state;
+  const updated = await saveAgentRun(run);
+  const policy = getAgentPolicy();
+  await enqueueAgentStep(updated.id, { reason: "user-accepted-continuity", stage: "POST_PRODUCTION", episodeIndex, sequence: state.queueSequence }, 0, policy.maxRetriesPerStep + 1, `${updated.id}:${episodeIndex}:POST_PRODUCTION:continuity-override:${Date.now()}`);
+  await recordAgentDecision({ runId: updated.id, stage: "VERIFY_CONTINUITY", action: "USER_ACCEPTED_CONTINUITY", reason: "ผู้ใช้ยืนยันผลตรวจ Continuity และอนุญาตให้ทำ Post-production ต่อ โดยไม่สร้างวิดีโอใหม่", metadata: { episodeIndex, continuityScore: state.continuityScore || null } });
   return updated;
 }
 
