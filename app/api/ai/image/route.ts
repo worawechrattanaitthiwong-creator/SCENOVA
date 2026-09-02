@@ -15,9 +15,9 @@ const requestSchema = z.object({
   prompt: z.string().trim().min(1).max(30_000),
   aspectRatio: z.string().trim().max(16).optional(),
   quality: z.enum(["low", "medium", "high"]).optional(),
-  references: z.array(referenceSchema).max(10).optional(),
+  references: z.array(referenceSchema).max(16).optional(),
   billingMode: z.enum(["AUTO", "BYOK", "SYSTEM"]).optional(),
-  provider: z.enum(["openai-image", "gemini-image"]).optional(),
+  provider: z.enum(["openai-image", "gemini-image", "runway-image"]).optional(),
 });
 
 export async function POST(request: Request) {
