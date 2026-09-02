@@ -5,3 +5,9 @@
 .root :global(.sc-system-info-trigger) {
   display: none !important;
 }
+
+/* Cancelled jobs are managed only from the selected-job panel above.
+   Keep Recovery Center diagnostic-only so resume/delete are not duplicated. */
+.root :global(section[data-tone="cancelled"] > div:last-child) {
+  display: none !important;
+}
