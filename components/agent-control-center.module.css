@@ -47,7 +47,6 @@
   white-space:nowrap;
 }
 
-/* Local function navigation. It is intentionally not a row of cards. */
 .quickFlow{
   display:flex;
   align-items:center;
@@ -153,6 +152,37 @@
 .jobs{display:grid;gap:5px;margin-top:10px}.jobs>div{display:grid;grid-template-columns:120px 110px minmax(100px,1fr) 2fr;gap:10px;padding:8px;border-top:1px solid var(--agent-line);font-size:11px;line-height:1.5}.jobs b{color:var(--agent-purple)}.jobs span,.jobs small{color:var(--agent-muted-2)}
 .muted{padding:28px;text-align:center;color:var(--agent-muted-2);font-size:12px;line-height:1.6}
 .page :is(button,a):focus-visible{outline:2px solid var(--agent-purple);outline-offset:2px}
+
+:global(html[data-theme="light"]) .recovery {
+  border-color: #d99a32;
+  background: linear-gradient(135deg, #fff4c9 0%, #fff9e7 52%, #fffdf8 100%);
+  box-shadow: 0 10px 24px rgba(156, 105, 20, .13), inset 0 1px rgba(255,255,255,.9);
+}
+:global(html[data-theme="light"]) .recoveryIcon {
+  border-color: #d99a32;
+  color: #7a4a00;
+  background: #ffe6a1;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.45);
+}
+:global(html[data-theme="light"]) .recoveryBody>span { color: #9a5a00; }
+:global(html[data-theme="light"]) .recoveryBody h2 { color: #2e261d; }
+:global(html[data-theme="light"]) .recoveryBody>p { color: #625746; }
+:global(html[data-theme="light"]) .recoveryFacts small { color: #806f58; }
+:global(html[data-theme="light"]) .recoveryFacts b { color: #3d3326; }
+:global(html[data-theme="light"]) .recoveryActions .secondaryAction {
+  border-color: #cdbb9b;
+  color: #493c2c;
+  background: rgba(255,255,255,.82);
+}
+:global(html[data-theme="light"]) .recovery[data-tone="cancelled"] {
+  border-color: #d894a3;
+  background: linear-gradient(135deg, #fff0f4, #fff8fa 62%, #ffffff);
+}
+:global(html[data-theme="light"]) .recovery[data-tone="cancelled"] .recoveryIcon {
+  border-color: #d894a3;
+  color: #973d55;
+  background: #ffe3ea;
+}
 
 @media(max-width:1180px){.statusBar{grid-template-columns:repeat(2,1fr)}.timeline{grid-template-columns:repeat(4,1fr)}.grid{grid-template-columns:1fr}.recovery{grid-template-columns:auto minmax(0,1fr)}.recoveryActions{grid-column:1/-1;grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:760px){.page{padding:14px}.layout{grid-template-columns:1fr}.runList{position:static}.statusBar{grid-template-columns:1fr 1fr}.jobs>div{grid-template-columns:1fr 1fr}.hero{align-items:flex-start;flex-direction:column}.quickFlow{margin-bottom:10px}.recovery{grid-template-columns:1fr}.recoveryIcon{width:38px;height:38px}.recoveryActions{grid-column:auto;grid-template-columns:1fr}.recoveryFacts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.recoveryFacts>span{min-width:0}}
