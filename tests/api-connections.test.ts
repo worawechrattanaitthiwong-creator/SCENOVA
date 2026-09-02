@@ -38,24 +38,38 @@ describe("provider model catalogs", () => {
     expect(getProviderModelCatalog("seedance").length).toBeGreaterThan(1);
   });
 
-  it("exposes Runway as a multi-model video gateway and GPT Image 2 image gateway", () => {
+  it("keeps Runway-hosted services in separate provider connections", () => {
     expect(getProviderModelCatalog("runway").map((model) => model.apiModelId)).toEqual(expect.arrayContaining([
       "gen4.5",
       "gen4_turbo",
+    ]));
+    expect(getProviderModelCatalog("runway").map((model) => model.apiModelId)).not.toEqual(expect.arrayContaining([
       "seedance2_5",
       "gemini_omni_flash",
       "aleph2",
       "ruby",
     ]));
+
+    expect(getProviderModelCatalog("runway-seedance").map((model) => model.apiModelId)).toContain("seedance2_5");
+    expect(getProviderModelCatalog("runway-gemini-omni").map((model) => model.apiModelId)).toContain("gemini_omni_flash");
+    expect(getProviderModelCatalog("runway-aleph").map((model) => model.apiModelId)).toContain("aleph2");
+    expect(getProviderModelCatalog("runway-ruby").map((model) => model.apiModelId)).toContain("ruby");
     expect(getProviderModelCatalog("runway-image").map((model) => model.apiModelId)).toContain("gpt_image_2");
 
     const providers = getPublicProviderCatalog();
-    const runwayVideo = providers.find((provider) => provider.id === "runway" && provider.kind === "VIDEO");
+    const runway = providers.find((provider) => provider.id === "runway" && provider.kind === "VIDEO");
+    const seedanceViaRunway = providers.find((provider) => provider.id === "runway-seedance" && provider.kind === "VIDEO");
+    const geminiOmniViaRunway = providers.find((provider) => provider.id === "runway-gemini-omni" && provider.kind === "VIDEO");
+    const alephViaRunway = providers.find((provider) => provider.id === "runway-aleph" && provider.kind === "VIDEO");
+    const rubyViaRunway = providers.find((provider) => provider.id === "runway-ruby" && provider.kind === "VIDEO");
     const runwayImage = providers.find((provider) => provider.id === "runway-image" && provider.kind === "IMAGE");
-    expect(runwayVideo?.label).toContain("Runway");
-    expect(runwayVideo?.models.length).toBeGreaterThanOrEqual(6);
+
+    expect(runway?.defaultModelId).toBe("gen4.5");
+    expect(seedanceViaRunway?.defaultModelId).toBe("seedance2_5");
+    expect(geminiOmniViaRunway?.defaultModelId).toBe("gemini_omni_flash");
+    expect(alephViaRunway?.defaultModelId).toBe("aleph2");
+    expect(rubyViaRunway?.defaultModelId).toBe("ruby");
     expect(runwayImage?.defaultModelId).toBe("gpt_image_2");
-    expect(runwayImage?.models[0]?.apiModelId).toBe("gpt_image_2");
   });
 
   it("publishes automatic base URLs and model metadata without system env names", () => {
