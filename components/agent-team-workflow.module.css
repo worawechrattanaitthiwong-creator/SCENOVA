@@ -191,6 +191,71 @@
   color: #ff9aae;
 }
 
+:global(html[data-theme="light"]) .teamPanel {
+  border-color: #ded3e7;
+  background: linear-gradient(145deg, #ffffff, #fbf8ff);
+  box-shadow: 0 10px 28px rgba(71, 45, 92, .07);
+}
+
+:global(html[data-theme="light"]) .panelTitle h2 { color: #2f2635; }
+:global(html[data-theme="light"]) .panelTitle p,
+:global(html[data-theme="light"]) .panelTitle > span { color: #786d80; }
+
+:global(html[data-theme="light"]) .agentCard {
+  border-color: #e4dbe9;
+  background: #ffffff;
+  box-shadow: 0 3px 10px rgba(64, 42, 80, .035);
+}
+
+:global(html[data-theme="light"]) .agentCard[data-state="RUNNING"],
+:global(html[data-theme="light"]) .agentCard[data-state="READY"] {
+  border-color: #b894dc;
+  box-shadow: inset 3px 0 #8650c7, 0 3px 10px rgba(64, 42, 80, .035);
+}
+
+:global(html[data-theme="light"]) .agentCard[data-state="COMPLETED"] {
+  border-color: #b9ddca;
+  background: #f3fbf6;
+}
+
+:global(html[data-theme="light"]) .agentCard[data-state="RETURNED"],
+:global(html[data-theme="light"]) .agentCard[data-state="FAILED"] {
+  border-color: #e9b6c2;
+}
+
+:global(html[data-theme="light"]) .agentCard[data-error="true"] {
+  border-color: #e4a5b4;
+  background: linear-gradient(145deg, #fff4f7, #ffffff 62%);
+  box-shadow: inset 3px 0 #d8617d, 0 5px 16px rgba(149, 52, 78, .06);
+}
+
+:global(html[data-theme="light"]) .agentCard[data-error="true"] p { color: #8b3b50; }
+:global(html[data-theme="light"]) .agentCard > div > i { background: #f1e7fa; color: #7041a6; }
+:global(html[data-theme="light"]) .agentCard b { color: #302736; }
+:global(html[data-theme="light"]) .agentCard small { color: #776c7e; }
+:global(html[data-theme="light"]) .agentCard em { color: #7041a6; }
+:global(html[data-theme="light"]) .agentCard p { color: #625868; }
+:global(html[data-theme="light"]) .agentCard footer { border-top-color: #eee6f2; color: #817687; }
+
+:global(html[data-theme="light"]) .shotRail {
+  border-color: #e1d7e7;
+  background: #faf7fc;
+}
+
+:global(html[data-theme="light"]) .shotRail > div:first-child { color: #625769; }
+:global(html[data-theme="light"]) .shotRail > div:last-child span {
+  border-color: #ded4e5;
+  background: #ffffff;
+  color: #716678;
+}
+:global(html[data-theme="light"]) .shotRail > div:last-child span i { background: #f0e8f8; color: #7041a6; }
+:global(html[data-theme="light"]) .shotRail > div:last-child span b { color: #3c3242; }
+:global(html[data-theme="light"]) .shotRail > div:last-child span small { color: #756a7b; }
+:global(html[data-theme="light"]) .shotRail span[data-state="RUNNING"] { border-color: #9860c6; color: #64398d; background: #faf2ff; }
+:global(html[data-theme="light"]) .shotRail span[data-state="COMPLETED"] { border-color: #9ecfb5; background: #eef9f2; color: #28704a; }
+:global(html[data-theme="light"]) .shotRail span[data-state="FAILED"],
+:global(html[data-theme="light"]) .shotRail span[data-state="CANCELLED"] { border-color: #e1a3b2; background: #fff1f4; color: #a13b56; }
+
 @media (max-width: 1180px) {
   .agentGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
