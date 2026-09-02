@@ -15,8 +15,41 @@ const RUNWAY_EPHEMERAL_CACHE_MS = 23 * 60 * 60 * 1000;
 
 const runwayEphemeralCache = new Map<string, { uri: string; expiresAt: number }>();
 
-export function normalizeRunwayPromptText(value: string) {
-  return value.trim().slice(0, RUNWAY_PROMPT_MAX_CHARS);
+export type RunwayVideoModelId = "gen4.5" | "gen4_turbo" | "seedance2_5" | "gemini_omni_flash" | "aleph2" | "ruby";
+export type RunwayEndpoint = "text_to_video" | "image_to_video" | "video_to_video" | "video_to_hdr";
+
+export type RunwayVideoModelProfile = {
+  modelId: RunwayVideoModelId;
+  minDuration: number;
+  maxDuration: number;
+  text: boolean;
+  image: boolean;
+  video: boolean;
+  nativeAudio: boolean;
+  transformOnly: boolean;
+};
+
+const RUNWAY_VIDEO_PROFILES: Record<RunwayVideoModelId, RunwayVideoModelProfile> = {
+  "gen4.5": { modelId: "gen4.5", minDuration: 2, maxDuration: 10, text: true, image: true, video: false, nativeAudio: false, transformOnly: false },
+  gen4_turbo: { modelId: "gen4_turbo", minDuration: 2, maxDuration: 10, text: false, image: true, video: false, nativeAudio: false, transformOnly: false },
+  seedance2_5: { modelId: "seedance2_5", minDuration: 4, maxDuration: 30, text: true, image: true, video: true, nativeAudio: true, transformOnly: false },
+  gemini_omni_flash: { modelId: "gemini_omni_flash", minDuration: 3, maxDuration: 10, text: true, image: true, video: true, nativeAudio: true, transformOnly: false },
+  aleph2: { modelId: "aleph2", minDuration: 2, maxDuration: 30, text: false, image: false, video: true, nativeAudio: false, transformOnly: true },
+  ruby: { modelId: "ruby", minDuration: 1, maxDuration: 30, text: false, image: false, video: true, nativeAudio: true, transformOnly: true },
+};
+
+export function getRunwayVideoModelProfile(value: string): RunwayVideoModelProfile | null {
+  return RUNWAY_VIDEO_PROFILES[value as RunwayVideoModelId] || null;
+}
+
+export function normalizeRunwayPromptText(value: string, maxChars = RUNWAY_PROMPT_MAX_CHARS) {
+  return value.trim().slice(0, Math.max(1, maxChars));
+}
+
+function promptLimit(modelId: string) {
+  if (modelId === "seedance2_5") return 15_000;
+  if (modelId === "gemini_omni_flash" || modelId === "aleph2") return 4_000;
+  return RUNWAY_PROMPT_MAX_CHARS;
 }
 
 export function parseSignedCharacterReference(value: string) {
@@ -176,6 +209,31 @@ export function runwayPromptImageSource(request: GenerateVideoRequest) {
   return request.imageReferences[0];
 }
 
+function cleanReferences(values: string[], limit: number) {
+  return values.map((value) => value.trim()).filter(Boolean).slice(0, limit);
+}
+
+function portrait(aspectRatio?: string) {
+  return String(aspectRatio || "").trim().startsWith("9:16");
+}
+
+export function runwayRatioForModel(modelId: string, aspectRatio?: string, resolution?: string) {
+  if (modelId === "seedance2_5" && String(resolution || "").toLowerCase().includes("1080")) {
+    return portrait(aspectRatio) ? "1080:1920" : "1920:1080";
+  }
+  if (modelId === "seedance2_5") return portrait(aspectRatio) ? "720:1280" : "1280:720";
+  if (modelId === "gemini_omni_flash") return portrait(aspectRatio) ? "720:1280" : "1280:720";
+  return runwayRatio(aspectRatio);
+}
+
+export function resolveRunwayEndpoint(modelId: string, hasImage: boolean, hasVideo: boolean): RunwayEndpoint {
+  if (modelId === "ruby") return "video_to_hdr";
+  if (modelId === "aleph2") return "video_to_video";
+  if (hasVideo && (modelId === "seedance2_5" || modelId === "gemini_omni_flash")) return "video_to_video";
+  if (hasImage) return "image_to_video";
+  return "text_to_video";
+}
+
 export class RunwayVideoProvider implements VideoProvider {
   id = "runway";
   credentialProviderId = "runway";
@@ -208,13 +266,9 @@ export class RunwayVideoProvider implements VideoProvider {
     const file = await loadSignedCharacterReference(value);
     if (!file) return value;
 
-    // Prefer a data URI for SCENOVA-owned references. It is accepted directly by
-    // image_to_video and does not depend on Runway ephemeral-upload entitlement.
     const dataUri = buildRunwayImageDataUri(file.mime, file.data);
     if (dataUri) return dataUri;
 
-    // Only large local references fall back to ephemeral upload. Runway limits
-    // encoded image data URIs to 5 MB while ephemeral uploads allow larger files.
     return uploadRunwayEphemeralImage({
       apiKey: this.apiKey,
       baseUrl: this.baseUrl,
@@ -225,18 +279,27 @@ export class RunwayVideoProvider implements VideoProvider {
     });
   }
 
+  private async prepareImageReferences(values: string[], limit: number) {
+    const results: string[] = [];
+    for (const value of cleanReferences(values, limit)) {
+      const prepared = await this.preparePromptImage(value);
+      if (prepared) results.push(prepared);
+    }
+    return results;
+  }
+
   getModelDefinition(): ModelDefinition {
     return {
-      id: "runway-gen4.5",
-      name: "Runway Gen-4.5",
+      id: "runway-gateway",
+      name: "Runway Multi-Model Gateway",
       provider: "Runway",
-      descriptionTh: "Gen-4.5 รองรับ Text-to-Video และ Image-to-Video ผ่าน Runway Developer API",
-      bestFor: ["cinematic video", "text-to-video", "image-to-video", "fast production shots"],
-      maxSecondsPerGeneration: 10,
-      resolutions: ["720p"],
-      supportsAudio: false,
+      descriptionTh: "Runway Developer API สำหรับ Gen-4.5, Seedance 2.5, Gemini Omni Flash, Aleph 2.0 และ Ruby HDR",
+      bestFor: ["cinematic video", "reference video", "native audio", "video editing", "HDR post-production"],
+      maxSecondsPerGeneration: 30,
+      resolutions: ["720p", "1080p"],
+      supportsAudio: true,
       supportsImageReference: true,
-      supportsVideoReference: false,
+      supportsVideoReference: true,
       supportsMultiShot: false,
       priceLevel: 3,
       enabled: this.isConfigured(),
@@ -244,7 +307,9 @@ export class RunwayVideoProvider implements VideoProvider {
   }
 
   async estimateCost(request: GenerateVideoRequest) {
-    const seconds = clampInt(request.renderSegment.duration, 2, 10);
+    const modelId = resolveVideoApiModelId("Runway", request.modelVersionId) || this.modelId;
+    const profile = getRunwayVideoModelProfile(modelId) || RUNWAY_VIDEO_PROFILES["gen4.5"];
+    const seconds = clampInt(request.renderSegment.duration, profile.minDuration, profile.maxDuration);
     const thbPerSecond = Number(process.env.RUNWAY_SYSTEM_THB_PER_SECOND || 12);
     return byokAwareEstimate(this.billingMode, seconds * (Number.isFinite(thbPerSecond) ? thbPerSecond : 12));
   }
@@ -254,20 +319,67 @@ export class RunwayVideoProvider implements VideoProvider {
     await enforceEmergencyRateLimit(`video:project:${request.projectId}`, Number(process.env.EMERGENCY_VIDEO_CALLS_PER_MINUTE || 2));
     if (!this.apiKey) throw new Error("RUNWAY_PROVIDER_UNAVAILABLE:API_KEY_NOT_CONFIGURED");
 
-    const duration = clampInt(request.renderSegment.duration, 2, 10);
     const modelId = resolveVideoApiModelId("Runway", request.modelVersionId) || this.modelId;
+    const profile = getRunwayVideoModelProfile(modelId);
+    if (!profile) throw new Error(`RUNWAY_MODEL_UNSUPPORTED:${modelId}`);
+
+    const duration = clampInt(request.renderSegment.duration, profile.minDuration, profile.maxDuration);
+    const compiledPrompt = normalizeRunwayPromptText(buildCompiledVideoPrompt(request), promptLimit(modelId));
     const promptImageSource = runwayPromptImageSource(request);
-    if (modelId === "gen4_turbo" && !promptImageSource) throw new Error("RUNWAY_GEN4_TURBO_REQUIRES_IMAGE_REFERENCE");
     const promptImage = await this.preparePromptImage(promptImageSource);
-    const ratio = runwayRatio(request.aspectRatio);
-    const endpoint = promptImage ? "image_to_video" : "text_to_video";
-    const body: Record<string, unknown> = {
-      model: modelId,
-      promptText: normalizeRunwayPromptText(buildCompiledVideoPrompt(request)),
-      ratio,
-      duration,
-    };
-    if (promptImage) body.promptImage = promptImage;
+    const videoReferences = cleanReferences(request.videoReferences, 10);
+    const audioReferences = cleanReferences(request.audioReferences, 10);
+    const allPreparedImages = await this.prepareImageReferences(request.imageReferences, modelId === "seedance2_5" ? 30 : 5);
+    const endpoint = resolveRunwayEndpoint(modelId, Boolean(promptImage), Boolean(videoReferences[0]));
+    const ratio = runwayRatioForModel(modelId, request.aspectRatio, request.resolution);
+    const body: Record<string, unknown> = { model: modelId };
+
+    if (modelId === "gen4_turbo" && !promptImage) throw new Error("RUNWAY_GEN4_TURBO_REQUIRES_IMAGE_REFERENCE");
+    if ((modelId === "aleph2" || modelId === "ruby") && !videoReferences[0]) {
+      throw new Error(modelId === "ruby" ? "RUNWAY_RUBY_REQUIRES_VIDEO_REFERENCE" : "RUNWAY_ALEPH2_REQUIRES_VIDEO_REFERENCE");
+    }
+
+    if (modelId === "ruby") {
+      body.videoUri = videoReferences[0];
+      body.outputFormat = "hdr10";
+    } else if (modelId === "aleph2") {
+      body.videoUri = videoReferences[0];
+      body.promptText = compiledPrompt;
+    } else if (modelId === "gemini_omni_flash") {
+      if (endpoint === "video_to_video") {
+        body.videoUri = videoReferences[0];
+        body.promptText = compiledPrompt;
+        if (allPreparedImages.length) body.references = allPreparedImages.map((uri) => ({ uri }));
+      } else {
+        body.promptText = compiledPrompt;
+        body.duration = duration;
+        body.ratio = ratio;
+        if (promptImage) body.promptImage = promptImage;
+      }
+    } else if (modelId === "seedance2_5") {
+      body.promptText = compiledPrompt;
+      body.audio = audioReferences.length > 0;
+      body.duration = duration;
+      body.ratio = ratio;
+      if (endpoint === "video_to_video") {
+        body.promptVideo = videoReferences[0];
+        body.mode = "reference";
+        const extraVideos = videoReferences.slice(1);
+        if (extraVideos.length) body.referenceVideos = extraVideos.map((uri) => ({ type: "video", uri }));
+        if (allPreparedImages.length) body.references = allPreparedImages.map((uri) => ({ uri }));
+      } else if (endpoint === "image_to_video") {
+        body.promptImage = promptImage;
+      } else {
+        if (allPreparedImages.length) body.references = allPreparedImages.map((uri) => ({ uri }));
+        if (videoReferences.length) body.referenceVideos = videoReferences.map((uri) => ({ type: "video", uri }));
+      }
+      if (audioReferences.length) body.referenceAudio = audioReferences.map((uri) => ({ type: "audio", uri }));
+    } else {
+      body.promptText = normalizeRunwayPromptText(compiledPrompt);
+      body.ratio = ratio;
+      body.duration = duration;
+      if (promptImage) body.promptImage = promptImage;
+    }
 
     const response = await fetch(`${this.baseUrl}/${endpoint}`, {
       method: "POST",
@@ -277,7 +389,7 @@ export class RunwayVideoProvider implements VideoProvider {
     });
     const json = asRecord(await response.json().catch(() => ({})));
     if (!response.ok) {
-      const diagnostic = `endpoint=${endpoint};model=${modelId};ratio=${ratio};promptImage=${promptImage ? "yes" : "no"};agent=${request.idempotencyKey.startsWith("agent:") ? "yes" : "no"}`;
+      const diagnostic = `endpoint=${endpoint};model=${modelId};ratio=${"ratio" in body ? String(body.ratio) : "input"};image=${promptImage ? "yes" : "no"};videoRefs=${videoReferences.length};audioRefs=${audioReferences.length};agent=${request.idempotencyKey.startsWith("agent:") ? "yes" : "no"}`;
       throw new Error(`RUNWAY_HTTP_${response.status}:${formatRunwayApiError(json).slice(0, 850)} | request: ${diagnostic}`);
     }
     const id = typeof json.id === "string" ? json.id : "";
