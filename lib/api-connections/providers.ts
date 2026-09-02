@@ -108,6 +108,18 @@ export const API_PROVIDER_DEFINITIONS: ProviderDefinition[] = [
     credentialHintTh: "ใส่ Gemini API Key ระบบจะกรองรุ่น Image ที่บัญชีเข้าถึงได้มาให้เลือก",
   },
   {
+    id: "runway-image",
+    label: "Runway — GPT Image 2",
+    kind: "IMAGE",
+    defaultBaseUrl: "https://api.dev.runwayml.com/v1",
+    defaultModelId: "gpt_image_2",
+    systemKeyEnv: "RUNWAY_API_KEY",
+    ready: true,
+    purposeTh: "ภาพ Preview / Character / Reference ผ่าน Runway Gateway",
+    capabilityTh: "สร้าง GPT Image 2 ผ่าน Runway text_to_image พร้อม Reference images และ Poll task จนเสร็จ",
+    credentialHintTh: "ใช้ Runway Developer API Key ตัวเดียวกับหมวด Video ได้; ถ้าเชื่อม Runway Video แล้ว Runtime จะ reuse คีย์นั้นให้อัตโนมัติ",
+  },
+  {
     id: "seedance",
     label: "Seedance",
     kind: "VIDEO",
@@ -145,15 +157,15 @@ export const API_PROVIDER_DEFINITIONS: ProviderDefinition[] = [
   },
   {
     id: "runway",
-    label: "Runway",
+    label: "Runway Gateway",
     kind: "VIDEO",
     defaultBaseUrl: "https://api.dev.runwayml.com/v1",
     defaultModelId: "gen4.5",
     systemKeyEnv: "RUNWAY_API_KEY",
     ready: true,
-    purposeTh: "Video Generator ทางเลือก",
-    capabilityTh: "สร้าง Gen-4.5 Text/Image-to-Video จริงและ Poll task จาก Runway Developer API",
-    credentialHintTh: "ใส่ Runway Developer API Key; SCENOVA จะเติม Base URL, API Version และรุ่นที่ Adapter รองรับให้เอง",
+    purposeTh: "Multi-model Video / Edit / HDR Gateway",
+    capabilityTh: "Gen-4.5, Gen-4 Turbo, Seedance 2.5, Gemini Omni Flash 1.1, Aleph 2.0 และ Ruby HDR ผ่าน Runway Developer API เดียว",
+    credentialHintTh: "ใส่ Runway Developer API Key คีย์เดียว; SCENOVA route endpoint ตามความสามารถของแต่ละรุ่นให้อัตโนมัติ",
   },
   {
     id: "wan",
@@ -210,6 +222,7 @@ const STATIC_MODEL_CATALOG: Record<string, ProviderModelOption[]> = {
   gemini: [{ apiModelId: "gemini-2.5-flash", label: "Gemini 2.5 Flash", recommended: true, availability: "UNVERIFIED" }],
   "openai-image": [{ apiModelId: "gpt-image-2", label: "GPT Image 2", recommended: true, availability: "UNVERIFIED" }],
   "gemini-image": [{ apiModelId: "gemini-3.1-flash-image", label: "Gemini 3.1 Flash Image", recommended: true, availability: "UNVERIFIED" }],
+  "runway-image": [{ apiModelId: "gpt_image_2", label: "GPT Image 2 via Runway", note: "Text / Reference Image → Image · ใช้ Runway key เดียวกัน", recommended: true, availability: "SUPPORTED" }],
   seedance: videoOptions("Seedance 2.5"),
   kling: videoOptions("Kling"),
   veo: videoOptions("Veo"),
@@ -294,7 +307,7 @@ export async function testProviderConnection(input: {
     const token = createKlingAuthorization(input.apiKey);
     if (!token) return { ok: false as const, code: "INVALID_API_KEY", message: "กรุณาใส่ Kling AccessKey:SecretKey หรือ Bearer/JWT token" };
     response = await probeBearer(baseUrl, "/v1/videos/text2video?pageNum=1&pageSize=1", token, { "Content-Type": "application/json" });
-  } else if (definition.id === "runway") {
+  } else if (definition.id === "runway" || definition.id === "runway-image") {
     response = await probeBearer(baseUrl, "/tasks/00000000-0000-4000-8000-000000000000", input.apiKey, {
       "X-Runway-Version": "2024-11-06",
       "Content-Type": "application/json",
