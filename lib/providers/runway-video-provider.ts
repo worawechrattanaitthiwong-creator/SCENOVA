@@ -7,6 +7,11 @@ import { asRecord, buildCompiledVideoPrompt, byokAwareEstimate, clampInt, errorM
 const DEFAULT_BASE_URL = "https://api.dev.runwayml.com/v1";
 const DEFAULT_MODEL = "gen4.5";
 const RUNWAY_VERSION = "2024-11-06";
+const RUNWAY_PROMPT_MAX_CHARS = 1000;
+
+export function normalizeRunwayPromptText(value: string) {
+  return value.trim().slice(0, RUNWAY_PROMPT_MAX_CHARS);
+}
 
 export function formatRunwayApiError(payload: Record<string, unknown>) {
   const rawPrimary = errorMessage(payload).trim();
@@ -90,7 +95,7 @@ export class RunwayVideoProvider implements VideoProvider {
     if (modelId === "gen4_turbo" && !request.imageReferences[0]) throw new Error("RUNWAY_GEN4_TURBO_REQUIRES_IMAGE_REFERENCE");
     const body: Record<string, unknown> = {
       model: modelId,
-      promptText: buildCompiledVideoPrompt(request).slice(0, 4000),
+      promptText: normalizeRunwayPromptText(buildCompiledVideoPrompt(request)),
       ratio: runwayRatio(request.aspectRatio),
       duration,
     };
