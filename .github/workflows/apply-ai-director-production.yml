@@ -1,0 +1,63 @@
+name: Apply Production AI Director
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/apply-ai-director-production.mjs"
+      - ".github/workflows/apply-ai-director-production.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-production-ai-director-main
+  cancel-in-progress: false
+
+jobs:
+  patch-main:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply focused Single Episode Studio patch
+        run: node scripts/apply-ai-director-production.mjs
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test AI Director
+        run: npx vitest run tests/ai-director.test.ts
+
+      - name: Commit only Single Episode Studio wiring
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add components/single-episode-studio.tsx
+          if git diff --cached --quiet; then
+            echo "No studio changes to commit."
+            exit 0
+          fi
+          changed="$(git diff --cached --name-only)"
+          if [ "$changed" != "components/single-episode-studio.tsx" ]; then
+            echo "Refusing to commit unrelated files:"
+            echo "$changed"
+            exit 1
+          fi
+          git commit -m "Wire production AI Director into single episode studio"
+          git push origin HEAD:main
