@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
 import { decryptApiSecret, encryptApiSecret } from "@/lib/api-connections/crypto";
 import { getProviderModelCatalog, getPublicProviderCatalog } from "@/lib/api-connections/providers";
@@ -70,6 +71,30 @@ describe("provider model catalogs", () => {
     expect(alephViaRunway?.defaultModelId).toBe("aleph2");
     expect(rubyViaRunway?.defaultModelId).toBe("ruby");
     expect(runwayImage?.defaultModelId).toBe("gpt_image_2");
+  });
+
+  it("shows all Studio video services with live readiness and image-input indicators", () => {
+    const studio = readFileSync("components/single-episode-studio.tsx", "utf8");
+    for (const label of [
+      "Seedance 2.5",
+      "Kling",
+      "Veo",
+      "Runway Gen-4",
+      "Seedance 2.5 — Runway",
+      "Gemini Omni Flash 1.1 — Runway",
+      "Aleph 2.0 — Runway",
+      "Ruby HDR — Runway",
+      "Wan",
+    ]) expect(studio).toContain(label);
+
+    expect(studio).toContain('/api/api-connections');
+    expect(studio).toContain('🟢 พร้อมใช้งาน');
+    expect(studio).toContain('🟠 ยังไม่ได้เชื่อมต่อ / Connection ไม่พร้อม');
+    expect(studio).toContain('🔴 Adapter ยังไม่พร้อม');
+    expect(studio).toContain('🖼 รับรูปอ้างอิง');
+    expect(studio).toContain('Model รองรับรูป แต่ SCENOVA Adapter ยังไม่ส่งรูป');
+    expect(studio).toContain('Video Edit เท่านั้น · ต้องมีวิดีโอต้นฉบับ');
+    expect(studio).toContain('HDR Post-process เท่านั้น · ต้องมีวิดีโอต้นฉบับ');
   });
 
   it("publishes automatic base URLs and model metadata without system env names", () => {
