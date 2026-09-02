@@ -1,9 +1,9 @@
 .panel {
-  width: min(1540px, calc(100% - 56px));
+  width: 100%;
   scroll-margin-top: 20px;
-  margin: 0 auto 14px;
+  margin: 0;
   border: 1px solid rgba(139, 92, 246, .26);
-  border-radius: 16px;
+  border-radius: 14px;
   background: linear-gradient(135deg, rgba(18, 12, 31, .97), rgba(9, 7, 17, .98));
   overflow: hidden;
 }
@@ -12,15 +12,15 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 18px;
-  padding: 15px 17px 13px;
+  gap: 12px;
+  padding: 10px 12px 9px;
   border-bottom: 1px solid rgba(255,255,255,.06);
 }
 
-.head h2 { margin: 3px 0 2px; color: #f6f1ff; font-size: 14px; }
-.head p { margin: 0; color: #92879f; font-size: 10px; line-height: 1.5; }
-.eyebrow { color: #a876ff; font-size: 8px; font-weight: 900; letter-spacing: .13em; }
-.status { flex: 0 0 auto; border: 1px solid rgba(139,92,246,.3); border-radius: 999px; padding: 6px 9px; color: #ccb6ff; background: rgba(139,92,246,.1); font-size: 9px; font-weight: 900; }
+.head h2 { margin: 2px 0 1px; color: #f6f1ff; font-size: 12px; }
+.head p { margin: 0; color: #92879f; font-size: 8px; line-height: 1.35; }
+.eyebrow { color: #a876ff; font-size: 7px; font-weight: 900; letter-spacing: .12em; }
+.status { flex: 0 0 auto; border: 1px solid rgba(139,92,246,.3); border-radius: 999px; padding: 5px 8px; color: #ccb6ff; background: rgba(139,92,246,.1); font-size: 8px; font-weight: 900; }
 .status[data-status="FAILED"] { color: #ff9aad; border-color: rgba(245,92,114,.42); background: rgba(245,92,114,.09); }
 .status[data-status="PAUSED"] { color: #a9cfff; border-color: rgba(95,170,255,.36); background: rgba(95,170,255,.08); }
 .status[data-status="CANCELLED"] { color: #ffb7c2; border-color: rgba(245,92,114,.38); background: rgba(245,92,114,.08); }
@@ -28,37 +28,42 @@
 .body {
   display: grid;
   grid-template-columns: 1.15fr 1fr 1fr;
-  gap: 10px;
-  padding: 13px 17px 8px;
+  gap: 8px;
+  padding: 8px 12px 6px;
 }
 
-.body label { display: grid; gap: 5px; min-width: 0; }
-.body label > span { color: #897e96; font-size: 9px; font-weight: 800; }
+.panel[aria-label="จัดการงาน AI ที่ยกเลิก"] .body {
+  grid-template-columns: 1fr;
+}
+
+.body label { display: grid; gap: 4px; min-width: 0; }
+.body label > span { color: #897e96; font-size: 8px; font-weight: 800; }
 .body select {
   width: 100%;
-  min-height: 38px;
+  min-height: 31px;
   border: 1px solid rgba(139,92,246,.24);
-  border-radius: 9px;
+  border-radius: 8px;
   background: #0c0913;
   color: #e9e1f5;
-  padding: 0 10px;
+  padding: 0 8px;
   font: inherit;
-  font-size: 10px;
+  font-size: 9px;
 }
 .body select:disabled { opacity: .56; cursor: not-allowed; }
 
 .meta {
   display: flex;
-  gap: 8px 18px;
+  gap: 5px 12px;
   flex-wrap: wrap;
-  padding: 2px 17px 10px;
+  padding: 1px 12px 7px;
   color: #766d82;
-  font-size: 8px;
+  font-size: 7px;
+  line-height: 1.35;
 }
 .meta b { color: #b9adca; }
 .meta strong { color: #ffb36f; }
 
-.success, .error { margin: 0 17px 10px; border-radius: 9px; padding: 9px 10px; font-size: 9px; line-height: 1.45; }
+.success, .error { margin: 0 12px 7px; border-radius: 8px; padding: 7px 8px; font-size: 8px; line-height: 1.35; }
 .success { color: #8ce2b6; border: 1px solid rgba(70,190,130,.28); background: rgba(70,190,130,.07); }
 .error { color: #ff9bad; border: 1px solid rgba(245,92,114,.32); background: rgba(245,92,114,.08); }
 
@@ -66,20 +71,20 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 7px;
+  gap: 6px;
   flex-wrap: wrap;
-  padding: 10px 17px 14px;
+  padding: 7px 12px 9px;
   border-top: 1px solid rgba(255,255,255,.045);
 }
 .actions button, .actions a {
-  min-height: 34px;
+  min-height: 29px;
   border: 1px solid rgba(139,92,246,.34);
-  border-radius: 9px;
+  border-radius: 8px;
   background: rgba(139,92,246,.09);
   color: #d8c8fa;
-  padding: 7px 11px;
+  padding: 5px 9px;
   font: inherit;
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 900;
   text-decoration: none;
   cursor: pointer;
@@ -94,7 +99,6 @@
 }
 
 @media (max-width: 720px) {
-  .panel { width: calc(100% - 20px); }
   .head { flex-direction: column; }
   .actions { justify-content: flex-start; }
 }
