@@ -129,8 +129,8 @@ export default function AgentRunModelEditor() {
   }
 
   const ready = selectedModel ? modelReady(selectedModel.id) : false;
-  const stopped = Boolean(selectedRun && ["FAILED", "PAUSED"].includes(selectedRun.status));
   const cancelled = selectedRun?.status === "CANCELLED";
+  const canEditModel = Boolean(selectedRun && ["FAILED", "PAUSED", "CANCELLED"].includes(selectedRun.status));
   const canPause = Boolean(selectedRun && !["FAILED", "PAUSED", "COMPLETED", "CANCELLED"].includes(selectedRun.status));
 
   function chooseModel(nextModelId: string) {
@@ -165,7 +165,7 @@ export default function AgentRunModelEditor() {
   }
 
   async function saveModel() {
-    if (!selectedRun || !stopped || !ready || busy) return;
+    if (!selectedRun || !canEditModel || !ready || busy || !versionId) return;
     setBusy(true);
     setMessage("");
     setError("");
@@ -178,7 +178,9 @@ export default function AgentRunModelEditor() {
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "บันทึกโมเดลไม่สำเร็จ");
-      setMessage("บันทึกโมเดลและรุ่นใหม่แล้ว งานยังหยุดอยู่ กด “เริ่มงาน” ที่การ์ดงานเมื่อต้องการทำต่อ");
+      setMessage(cancelled
+        ? "บันทึกโมเดลและรุ่นใหม่แล้ว งานยังยกเลิกอยู่ กด “เรียกกลับมา” ที่การ์ดงานเมื่อต้องการคืนงาน และกด “เริ่มงาน” เมื่อต้องการทำต่อ"
+        : "บันทึกโมเดลและรุ่นใหม่แล้ว งานยังหยุดอยู่ กด “เริ่มงาน” ที่การ์ดงานเมื่อต้องการทำต่อ");
       await load();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
@@ -215,8 +217,8 @@ export default function AgentRunModelEditor() {
       <div className={styles.head}>
         <div>
           <span className={styles.eyebrow}>{cancelled ? "CANCELLED JOB · งานเดิม" : "MODEL OVERRIDE · งานเดิม"}</span>
-          <h2>{cancelled ? "งานที่ยกเลิก" : "แก้เฉพาะโมเดลและรุ่นของงานนี้"}</h2>
-          <p>{cancelled ? "กด “เรียกกลับมา” ที่การ์ดงานด้านซ้ายเพื่อคืนงานเป็นสถานะพักไว้ งานจะยังไม่เริ่มจนกด “เริ่มงาน”" : "Story, ตัวละคร, ฉาก, Prompt/Artifact และความคืบหน้าเดิมจะไม่ถูกลบ"}</p>
+          <h2>{cancelled ? "งานที่ยกเลิก · แก้โมเดลได้" : "แก้เฉพาะโมเดลและรุ่นของงานนี้"}</h2>
+          <p>{cancelled ? "เปลี่ยนโมเดลหรือรุ่นได้ทันทีโดยยังไม่เรียกงานกลับมา การบันทึกจะไม่เริ่มงานอัตโนมัติ" : "Story, ตัวละคร, ฉาก, Prompt/Artifact และความคืบหน้าเดิมจะไม่ถูกลบ"}</p>
         </div>
         <span className={styles.status} data-status={selectedRun?.status || ""}>{selectedRun ? statusLabel(selectedRun.status) : "—"}</span>
       </div>
@@ -231,42 +233,40 @@ export default function AgentRunModelEditor() {
           </select>
         </label>
 
-        {!cancelled ? <>
-          <label>
-            <span>โมเดลวิดีโอ</span>
-            <select value={modelId} onChange={(event) => chooseModel(event.target.value)} disabled={!stopped || busy}>
-              {VIDEO_MODELS.filter((model) => model.enabled).map((model) => {
-                const isReady = modelReady(model.id);
-                return <option key={model.id} value={model.id} disabled={!isReady}>{model.name}{isReady ? " · พร้อมใช้งาน" : " · ยังไม่พร้อมใช้งาน"}</option>;
-              })}
-            </select>
-          </label>
+        <label>
+          <span>โมเดลวิดีโอ</span>
+          <select value={modelId} onChange={(event) => chooseModel(event.target.value)} disabled={!canEditModel || busy}>
+            {VIDEO_MODELS.filter((model) => model.enabled).map((model) => {
+              const isReady = modelReady(model.id);
+              return <option key={model.id} value={model.id} disabled={!isReady}>{model.name}{isReady ? " · พร้อมใช้งาน" : " · ยังไม่พร้อมใช้งาน"}</option>;
+            })}
+          </select>
+        </label>
 
-          <label>
-            <span>รุ่น / Version</span>
-            <select value={versionId} onChange={(event) => setVersionId(event.target.value)} disabled={!stopped || !ready || busy}>
-              {versions.map((version) => <option key={version.apiModelId} value={version.apiModelId}>{version.label}{version.recommended ? " · แนะนำ" : ""}</option>)}
-            </select>
-          </label>
-        </> : null}
+        <label>
+          <span>รุ่น / Version</span>
+          <select value={versionId} onChange={(event) => setVersionId(event.target.value)} disabled={!canEditModel || !ready || busy}>
+            {versions.map((version) => <option key={version.apiModelId} value={version.apiModelId}>{version.label}{version.recommended ? " · แนะนำ" : ""}</option>)}
+          </select>
+        </label>
       </div>
 
       <div className={styles.meta}>
-        <span>โมเดล: <b>{VIDEO_MODELS.find((item) => item.id === currentProject?.mainModelId)?.name || currentProject?.mainModelId || "—"}</b></span>
-        <span>รุ่น: <b>{currentProject?.mainModelVersionId || "Provider default"}</b></span>
-        {!cancelled && !ready && selectedModel ? <strong>{selectedModel.name} ยังไม่พร้อมใช้งาน — เชื่อมต่อ/ทดสอบ Provider ก่อน</strong> : null}
-        {cancelled ? <strong>ข้อมูลและ Shot ที่ทำสำเร็จแล้วจะยังคงอยู่จนกว่าจะลบถาวร</strong> : null}
+        <span>โมเดลปัจจุบัน: <b>{VIDEO_MODELS.find((item) => item.id === currentProject?.mainModelId)?.name || currentProject?.mainModelId || "—"}</b></span>
+        <span>รุ่นปัจจุบัน: <b>{currentProject?.mainModelVersionId || "Provider default"}</b></span>
+        {!canEditModel && selectedRun ? <strong>งานกำลังทำงานอยู่ — กดพักงานก่อนจึงจะแก้โมเดลหรือรุ่นได้</strong> : null}
+        {!ready && selectedModel ? <strong>{selectedModel.name} ยังไม่พร้อมใช้งาน — เลือกโมเดลที่ขึ้นว่า “พร้อมใช้งาน” หรือเชื่อมต่อ Provider ก่อน</strong> : null}
+        {cancelled ? <strong>การบันทึกโมเดลจะไม่เรียกคืนหรือเริ่มงาน ข้อมูลและ Shot ที่สำเร็จแล้วจะยังคงอยู่</strong> : null}
       </div>
 
       {message ? <div className={styles.success}>{message}</div> : null}
       {error ? <div className={styles.error}>{error}</div> : null}
 
       <div className={styles.actions}>
-        {cancelled ? <button type="button" className={styles.danger} disabled={busy} onClick={() => void deleteCancelledRun()}>{busy ? "กำลังลบ..." : "ลบถาวร"}</button> : <>
-          {canPause ? <button type="button" className={styles.pause} disabled={busy} onClick={() => void pauseForEdit()}>{busy ? "กำลังพักงาน..." : "Ⅱ พักงานเพื่อแก้โมเดล"}</button> : null}
-          {stopped ? <button type="button" className={styles.primary} disabled={busy || !ready || !versionId} onClick={() => void saveModel()}>{busy ? "กำลังบันทึก..." : "บันทึกโมเดล"}</button> : null}
-          {!ready ? <Link href="/profile/api">API &amp; Models →</Link> : null}
-        </>}
+        {cancelled ? <button type="button" className={styles.danger} disabled={busy} onClick={() => void deleteCancelledRun()}>{busy ? "กำลังลบ..." : "ลบถาวร"}</button> : null}
+        {canPause ? <button type="button" className={styles.pause} disabled={busy} onClick={() => void pauseForEdit()}>{busy ? "กำลังพักงาน..." : "Ⅱ พักงานเพื่อแก้โมเดล"}</button> : null}
+        {canEditModel ? <button type="button" className={styles.primary} disabled={busy || !ready || !versionId} onClick={() => void saveModel()}>{busy ? "กำลังบันทึก..." : "บันทึกโมเดล / รุ่น"}</button> : null}
+        {!ready ? <Link href="/profile/api">API &amp; Models →</Link> : null}
       </div>
     </section>
   );
