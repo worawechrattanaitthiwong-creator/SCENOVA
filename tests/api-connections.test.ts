@@ -38,6 +38,26 @@ describe("provider model catalogs", () => {
     expect(getProviderModelCatalog("seedance").length).toBeGreaterThan(1);
   });
 
+  it("exposes Runway as a multi-model video gateway and GPT Image 2 image gateway", () => {
+    expect(getProviderModelCatalog("runway").map((model) => model.apiModelId)).toEqual(expect.arrayContaining([
+      "gen4.5",
+      "gen4_turbo",
+      "seedance2_5",
+      "gemini_omni_flash",
+      "aleph2",
+      "ruby",
+    ]));
+    expect(getProviderModelCatalog("runway-image").map((model) => model.apiModelId)).toContain("gpt_image_2");
+
+    const providers = getPublicProviderCatalog();
+    const runwayVideo = providers.find((provider) => provider.id === "runway" && provider.kind === "VIDEO");
+    const runwayImage = providers.find((provider) => provider.id === "runway-image" && provider.kind === "IMAGE");
+    expect(runwayVideo?.label).toContain("Runway");
+    expect(runwayVideo?.models.length).toBeGreaterThanOrEqual(6);
+    expect(runwayImage?.defaultModelId).toBe("gpt_image_2");
+    expect(runwayImage?.models[0]?.apiModelId).toBe("gpt_image_2");
+  });
+
   it("publishes automatic base URLs and model metadata without system env names", () => {
     const providers = getPublicProviderCatalog();
     const veo = providers.find((provider) => provider.id === "veo");
