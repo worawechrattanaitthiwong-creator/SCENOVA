@@ -16,9 +16,11 @@ import { cancelWorkflow } from "@/lib/agent/workflow-store";
 import { episodeScopeKey } from "@/lib/agent/contracts";
 
 type PersistedOutput = {
+  order?: number;
   providerId?: string;
   providerTaskId?: string;
   reservationId?: string;
+  billingMode?: string;
   settled?: boolean;
   status?: string;
 };
@@ -134,6 +136,125 @@ export async function retryFailedRunByUser(run: AgentRunRecord) {
     metadata: { episodeIndex, taskId: nextTask.id, previousError: nextTask.lastError },
   });
   return updated;
+}
+
+export async function restoreCancelledRunByUser(run: AgentRunRecord) {
+  if (run.status !== "CANCELLED") throw new Error("AGENT_RUN_NOT_CANCELLED");
+
+  const state = { ...((run.stateJson || {}) as ControlState) };
+  const episodeIndex = typeof state.currentEpisodeIndex === "number" ? state.currentEpisodeIndex : Number(state.startEpisodeIndex || 0);
+  const scopeKey = episodeScopeKey(episodeIndex);
+
+  // If cancellation happened while waiting for an approval, restore the same
+  // checkpoint instead of jumping ahead and spending without approval.
+  if (run.stage === "AWAIT_APPROVAL") {
+    const pendingApproval = await prisma.agentApproval.findFirst({
+      where: { runId: run.id, status: "PENDING" },
+      orderBy: { requestedAt: "desc" },
+    });
+    if (pendingApproval) {
+      await prisma.agentWorkflow.updateMany({ where: { runId: run.id }, data: { status: "ACTIVE" } });
+      delete state.resumeStage;
+      run.status = "WAITING_APPROVAL";
+      run.stopReason = "คืนงานกลับมาที่จุดรออนุมัติเดิม";
+      run.finishedAt = null;
+      run.stateJson = state;
+      const updated = await saveAgentRun(run);
+      await recordAgentDecision({
+        runId: updated.id,
+        stage: updated.stage,
+        action: "USER_RESTORED_CANCELLED",
+        reason: "ผู้ใช้เรียกคืนงานที่ยกเลิกกลับมาที่ Human Approval เดิม โดยไม่สร้างงานใหม่",
+        metadata: { episodeIndex, pendingApprovalId: pendingApproval.id },
+      });
+      return updated;
+    }
+  }
+
+  const primaryTasks = await prisma.agentTask.findMany({
+    where: { runId: run.id, scopeKey, stage: { not: "GENERATE_SHOT" } },
+    orderBy: { sequence: "asc" },
+  });
+  const resumeTask = primaryTasks.find((task) => task.stage === run.stage && task.status !== "COMPLETED")
+    || primaryTasks.find((task) => task.status !== "COMPLETED");
+  if (!resumeTask) throw new Error("AGENT_CANCELLED_RESUME_STAGE_NOT_FOUND");
+
+  const resumeStage = resumeTask.stage as AgentStage;
+  if (["COMPLETED", "FAILED"].includes(resumeStage)) throw new Error("AGENT_CANCELLED_RESUME_STAGE_INVALID");
+
+  // Provider work that was queued/generating was cancelled/refunded when the
+  // user cancelled the run. Keep only reusable completed outputs so the worker
+  // never polls a cancelled providerTaskId. Missing shots receive a new attempt.
+  const previousOutputs = state.outputsByEpisode?.[String(episodeIndex)] || [];
+  const reusableOutputs = previousOutputs.filter((output) =>
+    output.status === "completed"
+    && (output.settled || output.billingMode === "BYOK" || output.billingMode === "MOCK" || output.providerId === "mock-seedance"),
+  );
+  state.outputsByEpisode = { ...(state.outputsByEpisode || {}), [String(episodeIndex)]: reusableOutputs };
+  state.providerSwitches = 0;
+  state.queueSequence = Number(state.queueSequence || 0) + 1;
+  delete state.resumeStage;
+
+  await prisma.$transaction([
+    prisma.agentWorkflow.updateMany({ where: { runId: run.id }, data: { status: "ACTIVE" } }),
+    // Completed tasks and their immutable Artifacts stay untouched. Everything
+    // unfinished returns to PENDING, then the exact resume task becomes READY.
+    prisma.agentTask.updateMany({
+      where: { runId: run.id, scopeKey, status: { not: "COMPLETED" } },
+      data: { status: "PENDING", attempt: 0, lastError: null, startedAt: null, completedAt: null },
+    }),
+    prisma.agentTask.update({
+      where: { id: resumeTask.id },
+      data: { status: "READY", attempt: 0, lastError: null, startedAt: null, completedAt: null },
+    }),
+    prisma.agentQueueJob.updateMany({
+      where: { runId: run.id, status: { in: ["QUEUED", "RUNNING"] } },
+      data: {
+        status: "FAILED",
+        lastError: "SUPERSEDED_BY_CANCELLED_RUN_RESTORE",
+        lockedAt: null,
+        lockedBy: null,
+        heartbeatAt: null,
+        leaseExpiresAt: null,
+      },
+    }),
+  ]);
+
+  run.stage = resumeStage;
+  run.status = "QUEUED";
+  run.stopReason = null;
+  run.finishedAt = null;
+  run.stateJson = state;
+  const updated = await saveAgentRun(run);
+
+  const policy = getAgentPolicy();
+  await enqueueAgentStep(
+    updated.id,
+    { reason: "user-restore-cancelled", stage: resumeStage, episodeIndex, sequence: state.queueSequence },
+    0,
+    policy.maxRetriesPerStep + 1,
+    `${updated.id}:${episodeIndex}:${resumeStage}:user-restore-cancelled:${Date.now()}`,
+  );
+  await recordAgentDecision({
+    runId: updated.id,
+    stage: resumeStage,
+    action: "USER_RESTORED_CANCELLED",
+    reason: `ผู้ใช้เรียกคืนงานที่ยกเลิกและเริ่มต่อจากขั้น ${resumeStage} โดยเก็บงานและ Artifact ที่สำเร็จแล้วไว้`,
+    metadata: {
+      episodeIndex,
+      taskId: resumeTask.id,
+      preservedCompletedOutputs: reusableOutputs.map((output) => output.order),
+      discardedIncompleteProviderAttempts: Math.max(0, previousOutputs.length - reusableOutputs.length),
+    },
+  });
+  return updated;
+}
+
+export async function deleteCancelledRunByUser(run: AgentRunRecord) {
+  if (run.status !== "CANCELLED") throw new Error("AGENT_RUN_DELETE_REQUIRES_CANCELLED");
+  const id = run.id;
+  await prisma.agentRun.delete({ where: { id } });
+  return { id };
 }
 
 export async function rejectPendingRunApproval(run: AgentRunRecord, userId: string) {
