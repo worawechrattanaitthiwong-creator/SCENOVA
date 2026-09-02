@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { decryptApiSecret, encryptApiSecret } from "@/lib/api-connections/crypto";
+import { getProviderModelCatalog, getPublicProviderCatalog } from "@/lib/api-connections/providers";
 import { productionAnalysisSchema } from "@/lib/analyzer/schema";
 
 const originalKey = process.env.API_KEY_ENCRYPTION_KEY;
@@ -23,6 +24,26 @@ describe("BYOK API key encryption", () => {
   it("rejects a missing encryption key", () => {
     delete process.env.API_KEY_ENCRYPTION_KEY;
     expect(() => encryptApiSecret("gsk_example_1234")).toThrow("API_KEY_ENCRYPTION_KEY_REQUIRED");
+  });
+});
+
+describe("provider model catalogs", () => {
+  it("exposes multiple selectable versions for video providers", () => {
+    expect(getProviderModelCatalog("veo").map((model) => model.apiModelId)).toEqual(expect.arrayContaining([
+      "veo-3.1-lite-generate-preview",
+      "veo-3.1-fast-generate-preview",
+      "veo-3.1-generate-preview",
+    ]));
+    expect(getProviderModelCatalog("kling").length).toBeGreaterThan(1);
+    expect(getProviderModelCatalog("seedance").length).toBeGreaterThan(1);
+  });
+
+  it("publishes automatic base URLs and model metadata without system env names", () => {
+    const providers = getPublicProviderCatalog();
+    const veo = providers.find((provider) => provider.id === "veo");
+    expect(veo?.defaultBaseUrl).toBe("https://generativelanguage.googleapis.com/v1beta");
+    expect(veo?.models.length).toBeGreaterThan(1);
+    expect(Object.prototype.hasOwnProperty.call(veo || {}, "systemKeyEnv")).toBe(false);
   });
 });
 
