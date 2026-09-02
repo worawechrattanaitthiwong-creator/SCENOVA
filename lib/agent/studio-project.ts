@@ -93,6 +93,10 @@ const MODEL_IDS: Record<string, string> = {
   Kling: "kling",
   Veo: "veo",
   Runway: "runway",
+  "Seedance 2.5 (Runway)": "runway-seedance",
+  "Gemini Omni Flash 1.1 (Runway)": "runway-gemini-omni",
+  "Aleph 2.0 (Runway)": "runway-aleph",
+  "Ruby HDR (Runway)": "runway-ruby",
   Wan: "wan",
 };
 
