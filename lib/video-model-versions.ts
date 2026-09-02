@@ -25,10 +25,18 @@ export const VIDEO_MODEL_VERSIONS: Record<string, VideoModelVersion[]> = {
   Runway: [
     { id: "runway-gen4.5", label: "Runway Gen-4.5", apiModelId: "gen4.5", note: "Text / Image → Video · Cinematic", recommended: true },
     { id: "runway-gen4-turbo", label: "Runway Gen-4 Turbo", apiModelId: "gen4_turbo", note: "Image → Video · เร็วและประหยัด" },
-    { id: "runway-seedance-2.5", label: "Seedance 2.5 via Runway", apiModelId: "seedance2_5", note: "Text / Image / Video → Video · Reference + Native Audio" },
-    { id: "runway-gemini-omni-flash", label: "Gemini Omni Flash 1.1 via Runway", apiModelId: "gemini_omni_flash", note: "Text / Image / Video → Video · 720p" },
-    { id: "runway-aleph-2", label: "Aleph 2.0 via Runway", apiModelId: "aleph2", note: "Video Edit เท่านั้น · ต้องมีวิดีโอต้นฉบับ" },
-    { id: "runway-ruby", label: "Ruby HDR via Runway", apiModelId: "ruby", note: "Post-production SDR → HDR เท่านั้น · ต้องมีวิดีโอต้นฉบับ" },
+  ],
+  "Seedance 2.5 (Runway)": [
+    { id: "runway-seedance-2.5", label: "Seedance 2.5", apiModelId: "seedance2_5", note: "Text / Image / Video → Video · Reference + Native Audio", recommended: true },
+  ],
+  "Gemini Omni Flash 1.1 (Runway)": [
+    { id: "runway-gemini-omni-flash", label: "Gemini Omni Flash 1.1", apiModelId: "gemini_omni_flash", note: "Text / Image / Video → Video · 720p", recommended: true },
+  ],
+  "Aleph 2.0 (Runway)": [
+    { id: "runway-aleph-2", label: "Aleph 2.0", apiModelId: "aleph2", note: "Video Edit เท่านั้น · ต้องมีวิดีโอต้นฉบับ", recommended: true },
+  ],
+  "Ruby HDR (Runway)": [
+    { id: "runway-ruby", label: "Ruby HDR", apiModelId: "ruby", note: "Post-production SDR → HDR เท่านั้น · ต้องมีวิดีโอต้นฉบับ", recommended: true },
   ],
   Wan: [
     { id: "wan3-standard", label: "Wan 3.0 Standard", apiModelId: "wan3.0-video", note: "ประหยัด · All-in-One", recommended: true },
