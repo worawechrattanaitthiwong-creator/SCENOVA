@@ -22,7 +22,7 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
       runId: updated.id,
       status: updated.status,
       stage: updated.stage,
-      message: "เรียกคืนงานที่ยกเลิกและเริ่มต่อจากจุดเดิมแล้ว",
+      message: "เรียกคืนงานแล้ว งานยังหยุดอยู่และจะไม่เริ่มจนกว่าผู้ใช้จะกดเริ่มงาน",
     });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "AGENT_RESTORE_CANCELLED_FAILED" }, { status: 409 });
