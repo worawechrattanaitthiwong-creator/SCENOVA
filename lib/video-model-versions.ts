@@ -59,12 +59,17 @@ export function getDefaultVideoModelVersionId(modelName: string) {
 
 export function resolveVideoApiModelId(modelName: string, selected?: string | null) {
   if (!selected) return undefined;
-  const version = getVideoModelVersions(modelName).find((item) => item.apiModelId === selected || item.id === selected);
-  return version?.apiModelId;
+  const direct = getVideoModelVersions(modelName).find((item) => item.apiModelId === selected || item.id === selected);
+  if (direct) return direct.apiModelId;
+  // Shared adapters (notably Runway) may execute logical providers whose models
+  // live in separate UI catalogs. Keep old jobs and the shared runtime resolvable.
+  const shared = Object.values(VIDEO_MODEL_VERSIONS).flat().find((item) => item.apiModelId === selected || item.id === selected);
+  return shared?.apiModelId;
 }
 
 export function getVideoModelVersionLabel(modelName: string, selected?: string | null) {
   if (!selected) return "Provider default";
-  const version = getVideoModelVersions(modelName).find((item) => item.apiModelId === selected || item.id === selected);
-  return version?.label || selected;
+  const direct = getVideoModelVersions(modelName).find((item) => item.apiModelId === selected || item.id === selected);
+  if (direct) return direct.label;
+  return Object.values(VIDEO_MODEL_VERSIONS).flat().find((item) => item.apiModelId === selected || item.id === selected)?.label || selected;
 }
