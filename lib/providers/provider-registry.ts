@@ -17,20 +17,22 @@ export type ProviderSelection = {
 };
 
 const VIDEO_PROVIDER_IDS: SupportedVideoProviderId[] = ["seedance", "kling", "veo", "runway", "wan"];
+const RUNWAY_GATEWAY_MODEL_IDS = new Set(["gen4.5", "gen4_turbo", "seedance2_5", "gemini_omni_flash", "aleph2", "ruby"]);
 
 function normalizeProviderId(value: string): SupportedVideoProviderId | "mock" | null {
   const id = String(value || "").trim().toLowerCase();
   if (id === "mock" || id === "mock-seedance") return "mock";
+  if (id === "runway" || id.startsWith("runway-") || RUNWAY_GATEWAY_MODEL_IDS.has(id) || id.includes("gen4") || id.includes("gen-4")) return "runway";
   if (id === "seedance" || id === "byteplus-seedance-2.5" || id === "seedance-2.5" || id === "seedance-2-5") return "seedance";
   if (id === "kling" || id.startsWith("kling-")) return "kling";
   if (id === "veo" || id.startsWith("veo-")) return "veo";
-  if (id === "runway" || id.includes("gen4") || id.includes("gen-4")) return "runway";
   if (id === "wan" || id.startsWith("wan2") || id.startsWith("wan-")) return "wan";
   return null;
 }
 
 function providerForModel(modelId: string): SupportedVideoProviderId | null {
   const value = String(modelId || "").toLowerCase();
+  if (RUNWAY_GATEWAY_MODEL_IDS.has(value) || value.startsWith("runway-") || value.includes("gemini_omni_flash") || value.includes("aleph2")) return "runway";
   if (value.includes("seedance") || value.includes("dreamina")) return "seedance";
   if (value.includes("kling")) return "kling";
   if (value.includes("veo")) return "veo";
@@ -118,7 +120,12 @@ function mapProviderAliases(map: Record<string, VideoProvider>, provider: VideoP
   } else if (normalized === "veo") {
     for (const key of ["veo", "veo-3.1", "veo-3.1-generate-preview", "Veo 3.1"]) map[key] = provider;
   } else if (normalized === "runway") {
-    for (const key of ["runway", "runway-gen4.5", "gen4.5", "Runway Gen-4.5"]) map[key] = provider;
+    for (const key of [
+      "runway", "runway-gen4.5", "gen4.5", "Runway Gen-4.5", "gen4_turbo",
+      "seedance2_5", "runway-seedance-2.5", "Seedance 2.5 via Runway",
+      "gemini_omni_flash", "Gemini Omni Flash 1.1 via Runway",
+      "aleph2", "Aleph 2.0 via Runway", "ruby", "Ruby HDR via Runway",
+    ]) map[key] = provider;
   } else if (normalized === "wan") {
     for (const key of ["wan", "wan-video", "wan2.6-t2v", "wan2.7", "Wan"]) map[key] = provider;
   }
