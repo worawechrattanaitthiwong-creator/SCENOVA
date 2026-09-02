@@ -260,6 +260,7 @@ export class RunwayVideoProvider implements VideoProvider {
     if (modelId === "gen4_turbo" && !promptImageSource) throw new Error("RUNWAY_GEN4_TURBO_REQUIRES_IMAGE_REFERENCE");
     const promptImage = await this.preparePromptImage(promptImageSource);
     const ratio = runwayRatio(request.aspectRatio);
+    const endpoint = promptImage ? "image_to_video" : "text_to_video";
     const body: Record<string, unknown> = {
       model: modelId,
       promptText: normalizeRunwayPromptText(buildCompiledVideoPrompt(request)),
@@ -268,7 +269,7 @@ export class RunwayVideoProvider implements VideoProvider {
     };
     if (promptImage) body.promptImage = promptImage;
 
-    const response = await fetch(`${this.baseUrl}/image_to_video`, {
+    const response = await fetch(`${this.baseUrl}/${endpoint}`, {
       method: "POST",
       headers: this.headers(),
       body: JSON.stringify(body),
@@ -276,7 +277,7 @@ export class RunwayVideoProvider implements VideoProvider {
     });
     const json = asRecord(await response.json().catch(() => ({})));
     if (!response.ok) {
-      const diagnostic = `model=${modelId};ratio=${ratio};promptImage=${promptImage ? "yes" : "no"};agent=${request.idempotencyKey.startsWith("agent:") ? "yes" : "no"}`;
+      const diagnostic = `endpoint=${endpoint};model=${modelId};ratio=${ratio};promptImage=${promptImage ? "yes" : "no"};agent=${request.idempotencyKey.startsWith("agent:") ? "yes" : "no"}`;
       throw new Error(`RUNWAY_HTTP_${response.status}:${formatRunwayApiError(json).slice(0, 850)} | request: ${diagnostic}`);
     }
     const id = typeof json.id === "string" ? json.id : "";
