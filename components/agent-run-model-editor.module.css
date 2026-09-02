@@ -23,6 +23,7 @@
 .status { flex: 0 0 auto; border: 1px solid rgba(139,92,246,.3); border-radius: 999px; padding: 6px 9px; color: #ccb6ff; background: rgba(139,92,246,.1); font-size: 9px; font-weight: 900; }
 .status[data-status="FAILED"] { color: #ff9aad; border-color: rgba(245,92,114,.42); background: rgba(245,92,114,.09); }
 .status[data-status="PAUSED"] { color: #a9cfff; border-color: rgba(95,170,255,.36); background: rgba(95,170,255,.08); }
+.status[data-status="CANCELLED"] { color: #ffb7c2; border-color: rgba(245,92,114,.38); background: rgba(245,92,114,.08); }
 
 .body {
   display: grid;
@@ -86,6 +87,7 @@
 .actions button:disabled { opacity: .42; cursor: not-allowed; }
 .actions .primary { color: white; border-color: #9b69f4; background: linear-gradient(180deg, #945df6, #6b36c4); }
 .actions .pause { color: #ffd19a; border-color: rgba(243,182,77,.34); background: rgba(243,182,77,.07); }
+.actions .danger { color: #ffb7c2; border-color: rgba(245,92,114,.42); background: rgba(245,92,114,.09); }
 
 @media (max-width: 900px) {
   .body { grid-template-columns: 1fr; }
