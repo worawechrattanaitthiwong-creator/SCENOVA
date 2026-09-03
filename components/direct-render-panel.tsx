@@ -82,6 +82,15 @@ function copyToClipboard(text: string) {
   return Promise.resolve();
 }
 
+function composerLabel(value?: string) {
+  if (!value) return "รอ AI สร้าง Prompt";
+  if (value.startsWith("ai-brain:")) return `AI Brain · ${value.slice("ai-brain:".length)}`;
+  if (value === "ai-brain-production-prompt") return "AI Brain";
+  if (value === "openai-production-prompt") return "OpenAI";
+  if (value === "mock-prompt-assistant") return "SCENOVA Rules";
+  return "AI Brain";
+}
+
 export default function DirectRenderPanel({
   project,
   providerId,
@@ -140,7 +149,7 @@ export default function DirectRenderPanel({
     if (promptBusy) return null;
     setPromptBusy(true);
     setError("");
-    setNotice("กำลังให้ OpenAI Prompt Composer จัด Prompt ตาม Timeline และข้อจำกัดของโมเดล...");
+    setNotice("กำลังให้ AI Brain วิเคราะห์ Scene / Shot / Camera / Dialogue / Lighting / Sound / Continuity และสร้าง Prompt สำหรับโมเดลที่เลือก...");
     try {
       const response = await fetch("/api/direct-render/prompt", {
         method: "POST",
@@ -152,8 +161,7 @@ export default function DirectRenderPanel({
       if (!response.ok || !Array.isArray(data.segments)) throw new Error(data.error || "สร้าง Prompt ไม่สำเร็จ");
       setPromptData(data);
       setSelectedOrder(data.segments[0]?.order || 1);
-      const composer = data.composer === "openai-production-prompt" ? "OpenAI Prompt Composer" : "SCENOVA Deterministic Prompt";
-      setNotice(`สร้าง Prompt แล้ว ${data.segments.length} ช่วง · ${composer} · โมเดลสร้างได้สูงสุด ${data.maxSecondsPerGeneration || "-"} วินาทีต่อครั้ง`);
+      setNotice(`AI สร้าง Prompt แล้ว ${data.segments.length} ช่วง · ${composerLabel(data.composer)} · โมเดลวิดีโอสร้างได้สูงสุด ${data.maxSecondsPerGeneration || "-"} วินาทีต่อครั้ง`);
       return data;
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : "สร้าง Prompt ไม่สำเร็จ";
@@ -184,15 +192,15 @@ export default function DirectRenderPanel({
       return;
     }
     if (!modelReady) {
-      setError("Video Provider ของโมเดลนี้ยังไม่พร้อม กรุณาเชื่อมต่อ API ก่อนสร้างวิดีโอ");
+      setError("Video Provider ของโมเดลนี้ยังไม่พร้อม กรุณาเชื่อมต่อ API ก่อน Generate");
       return;
     }
     setRenderBusy(true);
     setError("");
-    setNotice("กำลังเตรียม Direct Render โดยไม่ผ่าน AI Agent...");
+    setNotice("กำลังเตรียม Generate จากข้อมูล AI Studio ล่าสุด...");
     try {
       const prompts = promptData?.segments?.length ? promptData : await createPrompts();
-      if (!prompts?.segments?.length) throw new Error("กรุณาสร้าง Prompt ก่อนเริ่ม Direct Render");
+      if (!prompts?.segments?.length) throw new Error("กรุณาสร้าง Prompt ก่อน Generate");
       const response = await fetch("/api/direct-render", {
         method: "POST",
         credentials: "same-origin",
@@ -200,11 +208,11 @@ export default function DirectRenderPanel({
         body: JSON.stringify({ project, providerId, modelVersionId, promptSegments: prompts.segments }),
       });
       const data = await response.json() as RunResponse;
-      if (!response.ok || !data.runId) throw new Error(data.error || "เริ่ม Direct Render ไม่สำเร็จ");
+      if (!response.ok || !data.runId) throw new Error(data.error || "เริ่ม Generate ไม่สำเร็จ");
       setRun(data);
-      setNotice("เริ่มสร้างวิดีโอตรงแล้ว · SCENOVA จะส่งทีละ Generation Segment ตามเวลาสูงสุดของโมเดล");
+      setNotice("เริ่ม Generate แล้ว · SCENOVA จะส่งทีละ Generation Segment ตามเวลาสูงสุดของโมเดล");
     } catch (reason) {
-      const message = reason instanceof Error ? reason.message : "เริ่ม Direct Render ไม่สำเร็จ";
+      const message = reason instanceof Error ? reason.message : "เริ่ม Generate ไม่สำเร็จ";
       setError(message);
     } finally {
       setRenderBusy(false);
@@ -217,11 +225,11 @@ export default function DirectRenderPanel({
     try {
       const response = await fetch(`/api/direct-render?runId=${encodeURIComponent(run.runId)}`, { method: "DELETE", credentials: "same-origin" });
       const data = await response.json() as RunResponse;
-      if (!response.ok) throw new Error(data.error || "ยกเลิก Direct Render ไม่สำเร็จ");
+      if (!response.ok) throw new Error(data.error || "ยกเลิก Generate ไม่สำเร็จ");
       setRun(data);
-      setNotice("ยกเลิก Direct Render แล้ว งานที่ Provider สร้างเสร็จไปแล้วจะยังคงอยู่");
+      setNotice("ยกเลิก Generate แล้ว งานที่ Provider สร้างเสร็จไปแล้วจะยังคงอยู่");
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "ยกเลิก Direct Render ไม่สำเร็จ");
+      setError(reason instanceof Error ? reason.message : "ยกเลิก Generate ไม่สำเร็จ");
     } finally {
       setRenderBusy(false);
     }
@@ -237,8 +245,8 @@ export default function DirectRenderPanel({
         if (cancelled) return;
         if (response.ok) {
           setRun(data);
-          if (data.status === "COMPLETED") setNotice("Direct Render สร้างครบทุกช่วงแล้ว");
-          if (data.status === "FAILED") setError(data.segments?.find((segment) => segment.status === "FAILED")?.error || "Direct Render มีช่วงที่สร้างไม่สำเร็จ");
+          if (data.status === "COMPLETED") setNotice("Generate สร้างครบทุกช่วงแล้ว");
+          if (data.status === "FAILED") setError(data.segments?.find((segment) => segment.status === "FAILED")?.error || "Generate มีช่วงที่สร้างไม่สำเร็จ");
         }
       } catch {
         // Keep polling; provider polling can be temporarily unavailable.
@@ -252,28 +260,28 @@ export default function DirectRenderPanel({
   return <section className={styles.panel} id="direct-render">
     <div className={styles.head}>
       <div>
-        <span className={styles.eyebrow}>DIRECT RENDER · ไม่ผ่าน AI AGENT</span>
-        <h3>สร้าง Prompt แล้วส่งตรงไปโมเดลวิดีโอ</h3>
-        <p>SCENOVA จะใช้ Scene, Shot, กล้อง, เลนส์, Action, Dialogue, แสง,เสียง และ Continuity ที่คุณกำหนดไว้ แล้วรวมหลาย Scene ที่อยู่ในช่วงเวลาที่โมเดลรองรับเป็น Prompt เดียว / Provider Request เดียว</p>
+        <span className={styles.eyebrow}>AI PROMPT → GENERATE · ไม่ผ่าน AI AGENT</span>
+        <h3>ให้ AI Brain สร้าง Prompt แล้วส่งไปโมเดลวิดีโอ</h3>
+        <p>AI Brain จะวิเคราะห์ Scene, Shot, กล้อง, เลนส์, Action, Dialogue, แสง, เสียง และ Continuity ที่คุณกำหนดไว้ แล้วเรียบเรียง Prompt ให้เหมาะกับโมเดลวิดีโอที่เลือก โดยระบบรวมหลาย Scene ที่อยู่ในช่วงเวลาที่โมเดลรองรับเป็น Provider Request เดียว</p>
       </div>
-      <span className={styles.mode}>Direct Generation</span>
+      <span className={styles.mode}>AI-assisted Generation</span>
     </div>
 
     <div className={styles.summary}>
-      <article><small>โมเดล</small><b>{modelLabel}</b></article>
+      <article><small>โมเดลวิดีโอ</small><b>{modelLabel}</b></article>
       <article><small>เวลาวิดีโอทั้งหมด</small><b>{sourceEpisode?.duration || 0} วินาที</b></article>
-      <article><small>ช่วงสร้างตามข้อจำกัดโมเดล</small><b className={styles.accent}>{promptData?.segments?.length || Math.max(1, Math.ceil(Number(sourceEpisode?.duration || 1) / Math.max(1, Number(promptData?.maxSecondsPerGeneration || 1))))} ช่วง</b></article>
-      <article><small>Prompt Composer</small><b>{promptData?.composer === "openai-production-prompt" ? "OpenAI" : promptData?.composer ? "SCENOVA" : "รอสร้าง Prompt"}</b></article>
+      <article><small>ช่วง Generate ตามข้อจำกัดโมเดล</small><b className={styles.accent}>{promptData?.segments?.length || Math.max(1, Math.ceil(Number(sourceEpisode?.duration || 1) / Math.max(1, Number(promptData?.maxSecondsPerGeneration || 1))))} ช่วง</b></article>
+      <article><small>AI Prompt Brain</small><b>{composerLabel(promptData?.composer)}</b></article>
     </div>
 
     <div className={styles.actions}>
-      <button type="button" className={styles.secondary} onClick={() => void createPrompts()} disabled={promptBusy || activeRun}>{promptBusy ? "กำลังสร้าง Prompt..." : "✦ สร้าง Prompt"}</button>
+      <button type="button" className={styles.secondary} onClick={() => void createPrompts()} disabled={promptBusy || activeRun}>{promptBusy ? "AI กำลังสร้าง Prompt..." : "✦ สร้าง Prompt"}</button>
       <button type="button" className={styles.secondary} onClick={() => void copySegment()} disabled={!selectedPrompt}>คัดลอก Prompt ช่วงนี้</button>
       <button type="button" className={styles.secondary} onClick={() => void copyAll()} disabled={!allPromptText}>คัดลอกทั้งหมด</button>
-      <button type="button" className={styles.primary} onClick={() => void startRender()} disabled={renderBusy || activeRun || modelMode !== "generate" || !modelReady}>{renderBusy ? "กำลังเริ่ม..." : "▶ สร้างวิดีโอตรง"}</button>
+      <button type="button" className={styles.primary} onClick={() => void startRender()} disabled={renderBusy || activeRun || modelMode !== "generate" || !modelReady}>{renderBusy ? "กำลัง Generate..." : "Generate"}</button>
       {activeRun ? <button type="button" className={styles.danger} onClick={() => void cancelRender()} disabled={renderBusy}>ยกเลิกงาน</button> : null}
     </div>
-    <p className={styles.hint}><strong>หลักการ:</strong> Scene ไม่เท่ากับ Render Job — ระบบจะแตก Generation Segment เฉพาะเมื่อเวลารวมเกินเพดานของรุ่นที่เลือกเท่านั้น เช่น Veo 8s จะสร้างเป็นช่วง 0–8, 8–16… แต่ในแต่ละช่วงยังมีหลาย Scene/Shot ได้</p>
+    <p className={styles.hint}><strong>หลักการ:</strong> Scene ไม่เท่ากับ Generation Job — ระบบจะแตก Generation Segment เฉพาะเมื่อเวลารวมเกินเพดานของรุ่นที่เลือกเท่านั้น เช่น Veo 8s จะสร้างเป็นช่วง 0–8, 8–16… แต่ในแต่ละช่วงยังมีหลาย Scene/Shot ได้</p>
 
     {notice ? <p className={styles.hint}>{notice}</p> : null}
     {error ? <div className={styles.error}>{error}</div> : null}
@@ -289,13 +297,13 @@ export default function DirectRenderPanel({
         })}
       </div>
       {selectedPrompt ? <div className={styles.promptBox}>
-        <div className={styles.promptHead}><div><b>Production Prompt · ช่วงสร้าง {selectedPrompt.order}</b><small>{selectedPrompt.start}–{selectedPrompt.end} วินาที · {selectedPrompt.duration} วินาทีต่อ Provider Request</small></div><button type="button" onClick={() => void copySegment()}>Copy</button></div>
+        <div className={styles.promptHead}><div><b>AI Production Prompt · ช่วงสร้าง {selectedPrompt.order}</b><small>{selectedPrompt.start}–{selectedPrompt.end} วินาที · {selectedPrompt.duration} วินาทีต่อ Provider Request</small></div><button type="button" onClick={() => void copySegment()}>Copy</button></div>
         <textarea className={styles.prompt} readOnly value={selectedPrompt.copyText} aria-label={`Prompt ช่วงสร้าง ${selectedPrompt.order}`} />
       </div> : null}
     </> : null}
 
     {run?.runId ? <div className={styles.progress}>
-      <div className={styles.progressHead}><b>Direct Render · {run.status || "READY"}</b><span>{run.percent || 0}%</span></div>
+      <div className={styles.progressHead}><b>Generate · {run.status || "READY"}</b><span>{run.percent || 0}%</span></div>
       <div className={styles.track}><div className={styles.bar} style={{ width: `${Math.max(0, Math.min(100, run.percent || 0))}%` }} /></div>
       <div className={styles.jobs}>{(run.segments || []).map((segment) => <article className={styles.job} key={segment.id}>
         <span className={styles.index}>{String(segment.order).padStart(2, "0")}</span>
