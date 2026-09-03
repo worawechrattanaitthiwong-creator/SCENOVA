@@ -116,39 +116,43 @@
 .detailsButton:hover{color:var(--purple-2)}
 
 .detailBackdrop{position:fixed;z-index:1200;inset:0;display:grid;place-items:center;padding:28px;background:rgba(7,5,12,.72);backdrop-filter:blur(8px)}
-.detailDialog{position:relative;width:min(1060px,100%);max-height:min(820px,calc(100vh - 56px));overflow:auto;border:1px solid color-mix(in srgb,var(--purple) 26%,var(--line));border-radius:18px;padding:20px;background:var(--panel);box-shadow:0 28px 80px rgba(0,0,0,.35)}
-.closeButton{position:absolute;right:14px;top:13px;width:34px;height:34px;border:1px solid var(--line);border-radius:10px;color:var(--muted);background:var(--panel-2);font-size:22px;line-height:1;cursor:pointer}
+.detailDialog{position:relative;width:min(1180px,100%);max-height:min(860px,calc(100vh - 56px));overflow:auto;border:1px solid color-mix(in srgb,var(--purple) 26%,var(--line));border-radius:18px;padding:24px;background:var(--panel);box-shadow:0 28px 80px rgba(0,0,0,.35)}
+.closeButton{position:absolute;right:16px;top:15px;width:40px;height:40px;border:1px solid var(--line);border-radius:11px;color:var(--muted);background:var(--panel-2);font-size:24px;line-height:1;cursor:pointer}
 .closeButton:hover{color:var(--text);border-color:var(--line-strong)}
-.detailHead{display:flex;justify-content:space-between;gap:18px;padding-right:42px;align-items:flex-start}
-.detailHead h2{margin:5px 0 4px;font-size:25px;color:var(--text)}
-.detailHead p{margin:0;max-width:720px;color:var(--muted);font-size:11px;line-height:1.6}
-.detailRoute{display:flex;gap:9px;align-items:center;margin-top:13px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:var(--panel-2);font-size:10px}
-.detailRoute b{color:var(--text)}
+.detailHead{display:flex;justify-content:space-between;gap:20px;padding-right:50px;align-items:flex-start}
+.detailHead .eyebrow{font-size:12px;letter-spacing:.16em}
+.detailHead h2{margin:7px 0 7px;font-size:30px;line-height:1.2;color:var(--text);letter-spacing:-.02em}
+.detailHead p{margin:0;max-width:780px;color:var(--muted);font-size:14px;line-height:1.7}
+.detailHead .statusBadge{padding:7px 10px;font-size:12px;gap:6px}
+.detailHead .statusBadge i{width:7px;height:7px}
+.detailRoute{display:flex;gap:10px;align-items:center;margin-top:16px;padding:12px 14px;border:1px solid var(--line);border-radius:11px;background:var(--panel-2);font-size:13px;line-height:1.55}
+.detailRoute b{color:var(--text);font-size:13px}
 .detailRoute span{color:var(--muted)}
 
-.priceTableWrap{overflow:auto;margin-top:12px;border:1px solid var(--line);border-radius:12px}
-.priceTable{width:100%;border-collapse:collapse;min-width:720px;background:var(--panel)}
-.priceTable th{padding:9px 10px;text-align:left;color:var(--muted-2);font-size:9px;font-weight:800;background:var(--panel-2);border-bottom:1px solid var(--line)}
-.priceTable td{padding:10px;border-bottom:1px solid var(--line);color:var(--text);font-size:10px;vertical-align:top}
+.priceTableWrap{overflow:auto;margin-top:15px;border:1px solid var(--line);border-radius:13px}
+.priceTable{width:100%;border-collapse:collapse;min-width:780px;background:var(--panel)}
+.priceTable th{padding:12px 14px;text-align:left;color:var(--muted-2);font-size:12px;font-weight:850;line-height:1.45;background:var(--panel-2);border-bottom:1px solid var(--line)}
+.priceTable td{padding:14px;border-bottom:1px solid var(--line);color:var(--text);font-size:13px;line-height:1.55;vertical-align:top}
 .priceTable tbody tr:last-child td{border-bottom:0}
 .priceTable td b,.priceTable td small,.priceTable td em,.priceTable td strong{display:block}
-.priceTable td b{font-size:10px}
-.priceTable td small{margin-top:2px;color:var(--muted-2);font-size:8px}
-.priceTable td em{margin-top:4px;max-width:360px;color:var(--muted);font-size:8px;font-style:normal;line-height:1.45}
-.priceTable td strong{font-size:11px}
+.priceTable td b{font-size:14px;line-height:1.45}
+.priceTable td small{margin-top:3px;color:var(--muted-2);font-size:11px;line-height:1.5}
+.priceTable td em{margin-top:5px;max-width:390px;color:var(--muted);font-size:11px;font-style:normal;line-height:1.55}
+.priceTable td strong{font-size:15px;line-height:1.4}
 .oldPrice{text-decoration:line-through}
 
-.noPublicPrice{margin-top:12px;padding:15px;border:1px dashed color-mix(in srgb,#c58a36 45%,var(--line));border-radius:12px;color:#9c6b28;background:color-mix(in srgb,#c58a36 7%,var(--panel))}
-.noPublicPrice b{font-size:11px}
-.noPublicPrice p{margin:5px 0 0;font-size:10px;line-height:1.6}
-.detailNotes{display:grid;gap:3px;margin-top:11px;padding:10px 12px;border-radius:11px;background:var(--panel-2)}
-.detailNotes p{margin:0;color:var(--muted);font-size:9px;line-height:1.55}
-.detailFooter{display:flex;justify-content:space-between;gap:16px;align-items:flex-end;margin-top:13px;padding-top:13px;border-top:1px solid var(--line)}
-.sources{display:flex;gap:7px;align-items:center;flex-wrap:wrap;min-width:0;color:var(--muted-2);font-size:9px}
+.noPublicPrice{margin-top:15px;padding:17px;border:1px dashed color-mix(in srgb,#c58a36 45%,var(--line));border-radius:12px;color:#9c6b28;background:color-mix(in srgb,#c58a36 7%,var(--panel))}
+.noPublicPrice b{font-size:14px}
+.noPublicPrice p{margin:6px 0 0;font-size:13px;line-height:1.65}
+.detailNotes{display:grid;gap:5px;margin-top:14px;padding:13px 15px;border-radius:11px;background:var(--panel-2)}
+.detailNotes p{margin:0;color:var(--muted);font-size:12px;line-height:1.65}
+.detailFooter{display:flex;justify-content:space-between;gap:18px;align-items:flex-end;margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
+.sources{display:flex;gap:8px;align-items:center;flex-wrap:wrap;min-width:0;color:var(--muted-2);font-size:12px;line-height:1.55}
 .sources>a{color:var(--purple);text-decoration:none;font-weight:750}
 .sources>a:hover{text-decoration:underline;text-underline-offset:3px}
-.sources small{color:var(--muted-2)}
-.detailActions{display:flex;gap:7px;flex:0 0 auto}
+.sources small{color:var(--muted-2);font-size:11px}
+.detailActions{display:flex;gap:8px;flex:0 0 auto}
+.detailActions .primaryLink,.detailActions .secondaryLink{min-height:44px;padding:10px 16px;font-size:13px}
 
 .page :global(.sc-system-info-trigger){display:none!important}
 .page :is(a,button):focus-visible{outline:2px solid var(--purple);outline-offset:2px}
@@ -168,8 +172,17 @@
   .card{min-height:0}
   .description{min-height:auto}
   .detailBackdrop{padding:10px}
-  .detailDialog{max-height:calc(100vh - 20px);padding:15px}
-  .detailHead{flex-direction:column;padding-right:38px}
+  .detailDialog{max-height:calc(100vh - 20px);padding:18px}
+  .detailHead{flex-direction:column;padding-right:44px}
+  .detailHead h2{font-size:27px}
+  .detailHead p{font-size:13px}
+  .detailRoute{font-size:12px;padding:11px 12px}
+  .priceTable th{font-size:11px;padding:11px 12px}
+  .priceTable td{font-size:12px;padding:12px}
+  .priceTable td b{font-size:13px}
+  .priceTable td strong{font-size:14px}
+  .priceTable td small,.priceTable td em{font-size:10px}
+  .detailNotes p,.sources{font-size:11px}
   .detailFooter{align-items:stretch;flex-direction:column}
   .detailActions{width:100%}
   .detailActions a{flex:1}
