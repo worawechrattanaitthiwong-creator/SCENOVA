@@ -27,6 +27,10 @@ export type DirectPromptSegment = {
   copyText: string;
 };
 
+type ProjectRenderCapabilities = Project & {
+  renderCapabilities?: { supportsMultiShot?: boolean };
+};
+
 function clampRange(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
@@ -110,6 +114,12 @@ function shotAwareRanges(episode: Episode, maxSeconds: number) {
   return merged;
 }
 
+function projectSupportsMultiShot(project: Project, explicit: boolean | undefined) {
+  if (typeof explicit === "boolean") return explicit;
+  const carried = (project as ProjectRenderCapabilities).renderCapabilities?.supportsMultiShot;
+  return typeof carried === "boolean" ? carried : true;
+}
+
 export function planDirectRenderWindows(
   project: Project,
   maxSeconds: number,
@@ -119,7 +129,7 @@ export function planDirectRenderWindows(
   if (!sourceEpisode) return [];
   const total = Math.max(1, Number(sourceEpisode.duration) || 1);
   const safeMax = Math.max(1, Number(maxSeconds) || total);
-  const supportsMultiShot = options.supportsMultiShot !== false;
+  const supportsMultiShot = projectSupportsMultiShot(project, options.supportsMultiShot);
   const ranges = supportsMultiShot ? fixedRanges(total, safeMax) : shotAwareRanges(sourceEpisode, safeMax);
   const windows: DirectRenderWindow[] = [];
 
