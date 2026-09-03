@@ -161,6 +161,10 @@ export default function DirectRenderPanel({
   const activeRun = Boolean(run?.runId && !["COMPLETED", "FAILED", "CANCELLED"].includes(run.status || ""));
   const serverProviderReady = promptData ? promptData.videoConnectionRequired !== true : null;
   const providerReadyHint = serverProviderReady ?? modelReady;
+  const finalVideoUrl = run?.runId && run.status === "COMPLETED"
+    ? `/api/direct-render/final?runId=${encodeURIComponent(run.runId)}`
+    : "";
+  const finalDownloadUrl = finalVideoUrl ? `${finalVideoUrl}&download=1` : "";
 
   async function createPrompts() {
     if (promptBusy) return null;
@@ -224,7 +228,7 @@ export default function DirectRenderPanel({
       const data = await response.json() as RunResponse;
       if (!response.ok || !data.runId) throw new Error(renderErrorMessage(data.error || "เริ่ม Generate ไม่สำเร็จ", providerId, modelLabel));
       setRun(data);
-      setNotice("เริ่ม Generate แล้ว · SCENOVA จะส่งทีละ Generation Segment ตามเวลาสูงสุดของโมเดล");
+      setNotice("เริ่ม Generate แล้ว · SCENOVA จะสร้างช่วงย่อยตามข้อจำกัดโมเดล แล้วรวมเป็น Final Video 1 คลิปให้อัตโนมัติ");
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : "เริ่ม Generate ไม่สำเร็จ";
       setError(renderErrorMessage(message, providerId, modelLabel));
@@ -259,7 +263,7 @@ export default function DirectRenderPanel({
         if (cancelled) return;
         if (response.ok) {
           setRun(data);
-          if (data.status === "COMPLETED") setNotice("Generate สร้างครบทุกช่วงแล้ว");
+          if (data.status === "COMPLETED") setNotice("สร้างครบทุกช่วงแล้ว · ระบบกำลังรวมเป็น Final Video 1 คลิป");
           if (data.status === "FAILED") setError(data.segments?.find((segment) => segment.status === "FAILED")?.error || "Generate มีช่วงที่สร้างไม่สำเร็จ");
         }
       } catch {
@@ -276,7 +280,7 @@ export default function DirectRenderPanel({
       <div>
         <span className={styles.eyebrow}>AI PROMPT → GENERATE · ไม่ผ่าน AI AGENT</span>
         <h3>ให้ AI Brain สร้าง Prompt แล้วส่งไปโมเดลวิดีโอ</h3>
-        <p>AI Brain จะวิเคราะห์ Scene, Shot, กล้อง, เลนส์, Action, Dialogue, แสง, เสียง และ Continuity ที่คุณกำหนดไว้ แล้วเรียบเรียง Prompt ให้เหมาะกับโมเดลวิดีโอที่เลือก โดยระบบรวมหลาย Scene ที่อยู่ในช่วงเวลาที่โมเดลรองรับเป็น Provider Request เดียว</p>
+        <p>AI Brain จะวิเคราะห์ Scene, Shot, กล้อง, เลนส์, Action, Dialogue, แสง, เสียง และ Continuity ที่คุณกำหนดไว้ แล้วเรียบเรียง Prompt ให้เหมาะกับโมเดลวิดีโอที่เลือก ระบบอาจสร้างหลาย Generation Segment ตามเพดานเวลาของโมเดล แต่จะรวมผลลัพธ์ทั้งหมดเป็น Final Video 1 คลิปให้ผู้ใช้</p>
       </div>
       <span className={styles.mode}>AI-assisted Generation</span>
     </div>
@@ -284,8 +288,8 @@ export default function DirectRenderPanel({
     <div className={styles.summary}>
       <article><small>โมเดลวิดีโอ</small><b>{modelLabel}</b></article>
       <article><small>เวลาวิดีโอทั้งหมด</small><b>{sourceEpisode?.duration || 0} วินาที</b></article>
-      <article><small>ช่วง Generate ตามข้อจำกัดโมเดล</small><b className={styles.accent}>{promptData?.segments?.length || Math.max(1, Math.ceil(Number(sourceEpisode?.duration || 1) / Math.max(1, Number(promptData?.maxSecondsPerGeneration || 1))))} ช่วง</b></article>
-      <article><small>AI Prompt Brain</small><b>{composerLabel(promptData?.composer)}</b></article>
+      <article><small>ช่วง Generate ภายใน</small><b className={styles.accent}>{promptData?.segments?.length || Math.max(1, Math.ceil(Number(sourceEpisode?.duration || 1) / Math.max(1, Number(promptData?.maxSecondsPerGeneration || 1))))} ช่วง</b></article>
+      <article><small>ผลลัพธ์สุดท้าย</small><b>Final Video 1 คลิป</b></article>
     </div>
 
     <div className={styles.actions}>
@@ -296,7 +300,7 @@ export default function DirectRenderPanel({
       {activeRun ? <button type="button" className={styles.danger} onClick={() => void cancelRender()} disabled={renderBusy}>ยกเลิกงาน</button> : null}
     </div>
     <p className={styles.hint}><strong>Video Provider:</strong> {providerReadyHint ? "พร้อมตรวจสอบและ Generate" : "สถานะจากหน้า Studio ยังไม่ยืนยัน — เมื่อกด Generate ระบบจะตรวจ Connection จาก Server อีกครั้ง"}</p>
-    <p className={styles.hint}><strong>หลักการ:</strong> Scene ไม่เท่ากับ Generation Job — ระบบจะแตก Generation Segment เฉพาะเมื่อเวลารวมเกินเพดานของรุ่นที่เลือกเท่านั้น เช่น Veo 8s จะสร้างเป็นช่วง 0–8, 8–16… แต่ในแต่ละช่วงยังมีหลาย Scene/Shot ได้</p>
+    <p className={styles.hint}><strong>หลักการ:</strong> Generation Segment เป็นงานภายในเท่านั้น เช่น Veo 8s กับวิดีโอ 20s จะสร้าง 0–8, 8–16, 16–20 แล้ว SCENOVA จะต่อและตัดความยาวให้เหลือ Final Video 20s หนึ่งคลิป</p>
 
     {promptData?.videoConnectionRequired === true ? <div className={styles.error}>{providerConnectionMessage(providerId, modelLabel)}</div> : null}
     {notice ? <p className={styles.hint}>{notice}</p> : null}
@@ -321,13 +325,33 @@ export default function DirectRenderPanel({
     {run?.runId ? <div className={styles.progress}>
       <div className={styles.progressHead}><b>Generate · {run.status || "READY"}</b><span>{run.percent || 0}%</span></div>
       <div className={styles.track}><div className={styles.bar} style={{ width: `${Math.max(0, Math.min(100, run.percent || 0))}%` }} /></div>
-      <div className={styles.jobs}>{(run.segments || []).map((segment) => <article className={styles.job} key={segment.id}>
-        <span className={styles.index}>{String(segment.order).padStart(2, "0")}</span>
-        <div><strong>ช่วงสร้าง {segment.order} · {segment.start}–{segment.end}s</strong><small>{segment.provider} · {segment.duration}s{segment.estimatedCostThb ? ` · ประมาณ ฿${segment.estimatedCostThb.toFixed(2)}` : " · BYOK"}</small></div>
-        <span className={`${styles.status} ${statusClass(segment.status)}`}>{statusLabel(segment.status)}</span>
-        {segment.outputUrl ? <div className={styles.output}><video src={segment.outputUrl} controls preload="metadata" /><a href={segment.outputUrl} target="_blank" rel="noreferrer">เปิดไฟล์จาก Provider ↗</a></div> : null}
-        {segment.error ? <div className={styles.outputError}>{segment.error}</div> : null}
-      </article>)}</div>
+
+      {finalVideoUrl ? <div className={styles.finalOutput}>
+        <div className={styles.finalHead}>
+          <div><strong>Final Video · {sourceEpisode?.duration || 0} วินาที</strong><small>รวม {(run.segments || []).length} Generation Segment เป็นวิดีโอเดียวอัตโนมัติ</small></div>
+          <span>FINAL</span>
+        </div>
+        <video
+          key={finalVideoUrl}
+          src={finalVideoUrl}
+          controls
+          preload="metadata"
+          onCanPlay={() => setNotice("Final Video พร้อมแล้ว · รวมทุกช่วงเป็นคลิปเดียวเรียบร้อย")}
+          onError={() => setError("รวม Final Video ไม่สำเร็จ กรุณาลองโหลดใหม่ หากยังมีปัญหาให้ตรวจไฟล์ย่อยด้านล่าง")}
+        />
+        <div className={styles.finalActions}><a href={finalDownloadUrl}>ดาวน์โหลด Final Video</a></div>
+      </div> : null}
+
+      <details className={styles.segmentDetails}>
+        <summary>รายละเอียด Generation Segment ({(run.segments || []).length} ช่วง)</summary>
+        <div className={styles.jobs}>{(run.segments || []).map((segment) => <article className={styles.job} key={segment.id}>
+          <span className={styles.index}>{String(segment.order).padStart(2, "0")}</span>
+          <div><strong>ช่วงสร้าง {segment.order} · {segment.start}–{segment.end}s</strong><small>{segment.provider} · {segment.duration}s{segment.estimatedCostThb ? ` · ประมาณ ฿${segment.estimatedCostThb.toFixed(2)}` : " · BYOK"}</small></div>
+          <span className={`${styles.status} ${statusClass(segment.status)}`}>{statusLabel(segment.status)}</span>
+          {segment.outputUrl ? <div className={styles.segmentLink}><a href={segment.outputUrl} target="_blank" rel="noreferrer">เปิดไฟล์ย่อยจาก Provider ↗</a></div> : null}
+          {segment.error ? <div className={styles.outputError}>{segment.error}</div> : null}
+        </article>)}</div>
+      </details>
     </div> : null}
   </section>;
 }
