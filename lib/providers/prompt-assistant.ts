@@ -31,9 +31,7 @@ export class ProductionPromptAssistant implements PromptAssistant {
   id = "system-ai-production-prompt";
 
   async improve(request: PromptAssistRequest): Promise<PromptBundle> {
-    if (!request.userId || process.env.SCENOVA_LLM_ENABLED !== "true") {
-      throw new Error("SYSTEM_AI_NOT_ENABLED");
-    }
+    if (!request.userId) throw new Error("SYSTEM_AI_USER_REQUIRED");
 
     const compact = JSON.stringify({
       targetModelId: request.targetModelId,
@@ -122,13 +120,13 @@ export class ProductionPromptAssistant implements PromptAssistant {
 
     let result;
     try {
-      // Direct Prompt generation is a SCENOVA system-funded feature.
-      // Never consume the user's Analyzer/BYOK connection here, so usage can be
-      // metered centrally and converted to Prompt Cost / credits later.
+      // Generate Prompt is always a SCENOVA system-funded AI operation.
+      // Do not use the user's Analyzer/BYOK credential: usage must remain centrally
+      // measurable so Prompt Cost / credits can be enabled later without changing this flow.
       result = await callInceptionFunction({ ...common, credentialMode: "system-only" });
     } catch (systemBrainError) {
-      // System OpenAI is the server-side fallback only. It is also centrally
-      // metered through PROMPT_PRODUCTION usage and never exposes a key to the browser.
+      // System OpenAI is the server-side fallback only and is metered through the
+      // same PROMPT_PRODUCTION usage category. No API key is exposed to the browser.
       if (!process.env.OPENAI_API_KEY?.trim()) throw systemBrainError;
       result = await callOpenAiFunction({ ...common, modelId: route.modelId });
     }
@@ -150,8 +148,8 @@ export class ProductionPromptAssistant implements PromptAssistant {
 }
 
 export function createPromptAssistant(input?: { userId?: string; runId?: string }) {
-  // Server-side Direct Prompt must use the system AI path. The mock assistant is
-  // retained only for isolated callers/tests that do not have an authenticated user.
+  // Authenticated Generate Prompt requests always use the system AI path.
+  // Mock remains only for isolated non-user callers/tests.
   if (input?.userId) return new ProductionPromptAssistant();
   return new MockPromptAssistant();
 }
