@@ -6,6 +6,7 @@ import {
   deleteWorkspaceDraft,
   listWorkspaceDrafts,
   remainingDraftMs,
+  setWorkspaceDraftScope,
   workspaceDraftHref,
   workspaceDraftLabel,
   WORKSPACE_DRAFTS_CHANGED_EVENT,
@@ -32,9 +33,25 @@ function expiresText(draft: WorkspaceDraft) {
 export default function WorkspaceDraftTray() {
   const [drafts, setDrafts] = useState<WorkspaceDraft[]>([]);
   const [open, setOpen] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
   const refresh = () => setDrafts(listWorkspaceDrafts());
+
+  useEffect(() => {
+    let active = true;
+    void fetch("/api/auth/me", { cache: "no-store", credentials: "same-origin" })
+      .then((response) => response.json())
+      .then((data: { authenticated?: boolean; email?: string; name?: string }) => {
+        if (!active || !data.authenticated) return;
+        const identity = data.email || data.name || "scenova-member";
+        setWorkspaceDraftScope(identity);
+        setAuthenticated(true);
+        refresh();
+      })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     refresh();
@@ -65,6 +82,7 @@ export default function WorkspaceDraftTray() {
   }, [open]);
 
   const title = useMemo(() => drafts.length ? `มีร่าง ${drafts.length} งาน · เก็บไว้ 24 ชั่วโมง` : "ยังไม่มีงานร่าง", [drafts.length]);
+  if (!authenticated) return null;
 
   return <div className={styles.root} ref={rootRef} data-sc-help-ignore>
     <button type="button" className={styles.trigger} data-has-drafts={drafts.length > 0} onClick={() => setOpen((current) => !current)} aria-expanded={open} aria-label={title} title={title}>
