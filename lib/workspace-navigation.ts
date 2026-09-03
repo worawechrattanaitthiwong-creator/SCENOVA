@@ -25,9 +25,9 @@ export type WorkspaceRailItem = {
 export const WORKSPACE_NAV: readonly WorkspaceNavItem[] = [
   { href: "/portal", icon: "home", label: "เริ่มต้น", description: "ภาพรวมสตูดิโอ" },
   { href: "/studio", icon: "ai", label: "AI Studio", description: "สร้างและกำกับงาน", badge: "AI" },
-  { href: "/models", icon: "board", label: "โมเดล & เรทราคา", description: "เปรียบเทียบโมเดล ความสามารถ และราคา" },
   { href: "/agent", icon: "ai", label: "AI Agent", description: "งานอัตโนมัติ การอนุมัติ ค่าใช้จ่าย และคิวสร้าง", badge: "AG" },
   { href: "/series", icon: "project", label: "Series Studio", description: "ซีรีส์ ตอน และ Storyboard", badge: "EP", activePaths: ["/series", "/director", "/camera", "/dialogue", "/reference"] },
+  { href: "/models", icon: "board", label: "โมเดล & เรทราคา", description: "สถานะโมเดล ราคา API จริง และรายละเอียดก่อนสร้าง" },
   { href: "/libraries", icon: "library", label: "คลังทรัพยากร", description: "ตัวละคร เสียง และสไตล์" },
   {
     href: "/profile",
@@ -91,9 +91,10 @@ const agentRail: readonly WorkspaceRailItem[] = [
 ] as const;
 
 const modelsRail: readonly WorkspaceRailItem[] = [
-  { href: "/models", icon: "⬡", label: "เปรียบเทียบโมเดล", description: "ความสามารถและข้อจำกัด" },
+  { href: "/models", icon: "⬡", label: "โมเดลและราคา", description: "ราคา API จริง สถานะพร้อมใช้ และรายละเอียดรุ่น" },
+  { href: "/profile/api", icon: "↔", label: "API ที่เชื่อม", description: "ตรวจ Provider, Model ID และ Connection ที่พร้อม" },
   { href: "/wallet", icon: "●", label: "เครดิตและงบ", description: "ยอดพร้อมใช้และค่าใช้จ่าย" },
-  { href: "/studio#setup", icon: "AI", label: "ใช้ใน Studio", description: "กลับไปเลือกโมเดลในงาน" },
+  { href: "/studio#setup", icon: "AI", label: "กลับ AI Studio", description: "กลับไปตั้งค่างานเมื่อเลือกโมเดลแล้ว" },
 ] as const;
 
 const renderRail: readonly WorkspaceRailItem[] = [
