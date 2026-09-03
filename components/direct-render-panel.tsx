@@ -91,6 +91,21 @@ function composerLabel(value?: string) {
   return "AI Brain";
 }
 
+function providerConnectionMessage(providerId: string, modelLabel: string) {
+  const provider = providerId === "veo" ? "Veo — Google"
+    : providerId === "runway" ? "Runway Developer API"
+      : providerId === "kling" ? "Kling"
+        : providerId === "wan" ? "Wan"
+          : modelLabel || providerId;
+  return `ยังไม่ได้เชื่อมต่อ Video Provider สำหรับ ${provider} กรุณาไปที่ การตั้งค่า → API Connections → สร้างคลิป (VIDEO) แล้วเชื่อมต่อคีย์ก่อนกด Generate`;
+}
+
+function renderErrorMessage(value: string, providerId: string, modelLabel: string) {
+  if (value.includes("VIDEO_PROVIDER_CONNECTION_REQUIRED")) return providerConnectionMessage(providerId, modelLabel);
+  if (value === "INSUFFICIENT_CREDITS") return "เครดิตไม่เพียงพอสำหรับ Generate งานนี้ กรุณาเติมเครดิตก่อนเริ่มสร้าง";
+  return value;
+}
+
 export default function DirectRenderPanel({
   project,
   providerId,
@@ -144,6 +159,8 @@ export default function DirectRenderPanel({
   const sceneName = (id: string) => sourceEpisode?.segments.find((segment) => segment.id === id)?.title || id;
   const allPromptText = (promptData?.segments || []).map((segment) => segment.copyText).join("\n\n\n--- NEXT GENERATION SEGMENT ---\n\n");
   const activeRun = Boolean(run?.runId && !["COMPLETED", "FAILED", "CANCELLED"].includes(run.status || ""));
+  const serverProviderReady = promptData ? promptData.videoConnectionRequired !== true : null;
+  const providerReadyHint = serverProviderReady ?? modelReady;
 
   async function createPrompts() {
     if (promptBusy) return null;
@@ -191,16 +208,13 @@ export default function DirectRenderPanel({
       setError("โมเดลนี้เป็นเครื่องมือ Video Edit / HDR ไม่ใช่โมเดลสร้างวิดีโอใหม่โดยตรง");
       return;
     }
-    if (!modelReady) {
-      setError("Video Provider ของโมเดลนี้ยังไม่พร้อม กรุณาเชื่อมต่อ API ก่อน Generate");
-      return;
-    }
     setRenderBusy(true);
     setError("");
-    setNotice("กำลังเตรียม Generate จากข้อมูล AI Studio ล่าสุด...");
+    setNotice("กำลังตรวจ Video Provider และเตรียม Generate จากข้อมูล AI Studio ล่าสุด...");
     try {
       const prompts = promptData?.segments?.length ? promptData : await createPrompts();
       if (!prompts?.segments?.length) throw new Error("กรุณาสร้าง Prompt ก่อน Generate");
+      if (prompts.videoConnectionRequired === true) throw new Error(providerConnectionMessage(providerId, modelLabel));
       const response = await fetch("/api/direct-render", {
         method: "POST",
         credentials: "same-origin",
@@ -208,12 +222,12 @@ export default function DirectRenderPanel({
         body: JSON.stringify({ project, providerId, modelVersionId, promptSegments: prompts.segments }),
       });
       const data = await response.json() as RunResponse;
-      if (!response.ok || !data.runId) throw new Error(data.error || "เริ่ม Generate ไม่สำเร็จ");
+      if (!response.ok || !data.runId) throw new Error(renderErrorMessage(data.error || "เริ่ม Generate ไม่สำเร็จ", providerId, modelLabel));
       setRun(data);
       setNotice("เริ่ม Generate แล้ว · SCENOVA จะส่งทีละ Generation Segment ตามเวลาสูงสุดของโมเดล");
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : "เริ่ม Generate ไม่สำเร็จ";
-      setError(message);
+      setError(renderErrorMessage(message, providerId, modelLabel));
     } finally {
       setRenderBusy(false);
     }
@@ -278,11 +292,13 @@ export default function DirectRenderPanel({
       <button type="button" className={styles.secondary} onClick={() => void createPrompts()} disabled={promptBusy || activeRun}>{promptBusy ? "AI กำลังสร้าง Prompt..." : "✦ สร้าง Prompt"}</button>
       <button type="button" className={styles.secondary} onClick={() => void copySegment()} disabled={!selectedPrompt}>คัดลอก Prompt ช่วงนี้</button>
       <button type="button" className={styles.secondary} onClick={() => void copyAll()} disabled={!allPromptText}>คัดลอกทั้งหมด</button>
-      <button type="button" className={styles.primary} onClick={() => void startRender()} disabled={renderBusy || activeRun || modelMode !== "generate" || !modelReady}>{renderBusy ? "กำลัง Generate..." : "Generate"}</button>
+      <button type="button" className={styles.primary} onClick={() => void startRender()} disabled={renderBusy || activeRun || modelMode !== "generate"}>{renderBusy ? "กำลัง Generate..." : "Generate"}</button>
       {activeRun ? <button type="button" className={styles.danger} onClick={() => void cancelRender()} disabled={renderBusy}>ยกเลิกงาน</button> : null}
     </div>
+    <p className={styles.hint}><strong>Video Provider:</strong> {providerReadyHint ? "พร้อมตรวจสอบและ Generate" : "สถานะจากหน้า Studio ยังไม่ยืนยัน — เมื่อกด Generate ระบบจะตรวจ Connection จาก Server อีกครั้ง"}</p>
     <p className={styles.hint}><strong>หลักการ:</strong> Scene ไม่เท่ากับ Generation Job — ระบบจะแตก Generation Segment เฉพาะเมื่อเวลารวมเกินเพดานของรุ่นที่เลือกเท่านั้น เช่น Veo 8s จะสร้างเป็นช่วง 0–8, 8–16… แต่ในแต่ละช่วงยังมีหลาย Scene/Shot ได้</p>
 
+    {promptData?.videoConnectionRequired === true ? <div className={styles.error}>{providerConnectionMessage(providerId, modelLabel)}</div> : null}
     {notice ? <p className={styles.hint}>{notice}</p> : null}
     {error ? <div className={styles.error}>{error}</div> : null}
 
