@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import type { Project } from "@/lib/domain";
 import { resolveSession } from "@/lib/auth-core";
 import { composeDirectPrompts } from "@/lib/direct-render";
+import { systemAiErrorMessage } from "@/lib/llm/system-ai";
 import { getUserVideoProviderById, getVideoProviderById } from "@/lib/providers/provider-registry";
 
 export const runtime = "nodejs";
@@ -52,11 +53,15 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({ ok: true, videoConnectionRequired: !(await getUserVideoProviderById(user.id, providerId)), ...result });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "DIRECT_PROMPT_FAILED";
-    const status = message.includes("429") || message.includes("RATE_LIMIT") ? 429
-      : message.includes("ADAPTER_NOT_FOUND") ? 400
-        : message === "INSUFFICIENT_CREDITS" ? 402
-          : 500;
-    return NextResponse.json({ error: message }, { status });
+    const rawMessage = error instanceof Error ? error.message : "DIRECT_PROMPT_FAILED";
+    const code = rawMessage.split(":")[0];
+    const systemAiFailure = code.startsWith("SYSTEM_AI_") || code.startsWith("LLM_");
+    const message = systemAiFailure ? systemAiErrorMessage(code) : rawMessage;
+    const status = systemAiFailure ? 503
+      : rawMessage.includes("429") || rawMessage.includes("RATE_LIMIT") ? 429
+        : rawMessage.includes("ADAPTER_NOT_FOUND") ? 400
+          : rawMessage === "INSUFFICIENT_CREDITS" ? 402
+            : 500;
+    return NextResponse.json({ error: message, code }, { status });
   }
 }
