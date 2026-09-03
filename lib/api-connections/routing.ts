@@ -1,5 +1,10 @@
 import type { ApiConnectionKind, SafeApiConnection } from "@/lib/api-connections/store";
 import { getDefaultUserApiConnectionSecret, getUserApiConnectionSecret } from "@/lib/api-connections/store";
+import {
+  buildSharedApiConnections,
+  getSharedCredentialTarget,
+  getSharedCredentialTargetsForKind,
+} from "@/lib/api-connections/shared-credentials";
 
 export type ApiRouteStageId = "A" | "B" | "C" | "D";
 
@@ -52,9 +57,13 @@ export function getApiRouteStage(kind: ApiConnectionKind) {
 }
 
 export function buildApiRoutingSnapshot(connections: SafeApiConnection[]) {
+  const sharedConnections = buildSharedApiConnections(connections);
+  const allConnections = [...connections, ...sharedConnections];
+
   return API_ROUTE_STAGES.map((stage) => {
-    const stageConnections = connections.filter((connection) => connection.kind === stage.kind);
+    const stageConnections = allConnections.filter((connection) => connection.kind === stage.kind);
     const active = stageConnections.find((connection) => connection.enabled && connection.isDefault)
+      || stageConnections.find((connection) => connection.enabled && connection.status === "CONNECTED")
       || stageConnections.find((connection) => connection.enabled)
       || null;
 
@@ -65,14 +74,61 @@ export function buildApiRoutingSnapshot(connections: SafeApiConnection[]) {
       activeProvider: active?.provider || null,
       activeStatus: active?.status || null,
       ready: Boolean(active && active.enabled && active.status === "CONNECTED"),
+      sharedConnectionCount: stageConnections.filter((connection) => "virtual" in connection && connection.virtual === true).length,
     };
   });
 }
 
+function asSharedTargetCredential<T extends Awaited<ReturnType<typeof getUserApiConnectionSecret>>>(
+  credential: NonNullable<T>,
+  target: NonNullable<ReturnType<typeof getSharedCredentialTarget>>,
+) {
+  return {
+    ...credential,
+    connection: {
+      ...credential.connection,
+      provider: target.provider,
+      kind: target.kind,
+      modelId: target.defaultModelId,
+      enabledModelIds: [target.defaultModelId],
+      availableModels: [{ apiModelId: target.defaultModelId, label: target.defaultModelId, recommended: true, availability: "UNVERIFIED" as const }],
+      baseUrl: target.baseUrl,
+      isDefault: false,
+    },
+  };
+}
+
+async function resolveSharedCredential(input: {
+  userId: string;
+  kind: ApiConnectionKind;
+  preferredProvider?: string | null;
+}) {
+  const targets = input.preferredProvider
+    ? [getSharedCredentialTarget(input.preferredProvider, input.kind)].filter(Boolean)
+    : getSharedCredentialTargetsForKind(input.kind);
+
+  for (const target of targets) {
+    if (!target) continue;
+    for (const source of target.sources) {
+      const credential = await getUserApiConnectionSecret({
+        userId: input.userId,
+        provider: source.provider,
+        kind: source.kind,
+      });
+      if (credential && credential.connection.status === "CONNECTED" && credential.connection.enabled) {
+        return asSharedTargetCredential(credential, target);
+      }
+    }
+  }
+  return null;
+}
+
 /**
- * Server-only credential resolver used by future image/video/voice adapters.
- * Secrets never leave the server. Preferred provider is honored only when the
- * user has an enabled connection for the requested pipeline kind.
+ * Server-only credential resolver used by image/video/voice adapters.
+ * Secrets never leave the server. Exact connections win. If the target
+ * provider is declared as compatible with another SCENOVA provider on the same
+ * API platform, the same encrypted credential may be reused without asking the
+ * user to store the key a second time.
  */
 export async function resolveUserPipelineCredential(input: {
   userId: string;
@@ -87,6 +143,17 @@ export async function resolveUserPipelineCredential(input: {
       kind: input.kind,
     });
     if (preferred) return preferred;
+
+    const sharedPreferred = await resolveSharedCredential({
+      userId: input.userId,
+      kind: input.kind,
+      preferredProvider,
+    });
+    if (sharedPreferred) return sharedPreferred;
   }
-  return getDefaultUserApiConnectionSecret(input.userId, input.kind);
+
+  const directDefault = await getDefaultUserApiConnectionSecret(input.userId, input.kind);
+  if (directDefault) return directDefault;
+
+  return resolveSharedCredential({ userId: input.userId, kind: input.kind });
 }
