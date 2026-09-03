@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import type { Project } from "@/lib/domain";
 import { resolveSession } from "@/lib/auth-core";
 import { composeDirectPrompts } from "@/lib/direct-render";
-import { getUserVideoProviderById } from "@/lib/providers/provider-registry";
+import { getUserVideoProviderById, getVideoProviderById } from "@/lib/providers/provider-registry";
 
 export const runtime = "nodejs";
 
@@ -36,8 +36,12 @@ export async function POST(request: Request) {
     }
     const providerId = typeof body.providerId === "string" ? body.providerId.trim() : "";
     if (!providerId) return NextResponse.json({ error: "DIRECT_RENDER_PROVIDER_REQUIRED" }, { status: 400 });
-    const provider = await getUserVideoProviderById(user.id, providerId);
-    if (!provider) return NextResponse.json({ error: `VIDEO_PROVIDER_CONNECTION_REQUIRED:${providerId}` }, { status: 400 });
+
+    // Prompt composition does not require a usable video credential. Prefer the
+    // user's exact provider runtime so duration/model metadata stays identical to
+    // generation, but fall back to the credential-free adapter for preview/copy.
+    const provider = await getUserVideoProviderById(user.id, providerId) || getVideoProviderById(providerId);
+    if (!provider) return NextResponse.json({ error: `VIDEO_PROVIDER_ADAPTER_NOT_FOUND:${providerId}` }, { status: 400 });
 
     const modelVersionId = typeof body.modelVersionId === "string" ? body.modelVersionId : body.project.mainModelVersionId;
     const result = await composeDirectPrompts({
@@ -46,11 +50,11 @@ export async function POST(request: Request) {
       provider,
       modelVersionId,
     });
-    return NextResponse.json({ ok: true, ...result });
+    return NextResponse.json({ ok: true, videoConnectionRequired: !(await getUserVideoProviderById(user.id, providerId)), ...result });
   } catch (error) {
     const message = error instanceof Error ? error.message : "DIRECT_PROMPT_FAILED";
     const status = message.includes("429") || message.includes("RATE_LIMIT") ? 429
-      : message.includes("CONNECTION_REQUIRED") || message.includes("API_KEY") ? 400
+      : message.includes("ADAPTER_NOT_FOUND") ? 400
         : message === "INSUFFICIENT_CREDITS" ? 402
           : 500;
     return NextResponse.json({ error: message }, { status });
