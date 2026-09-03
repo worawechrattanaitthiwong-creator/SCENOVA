@@ -155,6 +155,30 @@ async function downloadVideo(url: string, outputPath: string, origin: string, co
   if (total < 1024) throw new Error("FINAL_VIDEO_SOURCE_TOO_SMALL");
 }
 
+async function normalizeShot(ffmpeg: string, rawPath: string, outputPath: string, duration: number) {
+  // Providers such as Veo can return a fixed-duration source (for example 8s)
+  // even when an editorial camera shot only occupies 1.8-3.0s in SCENOVA.
+  // Re-encode every internal shot to its exact timeline duration before concat.
+  // This also normalizes codec/timestamps so rapid A→B→A coverage joins reliably.
+  await runProcess(ffmpeg, [
+    "-y",
+    "-i", rawPath,
+    "-t", Math.max(0.05, duration).toFixed(3),
+    "-map", "0:v:0",
+    "-map", "0:a?",
+    "-c:v", "libx264",
+    "-preset", "veryfast",
+    "-crf", "18",
+    "-pix_fmt", "yuv420p",
+    "-c:a", "aac",
+    "-b:a", "192k",
+    "-ar", "48000",
+    "-avoid_negative_ts", "make_zero",
+    "-movflags", "+faststart",
+    outputPath,
+  ], 180_000);
+}
+
 async function assemble(input: {
   runId: string;
   sources: DirectFinalSource[];
@@ -182,44 +206,53 @@ async function assemble(input: {
   try {
     const inputFiles: string[] = [];
     for (const source of sources) {
-      const filePath = path.join(workDir, `segment-${String(source.order).padStart(3, "0")}.mp4`);
-      await downloadVideo(source.outputUrl, filePath, input.origin, input.cookieHeader);
-      inputFiles.push(filePath);
+      const number = String(source.order).padStart(3, "0");
+      const rawPath = path.join(workDir, `source-${number}.mp4`);
+      const shotPath = path.join(workDir, `shot-${number}.mp4`);
+      await downloadVideo(source.outputUrl, rawPath, input.origin, input.cookieHeader);
+      await normalizeShot(ffmpeg, rawPath, shotPath, source.duration);
+      inputFiles.push(shotPath);
     }
 
     if (inputFiles.length === 1) {
-      await rename(inputFiles[0], tempOutput);
+      await copyFile(inputFiles[0]!, tempOutput);
     } else {
       const concatFile = path.join(workDir, "concat.txt");
       const concatText = inputFiles.map((file) => `file '${file.replace(/'/g, "'\\''")}'`).join("\n");
       await writeFile(concatFile, `${concatText}\n`, "utf8");
       const requestedDuration = sources.reduce((sum, source) => sum + source.duration, 0);
-      const commonArgs = [
-        "-y",
-        "-fflags", "+genpts",
-        "-f", "concat",
-        "-safe", "0",
-        "-i", concatFile,
-        "-t", requestedDuration.toFixed(3),
-      ];
       try {
         await runProcess(ffmpeg, [
-          ...commonArgs,
+          "-y",
+          "-fflags", "+genpts",
+          "-f", "concat",
+          "-safe", "0",
+          "-i", concatFile,
+          "-t", requestedDuration.toFixed(3),
           "-c", "copy",
           "-avoid_negative_ts", "make_zero",
           "-movflags", "+faststart",
           tempOutput,
         ], 180_000);
       } catch {
+        // Safety fallback for rare codec/timestamp incompatibilities. The source
+        // clips are already duration-normalized, so this pass only joins them.
         await runProcess(ffmpeg, [
-          ...commonArgs,
+          "-y",
+          "-fflags", "+genpts",
+          "-f", "concat",
+          "-safe", "0",
+          "-i", concatFile,
+          "-t", requestedDuration.toFixed(3),
           "-map", "0:v:0",
           "-map", "0:a?",
           "-c:v", "libx264",
           "-preset", "veryfast",
           "-crf", "18",
+          "-pix_fmt", "yuv420p",
           "-c:a", "aac",
           "-b:a", "192k",
+          "-ar", "48000",
           "-movflags", "+faststart",
           tempOutput,
         ], 300_000);
