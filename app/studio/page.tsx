@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import SingleEpisodeAiAuto from "@/components/single-episode-ai-auto";
 import SingleEpisodeStudioPolish from "@/components/single-episode-studio-polish";
+import StudioModelPickerPolish from "@/components/studio-model-picker-polish";
 
 const SingleEpisodeStudio = dynamic(
   () => import("@/components/single-episode-studio"),
@@ -20,6 +21,7 @@ export default function StudioPage() {
   return <>
     <SingleEpisodeStudio />
     <SingleEpisodeStudioPolish />
+    <StudioModelPickerPolish />
     <SingleEpisodeAiAuto />
   </>;
 }
