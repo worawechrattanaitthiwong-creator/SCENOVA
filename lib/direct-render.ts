@@ -81,15 +81,50 @@ export function directMaxSecondsForProvider(provider: VideoProvider, modelVersio
   return Math.max(1, Number(definition.maxSecondsPerGeneration) || 1);
 }
 
-export function planDirectRenderWindows(project: Project, maxSeconds: number): DirectRenderWindow[] {
+function fixedRanges(total: number, maxSeconds: number) {
+  const ranges: Array<{ start: number; end: number }> = [];
+  for (let start = 0; start < total; start += maxSeconds) ranges.push({ start, end: Math.min(total, start + maxSeconds) });
+  return ranges;
+}
+
+function shotAwareRanges(episode: Episode, maxSeconds: number) {
+  const shots = episode.segments
+    .flatMap((scene) => scene.cameraShots.map((shot) => ({ start: Math.max(scene.start, shot.start), end: Math.min(scene.end, shot.end) })))
+    .filter((shot) => shot.end - shot.start > 0.35)
+    .sort((a, b) => a.start - b.start || a.end - b.end);
+  if (!shots.length) return fixedRanges(Number(episode.duration) || 1, maxSeconds);
+
+  const ranges: Array<{ start: number; end: number }> = [];
+  for (const shot of shots) {
+    for (let start = shot.start; start < shot.end - 0.01; start += maxSeconds) {
+      ranges.push({ start: Number(start.toFixed(3)), end: Number(Math.min(shot.end, start + maxSeconds).toFixed(3)) });
+    }
+  }
+  const merged: Array<{ start: number; end: number }> = [];
+  for (const range of ranges) {
+    const previous = merged[merged.length - 1];
+    if (previous && Math.abs(previous.end - range.start) < 0.02 && range.end - previous.start <= maxSeconds && range.end - range.start < 0.5) {
+      previous.end = range.end;
+    } else merged.push({ ...range });
+  }
+  return merged;
+}
+
+export function planDirectRenderWindows(
+  project: Project,
+  maxSeconds: number,
+  options: { supportsMultiShot?: boolean } = {},
+): DirectRenderWindow[] {
   const sourceEpisode = project.episodes[0];
   if (!sourceEpisode) return [];
   const total = Math.max(1, Number(sourceEpisode.duration) || 1);
   const safeMax = Math.max(1, Number(maxSeconds) || total);
+  const supportsMultiShot = options.supportsMultiShot !== false;
+  const ranges = supportsMultiShot ? fixedRanges(total, safeMax) : shotAwareRanges(sourceEpisode, safeMax);
   const windows: DirectRenderWindow[] = [];
 
-  for (let start = 0, order = 1; start < total; start += safeMax, order += 1) {
-    const end = Math.min(total, start + safeMax);
+  ranges.forEach(({ start, end }, index) => {
+    const order = index + 1;
     const clippedSegments = sourceEpisode.segments
       .map((segment) => clipSegmentToWindow(segment, start, end))
       .filter((segment): segment is TimelineSegment => Boolean(segment));
@@ -109,8 +144,11 @@ export function planDirectRenderWindows(project: Project, maxSeconds: number): D
       episodes: [episode],
       projectBible: [
         project.projectBible,
-        `DIRECT GENERATION WINDOW ${order}: global ${start.toFixed(1)}-${end.toFixed(1)}s. The provider receives this window as one video generation request. Multiple scenes/shots inside this window belong to the same generated clip. Timeline values inside the window are local from 0.0s to ${duration.toFixed(1)}s.`,
-        order > 1 ? "CONTINUITY FROM PREVIOUS WINDOW: preserve the exact final identity, wardrobe, props, spatial direction, lighting logic and emotional state from the previous generation window." : "",
+        `DIRECT GENERATION WINDOW ${order}: global ${start.toFixed(1)}-${end.toFixed(1)}s. The provider receives this window as one video generation request. Timeline values inside the window are local from 0.0s to ${duration.toFixed(1)}s.`,
+        supportsMultiShot
+          ? "MULTI-SHOT CAPABLE WINDOW: preserve the planned internal editorial cuts and reusable camera slots inside this request."
+          : "SINGLE-SHOT PROVIDER WINDOW: this request represents one editorial camera shot (or a technical split of one long shot). Do not invent additional cuts inside this generated clip.",
+        order > 1 ? "CONTINUITY FROM PREVIOUS WINDOW: preserve exact identity, wardrobe, props, location geometry, screen direction, lighting logic and emotional/action state from the previous generated window." : "",
       ].filter(Boolean).join("\n"),
     };
     windows.push({
@@ -133,7 +171,7 @@ export function planDirectRenderWindows(project: Project, maxSeconds: number): D
         continuityFromPrevious: order > 1,
       },
     });
-  }
+  });
   return windows;
 }
 
@@ -156,8 +194,9 @@ export async function composeDirectPrompts(input: {
   provider: VideoProvider;
   modelVersionId?: string | null;
 }) {
+  const definition = input.provider.getModelDefinition();
   const maxSeconds = directMaxSecondsForProvider(input.provider, input.modelVersionId || input.project.mainModelVersionId);
-  const windows = planDirectRenderWindows(input.project, maxSeconds);
+  const windows = planDirectRenderWindows(input.project, maxSeconds, { supportsMultiShot: definition.supportsMultiShot });
   const assistant = createPromptAssistant({ userId: input.userId });
   const segments: DirectPromptSegment[] = [];
 
@@ -185,9 +224,11 @@ export async function composeDirectPrompts(input: {
 
   return {
     providerId: input.provider.id,
-    providerName: input.provider.getModelDefinition().provider,
+    providerName: definition.provider,
     billingMode: input.provider.billingMode || "SYSTEM",
     maxSecondsPerGeneration: maxSeconds,
+    supportsMultiShot: definition.supportsMultiShot,
+    editorialShotCount: input.project.episodes[0]?.segments.reduce((sum, scene) => sum + scene.cameraShots.length, 0) || 0,
     composer: assistant.id,
     segments,
   };
