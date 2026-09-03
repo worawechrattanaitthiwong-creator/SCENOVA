@@ -1,8 +1,8 @@
 import type { PromptBundle, PromptMode, Project, Episode } from "@/lib/domain";
 import { buildPromptBundle } from "@/lib/prompt-engine";
 import { routeLlm } from "@/lib/llm/model-router";
-import { callOpenAiFunction, type FunctionTool } from "@/lib/llm/openai-responses";
-import { callInceptionFunction } from "@/lib/llm/inception";
+import { callSystemAiFunction } from "@/lib/llm/system-ai";
+import type { FunctionTool } from "@/lib/llm/openai-responses";
 
 export type PromptAssistRequest = {
   project: Project;
@@ -86,12 +86,13 @@ export class ProductionPromptAssistant implements PromptAssistant {
       },
     }];
 
-    const common = {
+    const result = await callSystemAiFunction({
       userId: request.userId,
       runId: request.runId || null,
       category: "PROMPT_PRODUCTION",
       referenceType: "episode",
       referenceId: request.episode.id,
+      openAiModelId: route.modelId,
       instructions: [
         "You are the SCENOVA System AI Brain and Production Prompt Composer.",
         "Every Generate Prompt request must first analyze the complete current Studio data, then create the final production-ready prompt bundle.",
@@ -116,20 +117,7 @@ export class ProductionPromptAssistant implements PromptAssistant {
         billingScope: "SCENOVA_SYSTEM",
         usageTracked: true,
       },
-    };
-
-    let result;
-    try {
-      // Generate Prompt is always a SCENOVA system-funded AI operation.
-      // Do not use the user's Analyzer/BYOK credential: usage must remain centrally
-      // measurable so Prompt Cost / credits can be enabled later without changing this flow.
-      result = await callInceptionFunction({ ...common, credentialMode: "system-only" });
-    } catch (systemBrainError) {
-      // System OpenAI is the server-side fallback only and is metered through the
-      // same PROMPT_PRODUCTION usage category. No API key is exposed to the browser.
-      if (!process.env.OPENAI_API_KEY?.trim()) throw systemBrainError;
-      result = await callOpenAiFunction({ ...common, modelId: route.modelId });
-    }
+    });
 
     this.id = `system-ai:${result.modelId}`;
     const args = result.arguments;
@@ -148,7 +136,7 @@ export class ProductionPromptAssistant implements PromptAssistant {
 }
 
 export function createPromptAssistant(input?: { userId?: string; runId?: string }) {
-  // Authenticated Generate Prompt requests always use the system AI path.
+  // Authenticated Generate Prompt requests always use the SCENOVA system AI router.
   // Mock remains only for isolated non-user callers/tests.
   if (input?.userId) return new ProductionPromptAssistant();
   return new MockPromptAssistant();
