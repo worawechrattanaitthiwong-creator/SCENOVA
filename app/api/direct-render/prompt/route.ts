@@ -2,7 +2,8 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import type { Project } from "@/lib/domain";
 import { resolveSession } from "@/lib/auth-core";
-import { composeDirectPrompts } from "@/lib/direct-render";
+import { createCinematicCoveragePlan } from "@/lib/cinematic-coverage";
+import { composeDirectPrompts, directMaxSecondsForProvider } from "@/lib/direct-render";
 import { systemAiErrorMessage } from "@/lib/llm/system-ai";
 import { getUserVideoProviderById, getVideoProviderById } from "@/lib/providers/provider-registry";
 
@@ -31,6 +32,8 @@ export async function POST(request: Request) {
       project?: unknown;
       providerId?: unknown;
       modelVersionId?: unknown;
+      coveragePresetId?: unknown;
+      coverageInstruction?: unknown;
     } | null;
     if (!body || !validProject(body.project)) {
       return NextResponse.json({ error: "DIRECT_RENDER_PROJECT_REQUIRED" }, { status: 400 });
@@ -41,17 +44,36 @@ export async function POST(request: Request) {
     // Prompt composition does not require a usable video credential. Prefer the
     // user's exact provider runtime so duration/model metadata stays identical to
     // generation, but fall back to the credential-free adapter for preview/copy.
-    const provider = await getUserVideoProviderById(user.id, providerId) || getVideoProviderById(providerId);
+    const userProvider = await getUserVideoProviderById(user.id, providerId);
+    const provider = userProvider || getVideoProviderById(providerId);
     if (!provider) return NextResponse.json({ error: `VIDEO_PROVIDER_ADAPTER_NOT_FOUND:${providerId}` }, { status: 400 });
 
     const modelVersionId = typeof body.modelVersionId === "string" ? body.modelVersionId : body.project.mainModelVersionId;
-    const result = await composeDirectPrompts({
+    const definition = provider.getModelDefinition();
+    const maxSecondsPerGeneration = directMaxSecondsForProvider(provider, modelVersionId);
+    const coverage = await createCinematicCoveragePlan({
       userId: user.id,
       project: body.project,
+      presetId: typeof body.coveragePresetId === "string" ? body.coveragePresetId : "creature-encounter",
+      customInstruction: typeof body.coverageInstruction === "string" ? body.coverageInstruction : "",
+      providerId,
+      providerSupportsMultiShot: definition.supportsMultiShot,
+      maxSecondsPerGeneration,
+    });
+    const result = await composeDirectPrompts({
+      userId: user.id,
+      project: coverage.project,
       provider,
       modelVersionId,
     });
-    return NextResponse.json({ ok: true, videoConnectionRequired: !(await getUserVideoProviderById(user.id, providerId)), ...result });
+    return NextResponse.json({
+      ok: true,
+      videoConnectionRequired: !userProvider,
+      renderProject: coverage.project,
+      coverage: coverage.plan,
+      coverageMeta: coverage.meta,
+      ...result,
+    });
   } catch (error) {
     const rawMessage = error instanceof Error ? error.message : "DIRECT_PROMPT_FAILED";
     const code = rawMessage.split(":")[0];
