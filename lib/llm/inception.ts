@@ -14,20 +14,30 @@ function parseObject(value: unknown) {
   } catch { return {}; }
 }
 
-async function credential(userId: string) {
-  const byok = await getUserApiConnectionSecret({ userId, provider: "inception", kind: "ANALYZER" });
-  if (byok?.connection.status === "CONNECTED") {
-    return {
-      apiKey: byok.apiKey,
-      baseUrl: byok.connection.baseUrl || "https://api.inceptionlabs.ai/v1",
-      modelId: byok.connection.modelId || "mercury-2",
-      billingMode: "BYOK" as const,
-      connectionId: byok.connection.id,
-    };
+type CredentialMode = "user-or-system" | "system-only";
+
+async function credential(userId: string, mode: CredentialMode) {
+  if (mode !== "system-only") {
+    const byok = await getUserApiConnectionSecret({ userId, provider: "inception", kind: "ANALYZER" });
+    if (byok?.connection.status === "CONNECTED") {
+      return {
+        apiKey: byok.apiKey,
+        baseUrl: byok.connection.baseUrl || "https://api.inceptionlabs.ai/v1",
+        modelId: byok.connection.modelId || "mercury-2",
+        billingMode: "BYOK" as const,
+        connectionId: byok.connection.id,
+      };
+    }
   }
+
   const system = getSystemProviderCredential("inception", "ANALYZER");
-  if (!system) throw new Error("INCEPTION_NOT_CONFIGURED");
-  return { ...system, modelId: system.modelId || "mercury-2", billingMode: "SYSTEM" as const, connectionId: null };
+  if (!system) throw new Error(mode === "system-only" ? "INCEPTION_SYSTEM_NOT_CONFIGURED" : "INCEPTION_NOT_CONFIGURED");
+  return {
+    ...system,
+    modelId: system.modelId || "mercury-2",
+    billingMode: "SYSTEM" as const,
+    connectionId: null,
+  };
 }
 
 export async function callInceptionFunction(input: {
@@ -41,8 +51,10 @@ export async function callInceptionFunction(input: {
   tools: FunctionTool[];
   maxOutputTokens?: number;
   metadata?: Record<string, unknown>;
+  credentialMode?: CredentialMode;
 }): Promise<FunctionCallResult> {
-  const resolved = await credential(input.userId);
+  const credentialMode = input.credentialMode || "user-or-system";
+  const resolved = await credential(input.userId, credentialMode);
   await assertEmergencyCapability("llm", "inception");
   await enforceEmergencyRateLimit(`llm:inception:${input.userId}`, Number(process.env.EMERGENCY_LLM_CALLS_PER_MINUTE || 5));
   const approximateInputTokens = Math.max(1, Math.ceil((input.instructions.length + input.prompt.length + JSON.stringify(input.tools).length) / 4));
@@ -71,10 +83,22 @@ export async function callInceptionFunction(input: {
   const inputTokens = Math.max(0, Number(usage.prompt_tokens || approximateInputTokens));
   const outputTokens = Math.max(0, Number(usage.completion_tokens || 0));
   const recorded = await recordLlmUsage({
-    userId: input.userId, runId: input.runId || null, provider: "inception", modelId: String(body.model || resolved.modelId),
-    category: input.category, inputTokens, outputTokens,
-    referenceType: input.referenceType || null, referenceId: input.referenceId || null,
-    metadata: { requestId: String(body.id || randomUUID()), billingMode: resolved.billingMode, connectionId: resolved.connectionId, ...input.metadata },
+    userId: input.userId,
+    runId: input.runId || null,
+    provider: "inception",
+    modelId: String(body.model || resolved.modelId),
+    category: input.category,
+    inputTokens,
+    outputTokens,
+    referenceType: input.referenceType || null,
+    referenceId: input.referenceId || null,
+    metadata: {
+      requestId: String(body.id || randomUUID()),
+      billingMode: resolved.billingMode,
+      connectionId: resolved.connectionId,
+      credentialMode,
+      ...input.metadata,
+    },
   });
   const content = typeof message?.content === "string" ? message.content : "";
   const functionArguments = parseObject(fn?.arguments);
@@ -82,7 +106,11 @@ export async function callInceptionFunction(input: {
     name: typeof fn?.name === "string" ? fn.name : null,
     arguments: Object.keys(functionArguments).length ? functionArguments : parseObject(content),
     outputText: content,
-    responseId: String(body.id || ""), modelId: String(body.model || resolved.modelId),
-    inputTokens, cachedInputTokens: 0, outputTokens, costThb: Number(recorded.costThb.toString()),
+    responseId: String(body.id || ""),
+    modelId: String(body.model || resolved.modelId),
+    inputTokens,
+    cachedInputTokens: 0,
+    outputTokens,
+    costThb: Number(recorded.costThb.toString()),
   };
 }
