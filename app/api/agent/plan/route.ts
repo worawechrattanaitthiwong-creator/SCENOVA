@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { z } from "zod";
 import { resolveSession } from "@/lib/auth-core";
-import { callOpenAiFunction } from "@/lib/llm/openai-responses";
 import { routeLlm } from "@/lib/llm/model-router";
+import { callSystemAiFunction, systemAiErrorMessage } from "@/lib/llm/system-ai";
 import {
   addDeterministicPlanDiagnostics,
   agentStructuredPlanSchema,
@@ -195,13 +195,13 @@ export async function POST(request: Request) {
   const route = routeLlm({ task: body.regenerateSection === "continuity" ? "CONTINUITY" : "AGENT_PLAN", contextChars: context.length });
 
   try {
-    const result = await callOpenAiFunction({
+    const result = await callSystemAiFunction({
       userId: user.id,
       runId: null,
       category: body.regenerateSection === "continuity" ? "AGENT_CONTINUITY_PLAN" : "AGENT_STRUCTURED_PLAN",
       referenceType: "agent-plan",
       referenceId: body.requestId || null,
-      modelId: route.modelId,
+      openAiModelId: route.modelId,
       instructions: [
         "You are SCENOVA Planning Agent. You are a story writer, script analyst, cinematic planner and continuity assistant only.",
         "NEVER generate video, call a video provider, choose a video provider/model, reserve credits, charge a wallet, or claim that a render succeeded.",
@@ -223,10 +223,17 @@ export async function POST(request: Request) {
         strict: true,
       }],
       maxOutputTokens: Math.max(route.maxOutputTokens, body.target === "series" ? 7000 : 4500),
-      metadata: { target: body.target, plannerOnly: true, regenerateSection: body.regenerateSection, routerTier: route.tier },
+      metadata: {
+        target: body.target,
+        plannerOnly: true,
+        regenerateSection: body.regenerateSection,
+        routerTier: route.tier,
+        billingScope: "SCENOVA_SYSTEM",
+        feature: "AI_AGENT_PLAN",
+      },
     });
 
-    if (result.name !== "return_structured_plan") throw new Error("AGENT_PLAN_FUNCTION_NOT_RETURNED");
+    if (result.name !== "return_structured_plan") throw new Error("SYSTEM_AI_PLAN_FUNCTION_NOT_RETURNED");
     const candidateInput = {
       ...result.arguments,
       schemaVersion: "1.0",
@@ -244,8 +251,12 @@ export async function POST(request: Request) {
       meta: { modelId: result.modelId, plannerOnly: true, videoGeneration: false, walletCharge: false },
     });
   } catch (error) {
-    const code = error instanceof Error ? error.message.split(":")[0] : "AGENT_PLAN_FAILED";
+    const code = error instanceof Error ? error.message.split(":")[0] : "SYSTEM_AI_PLAN_FAILED";
     console.error("[agent-plan] planning failed", { userId: user.id, code, target: body.target, regenerateSection: body.regenerateSection });
-    return NextResponse.json({ error: code }, { status: code.startsWith("LLM_") ? 503 : 422 });
+    const isSystemAiError = code.startsWith("SYSTEM_AI_") || code.startsWith("LLM_");
+    return NextResponse.json({
+      error: isSystemAiError ? systemAiErrorMessage(code) : code,
+      code,
+    }, { status: isSystemAiError ? 503 : 422 });
   }
 }
