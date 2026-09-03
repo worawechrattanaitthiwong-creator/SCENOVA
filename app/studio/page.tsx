@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import AgentPlanStudioBridge from "@/components/agent-plan-studio-bridge";
 import SingleEpisodeAiAuto from "@/components/single-episode-ai-auto";
 import SingleEpisodeStudioPolish from "@/components/single-episode-studio-polish";
+import StudioCoverageEmptyDefault from "@/components/studio-coverage-empty-default";
 import StudioDirectRenderBridge from "@/components/studio-direct-render-bridge";
 import StudioDirectRenderInstant from "@/components/studio-direct-render-instant";
 import StudioModelPickerPolish from "@/components/studio-model-picker-polish";
@@ -27,6 +28,7 @@ export default function StudioPage() {
     <AgentPlanStudioBridge />
     <StudioDirectRenderBridge />
     <StudioDirectRenderInstant />
+    <StudioCoverageEmptyDefault />
     <SingleEpisodeStudioPolish />
     <StudioModelPickerPolish />
     <StudioModelPickerCompact />
