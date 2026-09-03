@@ -35,17 +35,28 @@ export function assertAgentToolAllowed(input: {
   creditReservationId?: string;
   creditReservationMode?: "wallet" | "mock" | "byok";
 }) {
-  // Planner-only Agent invariant: no legacy Agent run may call a video provider
-  // or switch a provider. Video generation belongs to Studio/Series after the
-  // user has reviewed and explicitly confirmed the plan.
-  if (input.tool === "generate_video" || input.tool === "switch_provider") {
-    throw new Error("AGENT_VIDEO_GENERATION_DISABLED");
-  }
-
-  const allowed = getAllowedAgentTools(input.run.stage);
-  if (!allowed.includes(input.tool)) throw new Error(`AGENT_TOOL_NOT_ALLOWED:${input.tool}:${input.run.stage}`);
   if (["COMPLETED", "FAILED", "CANCELLED"].includes(input.run.status)) throw new Error("AGENT_RUN_NOT_ACTIVE");
 
   const spend = Math.max(0, input.requestedSpendThb || 0);
   if (spend) assertAgentRunBudget(input.run, spend);
+
+  // Keep the legacy validation contract deterministic for callers/tests, then
+  // enforce the planner-only invariant. Even a fully valid legacy generation
+  // request is rejected before any provider call can happen.
+  if (input.tool === "generate_video") {
+    if (!input.providerId) throw new Error("AGENT_PROVIDER_REQUIRED");
+    if (!input.creditReservationId) throw new Error("CREDIT_RESERVATION_REQUIRED");
+    if (input.providerId !== "mock-seedance" && !["wallet", "byok"].includes(input.creditReservationMode || "")) {
+      throw new Error("REAL_PROVIDER_REQUIRES_WALLET_OR_BYOK");
+    }
+    if (input.run.estimatedSpendThb > input.run.approvalThresholdThb && (input.approvedBudgetThb || 0) < input.run.estimatedSpendThb) {
+      throw new Error("AGENT_APPROVAL_REQUIRED");
+    }
+    throw new Error("AGENT_VIDEO_GENERATION_DISABLED");
+  }
+
+  if (input.tool === "switch_provider") throw new Error("AGENT_VIDEO_GENERATION_DISABLED");
+
+  const allowed = getAllowedAgentTools(input.run.stage);
+  if (!allowed.includes(input.tool)) throw new Error(`AGENT_TOOL_NOT_ALLOWED:${input.tool}:${input.run.stage}`);
 }
