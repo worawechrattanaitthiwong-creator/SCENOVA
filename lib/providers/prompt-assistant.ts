@@ -23,21 +23,16 @@ export class MockPromptAssistant implements PromptAssistant {
   id = "mock-prompt-assistant";
 
   async improve(request: PromptAssistRequest): Promise<PromptBundle> {
-    if (request.mode === "strict") return request.base;
-    return {
-      ...request.base,
-      master: `${request.base.master}\n\n# AI ASSISTANCE LAYER\nMode: ${request.mode}. Preserve all hard constraints exactly. Improve cinematic language, temporal continuity and provider-specific phrasing without changing user-selected camera, lens, timing or active locks.`,
-    };
+    return request.base;
   }
 }
 
 export class ProductionPromptAssistant implements PromptAssistant {
-  id = "ai-brain-production-prompt";
+  id = "system-ai-production-prompt";
 
   async improve(request: PromptAssistRequest): Promise<PromptBundle> {
-    if (request.mode === "strict") return request.base;
     if (!request.userId || process.env.SCENOVA_LLM_ENABLED !== "true") {
-      throw new Error("AI_BRAIN_NOT_ENABLED");
+      throw new Error("SYSTEM_AI_NOT_ENABLED");
     }
 
     const compact = JSON.stringify({
@@ -45,6 +40,7 @@ export class ProductionPromptAssistant implements PromptAssistant {
       mode: request.mode,
       project: {
         title: request.project.title,
+        story: request.project.story,
         genre: request.project.genre,
         mood: request.project.mood,
         aspectRatio: request.project.aspectRatio,
@@ -52,10 +48,13 @@ export class ProductionPromptAssistant implements PromptAssistant {
         styleId: request.project.styleId,
         locks: request.project.locks,
         canon: request.project.canon,
+        projectBible: request.project.projectBible,
         characters: request.project.characters.map((character) => ({
           name: character.name,
+          description: character.description,
           appearance: character.appearance,
           outfit: character.outfit,
+          personality: character.personality,
           voiceProfile: character.voiceProfile,
           lock: character.lock,
         })),
@@ -74,7 +73,7 @@ export class ProductionPromptAssistant implements PromptAssistant {
     const tools: FunctionTool[] = [{
       type: "function",
       name: "return_prompt_bundle",
-      description: "Return the final production prompt bundle.",
+      description: "Return the final analyzed production prompt bundle for the selected video model.",
       parameters: {
         type: "object",
         properties: {
@@ -88,6 +87,7 @@ export class ProductionPromptAssistant implements PromptAssistant {
         additionalProperties: false,
       },
     }];
+
     const common = {
       userId: request.userId,
       runId: request.runId || null,
@@ -95,12 +95,16 @@ export class ProductionPromptAssistant implements PromptAssistant {
       referenceType: "episode",
       referenceId: request.episode.id,
       instructions: [
-        "You are SCENOVA AI Brain and Production Prompt Composer.",
-        "Analyze the complete Studio timeline before writing the final production-ready prompt bundle.",
+        "You are the SCENOVA System AI Brain and Production Prompt Composer.",
+        "Every Generate Prompt request must first analyze the complete current Studio data, then create the final production-ready prompt bundle.",
+        "Analyze story intent, scene order, shot timing, character identity, performance, camera, lens, movement, lighting, sound, dialogue and continuity before writing the output.",
+        "Treat multiple editorial scenes/shots inside one provider generation window as one continuous generated clip, not separate render jobs.",
         "Never alter user-locked character identity, costume, voice, canon, camera timing, duration, dialogue meaning or selected video model.",
         "Preserve explicit time ranges and make camera, lens, lighting, action, dialogue, sound and continuity instructions unambiguous for professional video generation.",
-        "Optimize wording for the target video model while preserving the user's creative intent.",
+        "Optimize wording for the target video model while preserving the user's creative intent and all explicit constraints.",
+        "If information conflicts, preserve the user's explicit values and resolve only presentation/wording ambiguity; do not silently invent a different creative decision.",
         "Do not add copyrighted named styles that the user did not request.",
+        "Return only the structured prompt bundle through return_prompt_bundle.",
       ].join("\n"),
       prompt: compact,
       tools,
@@ -110,22 +114,28 @@ export class ProductionPromptAssistant implements PromptAssistant {
         promptMode: request.mode,
         routerTier: route.tier,
         source: "direct-render",
+        feature: "GENERATE_PROMPT",
+        billingScope: "SCENOVA_SYSTEM",
+        usageTracked: true,
       },
     };
 
     let result;
     try {
-      // AI Brain priority: use the user's configured Analyzer/Inception connection first.
-      // Its configured modelId is respected, so a custom brain model can compose the prompt.
-      result = await callInceptionFunction(common);
-    } catch (brainError) {
-      if (!process.env.OPENAI_API_KEY) throw brainError;
+      // Direct Prompt generation is a SCENOVA system-funded feature.
+      // Never consume the user's Analyzer/BYOK connection here, so usage can be
+      // metered centrally and converted to Prompt Cost / credits later.
+      result = await callInceptionFunction({ ...common, credentialMode: "system-only" });
+    } catch (systemBrainError) {
+      // System OpenAI is the server-side fallback only. It is also centrally
+      // metered through PROMPT_PRODUCTION usage and never exposes a key to the browser.
+      if (!process.env.OPENAI_API_KEY?.trim()) throw systemBrainError;
       result = await callOpenAiFunction({ ...common, modelId: route.modelId });
     }
 
-    this.id = `ai-brain:${result.modelId}`;
+    this.id = `system-ai:${result.modelId}`;
     const args = result.arguments;
-    if (result.name !== "return_prompt_bundle") throw new Error("AI_BRAIN_PROMPT_FUNCTION_NOT_RETURNED");
+    if (result.name !== "return_prompt_bundle") throw new Error("SYSTEM_AI_PROMPT_FUNCTION_NOT_RETURNED");
     const shots = Array.isArray(args.shots)
       ? args.shots.filter((item): item is string => typeof item === "string")
       : request.base.shots;
@@ -140,7 +150,9 @@ export class ProductionPromptAssistant implements PromptAssistant {
 }
 
 export function createPromptAssistant(input?: { userId?: string; runId?: string }) {
-  if (input?.userId && process.env.SCENOVA_LLM_ENABLED === "true") return new ProductionPromptAssistant();
+  // Server-side Direct Prompt must use the system AI path. The mock assistant is
+  // retained only for isolated callers/tests that do not have an authenticated user.
+  if (input?.userId) return new ProductionPromptAssistant();
   return new MockPromptAssistant();
 }
 
