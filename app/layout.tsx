@@ -4,7 +4,7 @@ import HelpHintNormalizer from "@/components/help-hint-normalizer";
 import SingleEpisodePreferences from "@/components/single-episode-preferences";
 import SingleEpisodeLayoutV8 from "@/components/single-episode-layout-v8";
 import WorkspaceDraftTray from "@/components/workspace-draft-tray";
-import WorkspacePageDraftBridge from "@/components/workspace-page-draft-bridge";
+import WorkspacePageDraftBridgeV2 from "@/components/workspace-page-draft-bridge-v2";
 import "./globals.css";
 import "./standards.css";
 import "./legacy-theme-overrides.css";
@@ -86,7 +86,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <SingleEpisodePreferences />
         <SingleEpisodeLayoutV8 />
         <AppShell>{children}</AppShell>
-        <WorkspacePageDraftBridge />
+        <WorkspacePageDraftBridgeV2 />
         <WorkspaceDraftTray />
       </body>
     </html>
