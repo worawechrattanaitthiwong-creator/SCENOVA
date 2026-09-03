@@ -65,6 +65,14 @@ export type CameraShot = {
   depthOfField: string;
   composition: string;
   foregroundOcclusion: string;
+  coverageRole?: string;
+  cameraSlot?: string;
+  subject?: string;
+  screenDirection?: string;
+  eyelineTarget?: string;
+  transitionIn?: string;
+  transitionOut?: string;
+  continuityAnchor?: string;
 };
 
 export type DialogueBeat = {
