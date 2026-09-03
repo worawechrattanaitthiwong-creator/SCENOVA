@@ -157,6 +157,15 @@ export default function ApiConnectionsPage() {
     return total + ids.length;
   }, 0), [activeConnections]);
   const connectedCount = useMemo(() => connections.filter((connection) => connection.enabled && connection.status === "CONNECTED").length, [connections]);
+  const connectedModelCount = useMemo(() => {
+    const uniqueModels = new Set<string>();
+    for (const connection of allDisplayConnections) {
+      if (!connection.enabled || connection.status !== "CONNECTED") continue;
+      const ids = connection.enabledModelIds.length ? connection.enabledModelIds : connection.modelId ? [connection.modelId] : [];
+      for (const id of ids) uniqueModels.add(`${connection.kind}:${connection.provider}:${id}`);
+    }
+    return uniqueModels.size;
+  }, [allDisplayConnections]);
   const readyStageCount = useMemo(() => routing.filter((stage) => stage.ready).length, [routing]);
   const filteredModels = useMemo(() => {
     const query = modelSearch.trim().toLowerCase();
@@ -391,9 +400,10 @@ export default function ApiConnectionsPage() {
           <h1>ศูนย์เชื่อมต่อ AI</h1>
           <p>เชื่อมต่อ API เพียงครั้งเดียว แล้วเลือกโมเดลจริงที่ต้องการใช้ ระบบจะแสดง Model ID ที่ส่งไปหลังบ้านอย่างชัดเจน</p>
         </div>
-        <div className={styles.headerSummary}>
+        <div id="api-header-summary" className={styles.headerSummary}>
           <div className={styles.summaryItem}><span>การเชื่อมต่อที่พร้อม</span><strong>{connectedCount}</strong><small>จากทั้งหมด {connections.length}</small></div>
           <div className={styles.summaryItem}><span>ประเภทที่เชื่อมแล้ว</span><strong>{readyStageCount}/4</strong><small>Connection Categories</small></div>
+          <div className={`${styles.summaryItem} api-model-summary`}><span>โมเดลที่พร้อม</span><strong>{connectedModelCount}</strong><small>Connected Models</small></div>
           <div className={styles.securitySummary}><span className={styles.summaryIcon}><Icon name="shield"/></span><span><strong>เข้ารหัสบนเซิร์ฟเวอร์</strong><small>คีย์เต็มไม่ถูกส่งกลับ Browser</small></span></div>
         </div>
       </header>
@@ -521,6 +531,27 @@ export default function ApiConnectionsPage() {
           <div className={styles.securityNote}><Icon name="shield" size={17}/><p><strong>Credential ถูกเก็บแบบเข้ารหัส</strong> Model ID และ Base URL เป็น metadata เท่านั้น และ API ที่มี Adapter หลายประเภทสามารถใช้ Credential เดียวกันข้ามหมวดได้โดยไม่เก็บคีย์ซ้ำ</p></div>
         </aside>
       </div>
+      <style jsx global>{`
+        #api-header-summary {
+          grid-template-columns: repeat(3, minmax(96px, auto)) minmax(210px, auto);
+          min-width: 570px;
+        }
+        @media (max-width: 1260px) {
+          #api-header-summary {
+            min-width: 0;
+          }
+        }
+        @media (max-width: 680px) {
+          #api-header-summary {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+          #api-header-summary .api-model-summary {
+            grid-column: 1 / -1;
+            border-top: 1px solid var(--api-line);
+            border-right: 0;
+          }
+        }
+      `}</style>
     </main>
   );
 }
