@@ -5,6 +5,7 @@ import AgentPlanStudioBridge from "@/components/agent-plan-studio-bridge";
 import SingleEpisodeAiAuto from "@/components/single-episode-ai-auto";
 import SingleEpisodeStudioPolish from "@/components/single-episode-studio-polish";
 import StudioDirectRenderBridge from "@/components/studio-direct-render-bridge";
+import StudioDirectRenderInstant from "@/components/studio-direct-render-instant";
 import StudioModelPickerPolish from "@/components/studio-model-picker-polish";
 import StudioModelPickerCompact from "@/components/studio-model-picker-compact";
 
@@ -25,6 +26,7 @@ export default function StudioPage() {
     <SingleEpisodeStudio />
     <AgentPlanStudioBridge />
     <StudioDirectRenderBridge />
+    <StudioDirectRenderInstant />
     <SingleEpisodeStudioPolish />
     <StudioModelPickerPolish />
     <StudioModelPickerCompact />
