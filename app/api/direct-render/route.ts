@@ -15,7 +15,7 @@ import {
 } from "@/lib/direct-render";
 import { prisma } from "@/lib/db";
 import { getUserVideoProviderById } from "@/lib/providers/provider-registry";
-import type { GenerateVideoRequest, GenerateVideoResult, VideoProvider } from "@/lib/providers/video-provider";
+import type { GenerateVideoRequest, GenerateVideoResult } from "@/lib/providers/video-provider";
 import { PrismaWalletService } from "@/lib/wallet";
 
 export const runtime = "nodejs";
@@ -148,7 +148,7 @@ function requestFromJob(input: {
     modelVersionId,
     renderSegment,
     prompt,
-    resolution: input.job.resolution,
+    resolution: input.job.resolution as GenerateVideoRequest["resolution"],
     aspectRatio,
     imageReferences,
     videoReferences: asStringArray(refs.videoReferences),
@@ -170,10 +170,10 @@ async function submitJob(userId: string, jobId: string) {
     where: { userId, projectId: job.projectId, startSec: { lt: job.startSec }, status: "COMPLETED" },
     orderBy: { startSec: "desc" },
   });
-  const request = requestFromJob({ job, previousLastFrame: previous?.lastFrameAssetKey });
+  const generateRequest = requestFromJob({ job, previousLastFrame: previous?.lastFrameAssetKey });
   await prisma.generationJob.update({ where: { id: job.id }, data: { status: "SUBMITTING", errorCode: null, errorMessage: null } });
   try {
-    const result = await provider.generate(request);
+    const result = await provider.generate(generateRequest);
     const status = providerStatus(result.status);
     const updated = await prisma.generationJob.update({
       where: { id: job.id },
@@ -226,7 +226,6 @@ async function pollActiveJob(userId: string, projectId: string) {
     return updated;
   } catch (error) {
     const message = error instanceof Error ? error.message : "DIRECT_RENDER_POLL_FAILED";
-    // Transient polling failures should not destroy a running provider task.
     await prisma.generationJob.update({ where: { id: active.id }, data: { errorMessage: message.slice(0, 4000) } });
     return active;
   }
