@@ -113,11 +113,19 @@ export async function listUserApiConnections(userId: string) {
   const rows = await prisma.$queryRaw<ApiConnectionRow[]>`
     SELECT * FROM "UserApiConnection"
     WHERE "userId" = ${userId}
-    ORDER BY "kind" ASC, "isDefault" DESC, "createdAt" ASC
+    ORDER BY "kind" ASC, "isDefault" DESC, "provider" ASC, "createdAt" ASC
   `;
   return rows.map(safe);
 }
 
+/**
+ * Creates a new encrypted credential connection.
+ *
+ * Historically this function upserted on (userId, provider, kind), which meant
+ * adding a second key for the same provider replaced the first one. Keep the
+ * exported name for compatibility with existing callers, but intentionally
+ * INSERT a distinct row now so one provider/model family can hold many keys.
+ */
 export async function upsertUserApiConnection(input: {
   userId: string;
   provider: string;
@@ -166,26 +174,12 @@ export async function upsertUserApiConnection(input: {
         ${encrypted.ciphertext}, ${encrypted.iv}, ${keyLast4}, ${status}, ${enabled},
         ${isDefault}, CURRENT_TIMESTAMP, ${lastError}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
       )
-      ON CONFLICT ("userId", "provider", "kind") DO UPDATE SET
-        "modelId" = EXCLUDED."modelId",
-        "enabledModelIds" = EXCLUDED."enabledModelIds",
-        "availableModels" = EXCLUDED."availableModels",
-        "baseUrl" = EXCLUDED."baseUrl",
-        "secretCiphertext" = EXCLUDED."secretCiphertext",
-        "secretIv" = EXCLUDED."secretIv",
-        "keyLast4" = EXCLUDED."keyLast4",
-        "status" = EXCLUDED."status",
-        "enabled" = EXCLUDED."enabled",
-        "isDefault" = EXCLUDED."isDefault",
-        "lastTestedAt" = CURRENT_TIMESTAMP,
-        "lastError" = EXCLUDED."lastError",
-        "updatedAt" = CURRENT_TIMESTAMP
     `;
   });
 
   const rows = await prisma.$queryRaw<ApiConnectionRow[]>`
     SELECT * FROM "UserApiConnection"
-    WHERE "userId" = ${input.userId} AND "provider" = ${input.provider} AND "kind" = ${input.kind}
+    WHERE "id" = ${id} AND "userId" = ${input.userId}
     LIMIT 1
   `;
   if (!rows[0]) throw new Error("API_CONNECTION_SAVE_FAILED");
@@ -203,6 +197,7 @@ export async function getUserApiConnectionSecret(input: {
       AND "provider" = ${input.provider}
       AND "kind" = ${input.kind}
       AND "enabled" = true
+    ORDER BY "isDefault" DESC, "updatedAt" DESC
     LIMIT 1
   `;
   const row = rows[0];
