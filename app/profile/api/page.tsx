@@ -29,6 +29,9 @@ type Connection = {
   isDefault: boolean;
   lastTestedAt: string | null;
   lastError: string | null;
+  virtual?: boolean;
+  sharedFromConnectionId?: string;
+  sharedFromProvider?: string;
 };
 
 type Provider = {
@@ -56,6 +59,7 @@ type RouteStage = {
   descriptionTh: string;
   optional: boolean;
   connectionCount: number;
+  sharedConnectionCount?: number;
   activeConnectionId: string | null;
   activeProvider: string | null;
   activeStatus: ConnectionStatus | null;
@@ -124,6 +128,7 @@ const mutedStyle = { color: "var(--api-muted)", fontSize: 11, lineHeight: 1.5 } 
 
 export default function ApiConnectionsPage() {
   const [connections, setConnections] = useState<Connection[]>([]);
+  const [sharedConnections, setSharedConnections] = useState<Connection[]>([]);
   const [providers, setProviders] = useState<Provider[]>([]);
   const [routing, setRouting] = useState<RouteStage[]>([]);
   const [activeKind, setActiveKind] = useState<ConnectionKind>("ANALYZER");
@@ -142,9 +147,11 @@ export default function ApiConnectionsPage() {
   const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
 
+  const allDisplayConnections = useMemo(() => [...connections, ...sharedConnections], [connections, sharedConnections]);
   const visibleProviders = useMemo(() => providers.filter((provider) => provider.kind === activeKind), [activeKind, providers]);
   const selectedProvider = useMemo(() => providers.find((provider) => provider.id === providerId && provider.kind === activeKind) ?? visibleProviders[0], [activeKind, providerId, providers, visibleProviders]);
-  const activeConnections = useMemo(() => connections.filter((connection) => connection.kind === activeKind).sort((left, right) => Number(right.isDefault) - Number(left.isDefault) || left.provider.localeCompare(right.provider)), [activeKind, connections]);
+  const activeConnections = useMemo(() => allDisplayConnections.filter((connection) => connection.kind === activeKind).sort((left, right) => Number(right.isDefault) - Number(left.isDefault) || left.provider.localeCompare(right.provider)), [activeKind, allDisplayConnections]);
+  const selectedSharedConnection = useMemo(() => selectedProvider ? sharedConnections.find((connection) => connection.kind === selectedProvider.kind && connection.provider === selectedProvider.id) || null : null, [selectedProvider, sharedConnections]);
   const activeModelCount = useMemo(() => activeConnections.reduce((total, connection) => {
     const ids = connection.enabledModelIds.length ? connection.enabledModelIds : connection.modelId ? [connection.modelId] : [];
     return total + ids.length;
@@ -164,6 +171,7 @@ export default function ApiConnectionsPage() {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "โหลดข้อมูลไม่สำเร็จ");
       setConnections(payload.connections ?? []);
+      setSharedConnections(payload.sharedConnections ?? []);
       setProviders(payload.providers ?? []);
       setRouting(payload.routing ?? []);
     } catch (cause) {
@@ -297,6 +305,7 @@ export default function ApiConnectionsPage() {
   }
 
   function startEditModels(connection: Connection) {
+    if (connection.virtual) return;
     const provider = providers.find((item) => item.id === connection.provider && item.kind === connection.kind);
     setActiveKind(connection.kind);
     setProviderId(connection.provider);
@@ -343,7 +352,7 @@ export default function ApiConnectionsPage() {
   }
 
   async function syncConnectionModels(connection: Connection) {
-    if (loading) return;
+    if (loading || connection.virtual) return;
     setLoading(true); setError(""); setMessage("");
     try {
       const response = await fetch("/api/api-connections", { method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "same-origin", body: JSON.stringify({ id: connection.id, syncModels: true }) });
@@ -390,14 +399,17 @@ export default function ApiConnectionsPage() {
       </header>
 
       <section className={styles.workflowPanel}>
-        <div className={styles.sectionHeading}><div><span className={styles.eyebrow}>CONNECTION CATEGORIES</span><h2>เลือกประเภทที่ต้องการเชื่อมต่อ</h2></div><p>หนึ่ง Provider Connection สามารถเปิดหลายรุ่นได้โดยไม่ต้องเก็บ API Key ซ้ำ</p></div>
+        <div className={styles.sectionHeading}><div><span className={styles.eyebrow}>CONNECTION CATEGORIES</span><h2>เลือกประเภทที่ต้องการเชื่อมต่อ</h2></div><p>หนึ่ง Provider Connection สามารถเปิดหลายรุ่นและแชร์ Credential ไปยัง Adapter ที่รองรับ API เดียวกันได้</p></div>
         <div className={styles.stageRail}>
           {KIND_ORDER.map((kind) => {
             const stage = routing.find((item) => item.kind === kind);
             const meta = KIND_META[kind];
+            const stateText = stage?.connectionCount
+              ? `${stage.connectionCount} Connection${stage.sharedConnectionCount ? ` · ${stage.sharedConnectionCount} คีย์ร่วม` : ""}`
+              : "ยังไม่เชื่อม";
             return <button key={kind} type="button" className={`${styles.stageButton} ${kind === activeKind ? styles.stageButtonActive : ""}`} onClick={() => selectKind(kind)}>
               <span className={styles.stageNumber}>{meta.stage}</span><span className={styles.stageCopy}><strong>{stage?.labelTh ?? meta.label}</strong><small>{stage?.shortTh ?? meta.short}</small></span>
-              <span className={`${styles.stageState} ${stage?.ready ? styles.stageStateReady : ""}`}><i aria-hidden="true"/>{stage?.connectionCount ? `${stage.connectionCount} Connection` : "ยังไม่เชื่อม"}</span>
+              <span className={`${styles.stageState} ${stage?.ready ? styles.stageStateReady : ""}`}><i aria-hidden="true"/>{stateText}</span>
             </button>;
           })}
         </div>
@@ -412,10 +424,12 @@ export default function ApiConnectionsPage() {
 
           {pageLoading ? <div className={styles.loadingState}>กำลังโหลด Provider...</div> : <div className={styles.providerGrid}>
             {visibleProviders.map((provider) => {
-              const connected = connections.some((connection) => connection.provider === provider.id && connection.kind === provider.kind && connection.status === "CONNECTED");
+              const exactConnected = connections.some((connection) => connection.provider === provider.id && connection.kind === provider.kind && connection.status === "CONNECTED");
+              const sharedConnected = sharedConnections.some((connection) => connection.provider === provider.id && connection.kind === provider.kind && connection.status === "CONNECTED");
+              const connected = exactConnected || sharedConnected;
               return <button key={provider.id} type="button" className={`${styles.providerCard} ${selectedProvider?.id === provider.id ? styles.providerCardSelected : ""}`} onClick={() => chooseProvider(provider)}>
                 <span className={styles.providerMonogram}>{provider.label.slice(0,1).toUpperCase()}</span>
-                <span className={styles.providerCopy}><span className={styles.providerTitleRow}><strong>{provider.label}</strong>{connected ? <span className={styles.miniReady}><Icon name="check" size={12}/>เชื่อมแล้ว</span> : null}</span><small>{provider.purposeTh}</small></span>
+                <span className={styles.providerCopy}><span className={styles.providerTitleRow}><strong>{provider.label}</strong>{connected ? <span className={styles.miniReady}><Icon name="check" size={12}/>{exactConnected ? "เชื่อมแล้ว" : "ใช้คีย์ร่วม"}</span> : null}</span><small>{provider.purposeTh}</small></span>
                 <span className={styles.providerSelectMark}>{selectedProvider?.id === provider.id ? <Icon name="check" size={15}/> : null}</span>
               </button>;
             })}
@@ -425,12 +439,13 @@ export default function ApiConnectionsPage() {
             <div className={styles.formHeader}><div className={styles.formProvider}><span className={styles.providerMonogramLarge}>{selectedProvider.label.slice(0,1).toUpperCase()}</span><span><small>{editConnection ? "แก้รุ่นที่เชื่อมต่อ" : "กำลังเชื่อมต่อ"}</small><strong>{selectedProvider.label}</strong></span></div><div className={styles.formBadges}>{selectedProvider.systemConfigured ? <span className={styles.systemBadge}>มีค่าระบบ</span> : null}<span className={styles.adapterReady}>Adapter พร้อม</span></div></div>
             <p className={styles.capability}>{selectedProvider.capabilityTh}</p>
             {selectedProvider.id === "inception" ? <div className={styles.providerCallout} role="note"><strong>Mercury 2 · AI Brain</strong><span>ใช้สำหรับวิเคราะห์บทและจัดตัวเลือกตามบริบท ไม่ใช่ Provider สำหรับสร้างวิดีโอ และจะไม่หักเครดิตการเรนเดอร์</span><a href="https://docs.inceptionlabs.ai/capabilities/chat-completions" target="_blank" rel="noreferrer">ดูวิธีใช้ API ↗</a></div> : null}
+            {selectedSharedConnection && !editConnection ? <div className={styles.providerCallout} role="note"><strong>Shared Credential พร้อม</strong><span>โมเดลนี้ใช้ API Key เดียวกับ {providers.find((item) => item.id === selectedSharedConnection.sharedFromProvider)?.label || selectedSharedConnection.sharedFromProvider} ได้แล้ว ไม่ต้องกรอกคีย์ซ้ำ หากต้องการแยกคีย์จึงค่อยเชื่อมเพิ่ม</span></div> : null}
 
             {!editConnection ? <div className={styles.fieldGroup}>
-              <div className={styles.fieldLabelRow}><label htmlFor="api-key"><span className={styles.stepBadge}>1</span>Credential</label><span>จำเป็น</span></div>
+              <div className={styles.fieldLabelRow}><label htmlFor="api-key"><span className={styles.stepBadge}>1</span>Credential</label><span>จำเป็นเมื่อเชื่อมคีย์แยก</span></div>
               <div className={styles.secretInput}><span className={styles.inputIcon}><Icon name="key" size={17}/></span><input id="api-key" type={showKey ? "text" : "password"} value={apiKey} onChange={(event) => { setApiKey(event.target.value); setModels([]); setSelectedModelIds([]); setDefaultModelId(""); }} placeholder={credentialPlaceholder(selectedProvider)} autoComplete="off" spellCheck={false}/><button type="button" onClick={() => setShowKey((value) => !value)}><Icon name={showKey ? "eyeOff" : "eye"} size={18}/></button></div>
               <p className={styles.fieldHint}>{selectedProvider.credentialHintTh}</p>
-              <div className={styles.submitRow}><div className={styles.submitExplanation}><span className={styles.stepBadge}>2</span><span><strong>ตรวจสอบคีย์และโหลดรายการโมเดล</strong><small>ไม่สั่ง Generate และยังไม่ยืนยันสิทธิ์รายโมเดลจนกว่าจะสร้างงานจริง</small></span></div><button type="button" className={styles.primaryButton} disabled={apiKey.trim().length < 8 || loading} onClick={() => void discoverModels()}>{loading ? "กำลังตรวจสอบ..." : <>ตรวจสอบ Key และค้นหารุ่น <Icon name="arrow" size={18}/></>}</button></div>
+              <div className={styles.submitRow}><div className={styles.submitExplanation}><span className={styles.stepBadge}>2</span><span><strong>ตรวจสอบคีย์และโหลดรายการโมเดล</strong><small>ใช้เฉพาะกรณีต้องการ Connection แยกจาก Shared Credential</small></span></div><button type="button" className={styles.primaryButton} disabled={apiKey.trim().length < 8 || loading} onClick={() => void discoverModels()}>{loading ? "กำลังตรวจสอบ..." : <>ตรวจสอบ Key และค้นหารุ่น <Icon name="arrow" size={18}/></>}</button></div>
             </div> : <div className={styles.fieldGroup}><div className={styles.fieldLabelRow}><label><span className={styles.stepBadge}>1</span>Credential เดิม</label><span>{editConnection.maskedKey}</span></div><p className={styles.fieldHint}>แก้รายการรุ่นได้โดยไม่ต้องกรอก API Key ใหม่ หากต้องการเปลี่ยน Key ให้เลือก Provider ใหม่แล้วเชื่อมต่อซ้ำ</p></div>}
 
             {(models.length > 0 || editConnection) ? <>
@@ -460,47 +475,50 @@ export default function ApiConnectionsPage() {
         </section>
 
         <aside className={`${styles.panel} ${styles.connectionsPanel}`}>
-          <div className={styles.panelHeader}><div><span className={styles.panelKicker}>CONNECTED MODELS</span><h2>โมเดลที่เชื่อมต่อในสายนี้</h2><p>คีย์เดียวเปิดได้หลายโมเดล และแต่ละโมเดลจะแสดง Model ID กับ Base URL แยกกัน</p></div><span className={styles.countPill}>{activeModelCount} Models</span></div>
-          <div className={styles.routeSummary}><span className={styles.routeIcon}><Icon name="plug"/></span><span><small>พร้อมให้หน้าสร้างเลือก</small><strong>{activeModelCount} โมเดลจาก {activeConnections.length} API Connection</strong></span><span className={`${styles.routeIndicator} ${activeConnections.some((connection) => connection.enabled && connection.status === "CONNECTED") ? styles.routeIndicatorReady : ""}`}/></div>
+          <div className={styles.panelHeader}><div><span className={styles.panelKicker}>CONNECTED MODELS</span><h2>โมเดลที่เชื่อมต่อในสายนี้</h2><p>รวมทั้ง Connection โดยตรงและโมเดลที่ใช้ Credential ร่วมจาก API เดียวกัน</p></div><span className={styles.countPill}>{activeModelCount} Models</span></div>
+          <div className={styles.routeSummary}><span className={styles.routeIcon}><Icon name="plug"/></span><span><small>พร้อมให้หน้าสร้างเลือก</small><strong>{activeModelCount} โมเดลจาก {activeConnections.length} เส้นทาง API</strong></span><span className={`${styles.routeIndicator} ${activeConnections.some((connection) => connection.enabled && connection.status === "CONNECTED") ? styles.routeIndicatorReady : ""}`}/></div>
 
           {activeConnections.length ? <div className={styles.connectionList}>{activeConnections.map((connection) => {
             const provider = providers.find((item) => item.id === connection.provider && item.kind === connection.kind);
+            const sourceProvider = connection.sharedFromProvider ? providers.find((item) => item.id === connection.sharedFromProvider) : null;
             const enabledIds = connection.enabledModelIds.length ? connection.enabledModelIds : connection.modelId ? [connection.modelId] : [];
             const resolvedBaseUrl = connection.baseUrl || provider?.defaultBaseUrl || "—";
             return <article className={`${styles.connectionCard} ${connection.isDefault ? styles.connectionCardDefault : ""}`} key={connection.id}>
-              <div className={styles.connectionTop}><div className={styles.connectionIdentity}><span className={styles.connectionMonogram}>{(provider?.label || connection.provider).slice(0,1).toUpperCase()}</span><span><strong>{provider?.label || connection.provider}</strong><small>{connection.maskedKey} · ใช้ร่วมกัน {enabledIds.length} โมเดล</small></span></div><span className={`${styles.connectionStatus} ${statusClass(connection.status)}`}><i aria-hidden="true"/>{STATUS_LABEL[connection.status]}</span></div>
+              <div className={styles.connectionTop}><div className={styles.connectionIdentity}><span className={styles.connectionMonogram}>{(provider?.label || connection.provider).slice(0,1).toUpperCase()}</span><span><strong>{provider?.label || connection.provider}</strong><small>{connection.virtual ? `ใช้คีย์ร่วมจาก ${sourceProvider?.label || connection.sharedFromProvider || "API เดิม"} · ${connection.maskedKey}` : `${connection.maskedKey} · ใช้ร่วมกัน ${enabledIds.length} โมเดล`}</small></span></div><span className={`${styles.connectionStatus} ${statusClass(connection.status)}`}><i aria-hidden="true"/>{connection.virtual ? "ใช้คีย์ร่วม" : STATUS_LABEL[connection.status]}</span></div>
 
               <div style={{ display: "grid", gap: 8, marginTop: 9 }}>
                 {enabledIds.map((id) => {
-                  const model = connection.availableModels.find((item) => item.apiModelId === id) || provider?.models.find((item) => item.apiModelId === id);
+                  const model = connection.virtual
+                    ? provider?.models.find((item) => item.apiModelId === id) || connection.availableModels.find((item) => item.apiModelId === id)
+                    : connection.availableModels.find((item) => item.apiModelId === id) || provider?.models.find((item) => item.apiModelId === id);
                   const isConnectionDefault = connection.modelId === id;
                   return <section key={`${connection.id}:${id}`} style={{ border: "1px solid var(--api-line)", borderRadius: 10, padding: 10, background: "var(--api-surface-raised)" }}>
                     <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
-                      <div style={{ minWidth: 0 }}><strong style={{ display: "block", fontSize: 11, lineHeight: 1.35 }}>{model?.label || id}</strong><small style={{ display: "block", marginTop: 2, color: "var(--api-muted)", fontSize: 9 }}>ใช้ Credential เดียวกัน {connection.maskedKey}</small></div>
-                      {isConnectionDefault ? <span style={{ flex: "0 0 auto", padding: "4px 7px", borderRadius: 999, color: "var(--api-accent)", background: "var(--api-accent-soft)", fontSize: 8, fontWeight: 800 }}>DEFAULT</span> : null}
+                      <div style={{ minWidth: 0 }}><strong style={{ display: "block", fontSize: 11, lineHeight: 1.35 }}>{model?.label || id}</strong><small style={{ display: "block", marginTop: 2, color: "var(--api-muted)", fontSize: 9 }}>{connection.virtual ? `Shared Credential ${connection.maskedKey}` : `ใช้ Credential เดียวกัน ${connection.maskedKey}`}</small></div>
+                      {isConnectionDefault ? <span style={{ flex: "0 0 auto", padding: "4px 7px", borderRadius: 999, color: "var(--api-accent)", background: "var(--api-accent-soft)", fontSize: 8, fontWeight: 800 }}>{connection.virtual ? "SHARED" : "DEFAULT"}</span> : null}
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1.35fr)", gap: 7, marginTop: 8 }}>
                       <div style={{ minWidth: 0, padding: 8, borderRadius: 8, background: "var(--api-surface)" }}><span style={{ display: "block", marginBottom: 3, color: "var(--api-muted)", fontSize: 8 }}>Model ID</span><code style={{ display: "block", overflow: "hidden", color: "var(--api-text)", fontSize: 9, textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={id}>{id}</code></div>
                       <div style={{ minWidth: 0, padding: 8, borderRadius: 8, background: "var(--api-surface)" }}><span style={{ display: "block", marginBottom: 3, color: "var(--api-muted)", fontSize: 8 }}>Base URL</span><code style={{ display: "block", overflow: "hidden", color: "var(--api-text)", fontSize: 9, textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={resolvedBaseUrl}>{resolvedBaseUrl}</code></div>
                     </div>
-                    <div style={{ marginTop: 7, paddingTop: 7, borderTop: "1px solid var(--api-line)", color: "var(--api-muted)", fontSize: 8 }}><strong style={{ color: "var(--api-text)", fontWeight: 700 }}>Connection Default Model ID:</strong> {connection.modelId || "—"}</div>
+                    <div style={{ marginTop: 7, paddingTop: 7, borderTop: "1px solid var(--api-line)", color: "var(--api-muted)", fontSize: 8 }}><strong style={{ color: "var(--api-text)", fontWeight: 700 }}>{connection.virtual ? "Shared Model ID:" : "Connection Default Model ID:"}</strong> {connection.modelId || "—"}</div>
                   </section>;
                 })}
                 {!enabledIds.length ? <div style={{ padding: 10, border: "1px dashed var(--api-line)", borderRadius: 9, color: "var(--api-muted)", fontSize: 9 }}>Connection นี้ยังไม่มีโมเดลที่เปิดใช้งาน</div> : null}
               </div>
 
-              <div className={styles.connectionDetails}><div><span>รุ่นที่เปิด</span><strong>{enabledIds.length} รุ่น</strong></div><div><span>Default Model ID</span><strong>{connection.modelId || "—"}</strong></div><div><span>ทดสอบล่าสุด</span><strong>{formatTestedAt(connection.lastTestedAt)}</strong></div></div>
+              <div className={styles.connectionDetails}><div><span>รุ่นที่เปิด</span><strong>{enabledIds.length} รุ่น</strong></div><div><span>{connection.virtual ? "Shared Model ID" : "Default Model ID"}</span><strong>{connection.modelId || "—"}</strong></div><div><span>ทดสอบล่าสุด</span><strong>{formatTestedAt(connection.lastTestedAt)}</strong></div></div>
               {connection.lastError ? <p className={styles.connectionError}>{connection.lastError}</p> : null}
-              <div className={styles.connectionFooter}><div className={styles.connectionFlags}>{connection.isDefault ? <span className={styles.defaultFlag}><Icon name="check" size={13}/>ตัวสำรองอัตโนมัติ</span> : <button type="button" onClick={() => void patchConnection(connection.id, { isDefault: true })}>ตั้งเป็นตัวสำรอง</button>}</div><div className={styles.connectionActions}>
+              {connection.virtual ? <div className={styles.connectionFooter}><div className={styles.connectionFlags}><span className={styles.defaultFlag}><Icon name="check" size={13}/>ใช้คีย์ร่วมจาก {sourceProvider?.label || connection.sharedFromProvider || "Connection เดิม"}</span></div><div style={{ color: "var(--api-muted)", fontSize: 9 }}>จัดการคีย์จาก Connection ต้นทาง</div></div> : <div className={styles.connectionFooter}><div className={styles.connectionFlags}>{connection.isDefault ? <span className={styles.defaultFlag}><Icon name="check" size={13}/>ตัวสำรองอัตโนมัติ</span> : <button type="button" onClick={() => void patchConnection(connection.id, { isDefault: true })}>ตั้งเป็นตัวสำรอง</button>}</div><div className={styles.connectionActions}>
                 <button type="button" onClick={() => startEditModels(connection)} title="แก้รุ่น"><Icon name="settings" size={16}/>แก้รุ่น</button>
                 <button type="button" onClick={() => void syncConnectionModels(connection)} title="ตรวจสอบรุ่นล่าสุด" disabled={loading}>↻ Sync</button>
                 <button className={connection.enabled ? styles.powerOn : ""} type="button" onClick={() => void patchConnection(connection.id, { enabled: !connection.enabled })}><Icon name="power" size={16}/>{connection.enabled ? "เปิดอยู่" : "ปิดอยู่"}</button>
                 <button className={styles.deleteButton} type="button" onClick={() => void removeConnection(connection.id, provider?.label || connection.provider)} title="ลบการเชื่อมต่อ"><Icon name="trash" size={16}/></button>
-              </div></div>
+              </div></div>}
             </article>;
           })}</div> : <div className={styles.emptyState}><span className={styles.emptyIcon}><Icon name="plug" size={24}/></span><h3>ยังไม่มี Connection ในประเภท {activeMeta.stage}</h3><p>เลือก Provider ทางซ้าย วาง Credential กดตรวจสอบ แล้วติ๊กรุ่นที่ต้องการใช้</p><ol><li><span>1</span>วาง Credential</li><li><span>2</span>ค้นหา Models อัตโนมัติ</li><li><span>3</span>ติ๊กรุ่นและบันทึก</li></ol></div>}
 
-          <div className={styles.securityNote}><Icon name="shield" size={17}/><p><strong>Credential ถูกเก็บแบบเข้ารหัส</strong> Model ID และ Base URL เป็น metadata เท่านั้น โมเดลที่มาจาก Connection เดียวกันจะใช้คีย์เดียวกันโดยไม่สร้าง Credential ซ้ำ</p></div>
+          <div className={styles.securityNote}><Icon name="shield" size={17}/><p><strong>Credential ถูกเก็บแบบเข้ารหัส</strong> Model ID และ Base URL เป็น metadata เท่านั้น และ API ที่มี Adapter หลายประเภทสามารถใช้ Credential เดียวกันข้ามหมวดได้โดยไม่เก็บคีย์ซ้ำ</p></div>
         </aside>
       </div>
     </main>
