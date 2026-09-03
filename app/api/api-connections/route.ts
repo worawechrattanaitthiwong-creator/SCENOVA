@@ -17,6 +17,7 @@ import {
   getPublicProviderCatalog,
 } from "@/lib/api-connections/providers";
 import { buildApiRoutingSnapshot } from "@/lib/api-connections/routing";
+import { buildSharedApiConnections } from "@/lib/api-connections/shared-credentials";
 
 export const runtime = "nodejs";
 
@@ -86,9 +87,11 @@ export async function GET() {
 
   try {
     const connections = await listUserApiConnections(user.id);
+    const sharedConnections = buildSharedApiConnections(connections);
     return NextResponse.json({
       ok: true,
       connections,
+      sharedConnections,
       providers: getPublicProviderCatalog(),
       routing: buildApiRoutingSnapshot(connections),
     });
