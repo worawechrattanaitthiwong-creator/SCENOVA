@@ -60,16 +60,25 @@ export async function POST(request: Request) {
       providerSupportsMultiShot: definition.supportsMultiShot,
       maxSecondsPerGeneration,
     });
+
+    // Carry the exact provider capability into the browser-signed render project.
+    // The Generate endpoint receives this same object, so it can validate and reuse
+    // the already-paid AI prompt segments instead of recomposing them a second time.
+    const renderProject = {
+      ...coverage.project,
+      renderCapabilities: { supportsMultiShot: definition.supportsMultiShot },
+    } as Project & { renderCapabilities: { supportsMultiShot: boolean } };
+
     const result = await composeDirectPrompts({
       userId: user.id,
-      project: coverage.project,
+      project: renderProject,
       provider,
       modelVersionId,
     });
     return NextResponse.json({
       ok: true,
       videoConnectionRequired: !userProvider,
-      renderProject: coverage.project,
+      renderProject,
       coverage: coverage.plan,
       coverageMeta: coverage.meta,
       ...result,
