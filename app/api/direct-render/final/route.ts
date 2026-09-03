@@ -11,7 +11,15 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 function fileName(value: string) {
-  const safe = value.replace(/[^a-zA-Z0-9ก-๙._-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 90);
+  // Content-Disposition's fallback filename must stay ASCII-safe. Keep the
+  // project title visible when it already contains Latin characters; otherwise
+  // use a stable SCENOVA fallback instead of emitting raw Unicode header bytes.
+  const safe = value
+    .normalize("NFKD")
+    .replace(/[^\x00-\x7F]/g, "")
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 90);
   return `${safe || "SCENOVA-Final-Video"}.mp4`;
 }
 
