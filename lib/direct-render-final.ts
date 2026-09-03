@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
-import { access, chmod, mkdir, mkdtemp, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { access, chmod, copyFile, mkdir, mkdtemp, rename, rm, stat, writeFile } from "node:fs/promises";
 import { constants as fsConstants } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import path from "node:path";
@@ -53,21 +53,25 @@ function runProcess(command: string, args: string[], timeoutMs: number) {
   return new Promise<void>((resolve, reject) => {
     const child = spawn(command, args, { stdio: ["ignore", "ignore", "pipe"] });
     let stderr = "";
+    let settled = false;
+    const finish = (error?: Error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (error) reject(error);
+      else resolve();
+    };
     const timer = setTimeout(() => {
       child.kill("SIGKILL");
-      reject(new Error("FINAL_VIDEO_FFMPEG_TIMEOUT"));
+      finish(new Error("FINAL_VIDEO_FFMPEG_TIMEOUT"));
     }, timeoutMs);
     child.stderr.on("data", (chunk: Buffer) => {
       stderr = `${stderr}${chunk.toString("utf8")}`.slice(-12000);
     });
-    child.once("error", (error) => {
-      clearTimeout(timer);
-      reject(error);
-    });
+    child.once("error", (error) => finish(error));
     child.once("close", (code) => {
-      clearTimeout(timer);
-      if (code === 0) resolve();
-      else reject(new Error(`FINAL_VIDEO_FFMPEG_FAILED:${stderr.slice(-1800)}`));
+      if (code === 0) finish();
+      else finish(new Error(`FINAL_VIDEO_FFMPEG_FAILED:${stderr.slice(-1800)}`));
     });
   });
 }
@@ -134,7 +138,8 @@ async function downloadVideo(url: string, outputPath: string, origin: string, co
   if (!response.body) throw new Error("FINAL_VIDEO_SOURCE_EMPTY");
 
   const reader = response.body.getReader();
-  const file = await import("node:fs/promises").then(({ open }) => open(outputPath, "w"));
+  const { open } = await import("node:fs/promises");
+  const file = await open(outputPath, "w");
   let total = 0;
   try {
     while (true) {
@@ -224,7 +229,7 @@ async function assemble(input: {
     const outputStat = await stat(tempOutput);
     if (outputStat.size < 1024) throw new Error("FINAL_VIDEO_OUTPUT_TOO_SMALL");
     const atomicPath = `${finalPath}.tmp-${process.pid}`;
-    await writeFile(atomicPath, await readFile(tempOutput));
+    await copyFile(tempOutput, atomicPath);
     await rename(atomicPath, finalPath);
     return finalPath;
   } finally {
