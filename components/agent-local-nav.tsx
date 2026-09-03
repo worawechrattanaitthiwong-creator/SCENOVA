@@ -1,10 +1,9 @@
 import Link from "next/link";
 
 const ITEMS = [
-  { href: "/agent#runs", label: "งาน AI", description: "งานที่กำลังทำและประวัติ" },
-  { href: "/agent#approvals", label: "รออนุมัติ", description: "จุดที่ต้องยืนยันก่อนใช้ทรัพยากร" },
-  { href: "/wallet#activity", label: "เครดิตและค่าใช้จ่าย", description: "ยอดใช้จริง การสำรอง และการคืนเครดิต" },
-  { href: "/render", label: "คิวสร้างวิดีโอ", description: "สถานะงาน Generation และผลลัพธ์" },
+  { href: "/agent", label: "AI Planner", description: "เขียนบท วิเคราะห์ และสร้าง Structured Plan" },
+  { href: "/studio", label: "AI Studio", description: "ตรวจและแก้แผนสำหรับตอนเดียวก่อนสร้างวิดีโอ" },
+  { href: "/series", label: "Series Studio", description: "ตรวจ Series Bible, Episodes และ Continuity ก่อนสร้างวิดีโอ" },
 ] as const;
 
 export default function AgentLocalNav() {

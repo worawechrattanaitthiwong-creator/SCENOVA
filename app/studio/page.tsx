@@ -1,8 +1,10 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import AgentPlanStudioBridge from "@/components/agent-plan-studio-bridge";
 import SingleEpisodeAiAuto from "@/components/single-episode-ai-auto";
 import SingleEpisodeStudioPolish from "@/components/single-episode-studio-polish";
+import StudioDirectRenderBridge from "@/components/studio-direct-render-bridge";
 import StudioModelPickerPolish from "@/components/studio-model-picker-polish";
 import StudioModelPickerCompact from "@/components/studio-model-picker-compact";
 
@@ -21,6 +23,8 @@ const SingleEpisodeStudio = dynamic(
 export default function StudioPage() {
   return <>
     <SingleEpisodeStudio />
+    <AgentPlanStudioBridge />
+    <StudioDirectRenderBridge />
     <SingleEpisodeStudioPolish />
     <StudioModelPickerPolish />
     <StudioModelPickerCompact />
