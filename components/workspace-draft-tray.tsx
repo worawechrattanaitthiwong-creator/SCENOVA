@@ -40,6 +40,7 @@ export default function WorkspaceDraftTray() {
   const [authenticated, setAuthenticated] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [saveMessage, setSaveMessage] = useState("");
+  const [floatingTop, setFloatingTop] = useState(14);
   const rootRef = useRef<HTMLDivElement>(null);
   const saveResetTimer = useRef<number | null>(null);
   const canSaveHere = pathname === "/studio" || pathname === "/agent" || pathname === "/series";
@@ -107,10 +108,34 @@ export default function WorkspaceDraftTray() {
     };
   }, [open]);
 
+  useEffect(() => {
+    const syncFloatingTop = () => {
+      const mobile = window.matchMedia("(max-width:700px)").matches;
+      const baseTop = mobile ? 9 : 14;
+      const notice = document.querySelector<HTMLElement>(".sc-submit-feedback");
+      if (!notice) {
+        setFloatingTop(baseTop);
+        return;
+      }
+      const rect = notice.getBoundingClientRect();
+      const next = Math.max(baseTop, Math.ceil(rect.bottom + (mobile ? 8 : 10)));
+      setFloatingTop(next);
+    };
+
+    syncFloatingTop();
+    const observer = new MutationObserver(syncFloatingTop);
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true });
+    window.addEventListener("resize", syncFloatingTop);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", syncFloatingTop);
+    };
+  }, []);
+
   const title = useMemo(() => drafts.length ? `มีร่าง ${drafts.length} งาน · เก็บไว้ 24 ชั่วโมง` : "ยังไม่มีงานร่าง", [drafts.length]);
   if (!authenticated) return null;
 
-  return <div className={styles.root} ref={rootRef} data-sc-help-ignore>
+  return <div className={styles.root} ref={rootRef} data-sc-help-ignore style={{ top: floatingTop }}>
     {canSaveHere ? <button
       type="button"
       className={styles.save}
@@ -128,7 +153,7 @@ export default function WorkspaceDraftTray() {
       <span>งานร่าง</span>
       {drafts.length ? <span className={styles.count}>{drafts.length}</span> : null}
     </button>
-    {open ? <div className={styles.panel} role="dialog" aria-label="รายการงานร่าง 24 ชั่วโมง">
+    {open ? <div className={styles.panel} role="dialog" aria-label="รายการงานร่าง 24 ชั่วโมง" style={{ maxHeight: `min(560px, calc(100vh - ${floatingTop + 60}px))` }}>
       <div className={styles.head}>
         <div><b>งานร่างของคุณ</b><small>เก็บเฉพาะเมื่อกด “บันทึกร่าง” · อายุ 24 ชั่วโมงจากการบันทึกล่าสุด</small></div>
         <button type="button" onClick={() => setOpen(false)} aria-label="ปิด">×</button>
