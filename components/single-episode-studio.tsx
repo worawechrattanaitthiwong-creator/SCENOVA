@@ -1009,7 +1009,7 @@ export default function SingleEpisodeStudio() {
 
             <div className={v11.settingsBox}>
               <div className={v11.settingsTop}>
-                <label className={v11.field}>
+                <div className={v11.field}>
                   <span className={v11.srLabel}>โมเดลวิดีโอ</span>
                   <b className={v11.fieldTitle}>เลือกโมเดล AI</b>
                   <div className={v11.modelSelectWrap}>
@@ -1018,7 +1018,7 @@ export default function SingleEpisodeStudio() {
                       {!model ? "เลือกโมเดลก่อนเริ่มสร้าง" : videoConnectionLoading ? "กำลังตรวจ Connection…" : selectedConnectionState?.operationalReady ? "🟢 คีย์เชื่อมต่อแล้ว" : selectedConnectionState?.adapterReady ? "🟠 ยังไม่ได้เชื่อมต่อ / Connection ไม่พร้อม" : "🔴 Adapter ยังไม่พร้อม"}
                     </small>
                   </div>
-                </label>
+                </div>
 
                 <label className={v11.field}>
                   <span className={v11.srLabel}>รูปแบบการสร้าง</span>
@@ -1035,6 +1035,9 @@ export default function SingleEpisodeStudio() {
                     <option value="">Auto (แนะนำ)</option>
                     {modelVersions.map((item) => <option key={item.apiModelId} value={item.apiModelId}>{item.label}</option>)}
                   </select>
+                  <small className={v11.modelStatus} data-ready={selectedModelReady ? "true" : "false"}>
+                    {!model ? "เลือกโมเดลก่อน" : selectedModelReady ? `ระบบจะส่ง Model ID จริง: ${modelVersion || selectedModelProfile.fixedModelId || "Auto"} · พร้อมใช้` : selectedConnectionState?.operationalReady && !selectedVersionEnabled ? "รุ่นนี้ยังไม่ถูกเปิดใน Connection" : "ตรวจ API / Provider ก่อนสร้าง"}
+                  </small>
                 </label>
               </div>
 
@@ -1095,7 +1098,7 @@ export default function SingleEpisodeStudio() {
             <div className={v11.characterCards}>
               {characters.map((character, index) => <article className={v11.characterCard} data-studio-character-card="true" key={character.id}>
                 <div className={v11.characterVisual}>{(character.name || (index === 0 ? "ตัวละครหลัก" : index === 1 ? "ตัวละครรอง" : `C${index + 1}`)).trim().slice(0, 1)}</div>
-                <button type="button" className={v11.characterMenu} aria-label="แก้ไขตัวละคร">•••</button>
+                <span className={v11.characterMenu} aria-hidden="true">•••</span>
                 <strong>{character.name || (index === 0 ? "ตัวละครหลัก" : index === 1 ? "ตัวละครรอง" : `ตัวละคร ${index + 1}`)}</strong>
                 <details className={v11.characterDetails}>
                   <summary>แก้ไขรายละเอียด</summary>
