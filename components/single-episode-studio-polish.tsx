@@ -103,10 +103,12 @@ function AspectPicker({
   }, [select, modelSelect]);
 
   const capability = getVideoUiCapability(model);
-  const selected = RATIOS.find((item) => item.value === value) || RATIOS[0];
+  const selected = RATIOS.find((item) => item.value === value) || null;
 
   useEffect(() => {
-    if (capability.ratioValues.includes(select.value)) return;
+    // Empty is intentional until the user makes a choice. Only normalize a
+    // previously selected ratio when the chosen model truly does not support it.
+    if (!select.value || capability.ratioValues.includes(select.value)) return;
     const fallback = capability.ratioValues[0];
     if (fallback) setNativeSelectValue(select, fallback);
   }, [capability, select]);
@@ -142,10 +144,10 @@ function AspectPicker({
           setOpen((current) => !current);
         }}
       >
-        <RatioFrame ratio={selected} />
+        {selected ? <RatioFrame ratio={selected} /> : <span className="sc-ratio-frame-shell" aria-hidden="true">—</span>}
         <span className="sc-ratio-trigger-copy">
-          <strong>{selected.value}</strong>
-          <small>{selected.orientation}</small>
+          <strong>{selected ? selected.value : "— เลือกอัตราส่วนภาพ —"}</strong>
+          <small>{selected ? selected.orientation : "ยังไม่ได้เลือก"}</small>
         </span>
         <span className="sc-ratio-chevron" aria-hidden="true">⌄</span>
       </button>
