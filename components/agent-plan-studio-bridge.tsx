@@ -103,7 +103,9 @@ async function setCounter(label: string, desired: number) {
 
 function characterCards() {
   const root = document.getElementById("characters");
-  return root ? Array.from(root.querySelectorAll<HTMLElement>("article")) : [];
+  if (!root) return [];
+  const tagged = Array.from(root.querySelectorAll<HTMLElement>('[data-studio-character-card="true"]'));
+  return tagged.length ? tagged : Array.from(root.querySelectorAll<HTMLElement>("article"));
 }
 
 function sceneButtons() {
@@ -232,7 +234,8 @@ async function applyScene(scene: AgentPlanScene, index: number, plan: AgentStruc
   const negative = [plan.negativePrompt, scene.negativePrompt].filter(Boolean).join(", ");
   if (negative) setTextField(editor, ["Scene Negative Prompt"], negative, mode, true);
 
-  const presenceContainer = Array.from(editor.querySelectorAll<HTMLElement>("section,div")).find((item) => directLabel(item).startsWith("ตัวละครในฉาก"))
+  const presenceContainer = editor.querySelector<HTMLElement>('[data-studio-character-presence="true"]')
+    || Array.from(editor.querySelectorAll<HTMLElement>("section,div")).find((item) => directLabel(item).startsWith("ตัวละครในฉาก"))
     || editor.querySelector<HTMLElement>("[class*='presenceChips']")?.parentElement || null;
   const desiredNames = new Set(scene.characters.map((name) => compact(name).toLocaleLowerCase()));
   if (presenceContainer && desiredNames.size) {
@@ -250,7 +253,8 @@ async function applyScene(scene: AgentPlanScene, index: number, plan: AgentStruc
   }
 
   const dialogueMap = parseDialogue(scene.dialogue);
-  const dialogueCards = Array.from(editor.querySelectorAll<HTMLElement>("[class*='dialogueCard']"));
+  const taggedDialogueCards = Array.from(editor.querySelectorAll<HTMLElement>('[data-studio-dialogue-card="true"]'));
+  const dialogueCards = taggedDialogueCards.length ? taggedDialogueCards : Array.from(editor.querySelectorAll<HTMLElement>("[class*='dialogueCard']"));
   dialogueCards.forEach((card, cardIndex) => {
     const name = compact(card.querySelector("b")?.textContent);
     const textarea = card.querySelector<HTMLTextAreaElement>("textarea");
