@@ -1237,7 +1237,7 @@ export default function SingleEpisodeStudio() {
                 <label className={`${v11.sceneField} ${v11.sceneDescription}`}>
                   <span className={v11.srLabel}>Action รวมของฉาก</span>
                   <b>คำอธิบายฉาก</b>
-                  <textarea value={selectedScene.action} onChange={(event) => patchScene({ action: event.target.value })} placeholder="เช่น เมืองอนาคต เวลากลางคืน มีแสงนีออน ฝนตก" />
+                  <textarea value={selectedScene.action} onChange={(event) => { patchScene({ action: event.target.value }); setAiRequiredErrors((current) => current.filter((item) => item !== "source")); }} placeholder="เช่น เมืองอนาคต เวลากลางคืน มีแสงนีออน ฝนตก" />
                 </label>
 
                 <label className={`${v11.sceneField} ${v11.sceneTimeField}`}>
