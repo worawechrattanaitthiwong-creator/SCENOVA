@@ -82,14 +82,13 @@ describe("provider model catalogs", () => {
     ]) expect(studio).toContain(label);
 
     expect(studio).toContain('/api/api-connections');
-    expect(studio).toContain('🟢 คีย์เชื่อมต่อแล้ว');
-    expect(studio).toContain('ระบบจะส่ง Model ID จริง:');
-    expect(studio).toContain('🟠 ยังไม่ได้เชื่อมต่อ / Connection ไม่พร้อม');
-    expect(studio).toContain('🔴 Adapter ยังไม่พร้อม');
-    expect(studio).toContain('🖼 รับรูปอ้างอิง');
-    expect(studio).toContain('Model รองรับรูป แต่ SCENOVA Adapter ยังไม่ส่งรูป');
-    expect(studio).toContain('Video Edit เท่านั้น · ต้องมีวิดีโอต้นฉบับ');
-    expect(studio).toContain('HDR Post-process เท่านั้น · ต้องมีวิดีโอต้นฉบับ');
+    expect(studio).toContain('คีย์เชื่อมต่อแล้ว');
+    expect(studio).toContain('Provider ยังไม่พร้อม');
+    expect(studio).toContain('selectedConnectionState?.operationalReady');
+    expect(studio).toContain('image: "ready"');
+    expect(studio).toContain('image: "adapter"');
+    expect(studio).toContain('mode: "video-edit"');
+    expect(studio).toContain('mode: "hdr"');
   });
 
   it("publishes automatic base URLs and model metadata without system env names", () => {

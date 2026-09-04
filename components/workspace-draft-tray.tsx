@@ -133,7 +133,7 @@ export default function WorkspaceDraftTray() {
   }, []);
 
   const title = useMemo(() => drafts.length ? `มีร่าง ${drafts.length} งาน · เก็บไว้ 24 ชั่วโมง` : "ยังไม่มีงานร่าง", [drafts.length]);
-  if (!authenticated) return null;
+  if (!authenticated || pathname === "/studio") return null;
 
   return <div className={styles.root} ref={rootRef} data-sc-help-ignore style={{ top: floatingTop }}>
     {canSaveHere ? <button
