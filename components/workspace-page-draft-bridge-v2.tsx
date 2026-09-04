@@ -22,7 +22,6 @@ type DraftData = StudioDraft | AgentDraft | SeriesDraft;
 
 const SERIES_KEY = "scenova-series-workspace-v3";
 const SERIES_RESTORE = "scenova-series-draft-restore-v2";
-const SERIES_MIGRATED = "scenova-series-draft-migrated-v2";
 
 const compact = (value: string | null | undefined) => (value || "").replace(/\s+/g, " ").trim();
 const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
@@ -200,22 +199,6 @@ async function restoreStudio(data: StudioDraft) {
     });
   }
   studioSceneButtons()[Math.min(data.selectedSceneIndex, Math.max(0, studioSceneButtons().length - 1))]?.click();
-}
-
-async function blankStudio() {
-  const setup = document.getElementById("setup");
-  if (!setup) return;
-  Array.from(setup.querySelectorAll<HTMLSelectElement>("select")).forEach((select) => blankSelect(select, select.getAttribute("aria-label") === "โมเดลวิดีโอ" ? "— เลือกโมเดล AI —" : undefined));
-  studioCharacters().forEach((card) => Array.from(card.querySelectorAll<HTMLSelectElement>("select")).forEach((select) => blankSelect(select)));
-  const buttons = studioSceneButtons();
-  const selected = Math.max(0, buttons.findIndex((button) => String(button.className).toLocaleLowerCase().includes("active")));
-  for (let index = 0; index < buttons.length; index += 1) {
-    studioSceneButtons()[index]?.click();
-    await nextFrame();
-    const editor = studioEditor();
-    if (editor) Array.from(editor.querySelectorAll<HTMLSelectElement>("select")).forEach((select) => blankSelect(select));
-  }
-  studioSceneButtons()[selected]?.click();
 }
 
 function plannerButtons() { return Array.from(document.querySelectorAll<HTMLButtonElement>("button")); }
