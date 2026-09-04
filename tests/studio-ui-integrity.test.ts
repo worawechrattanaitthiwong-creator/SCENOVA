@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 const studio = readFileSync("components/single-episode-studio.tsx", "utf8");
 const directBridge = readFileSync("components/studio-direct-render-bridge.tsx", "utf8");
+const directInstant = readFileSync("components/studio-direct-render-instant.tsx", "utf8");
 const agentBridge = readFileSync("components/agent-plan-studio-bridge.tsx", "utf8");
 const modelIcon = readFileSync("components/model-brand-icon.tsx", "utf8");
 const modelSelect = readFileSync("components/studio-model-select.tsx", "utf8");
@@ -66,6 +67,9 @@ describe("AI Studio UI integrity", () => {
     expect(directBridge).not.toContain("suppressLegacyAgentSubmit()");
     expect(directBridge).toContain("snapshot && !stale");
     expect(directBridge).toContain("setSnapshot(null)");
+    expect(studio).toContain('new CustomEvent("scenova-studio-data-change")');
+    expect(directBridge).toContain('"scenova-studio-data-change"');
+    expect(directInstant).toContain('"scenova-studio-data-change"');
     expect(agentBridge).toContain('data-studio-character-card="true"');
     expect(agentBridge).toContain('data-studio-character-presence="true"');
     expect(agentBridge).toContain('data-studio-dialogue-card="true"');
