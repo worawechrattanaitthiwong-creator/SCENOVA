@@ -42,7 +42,7 @@ function controlLabel(control: Element, index = 0) {
   return (label ? directLabel(label) : directLabel(control.parentElement || control)) || control.getAttribute("aria-label") || `control-${index}`;
 }
 
-function blankOption(select: HTMLSelectElement, text = "— เลือก —") {
+function blankOption(select: HTMLSelectElement, text = "") {
   if (!Array.from(select.options).some((option) => option.value === "")) {
     const option = document.createElement("option");
     option.value = "";
@@ -144,8 +144,13 @@ async function captureStudio(): Promise<StudioDraft | null> {
     await nextFrame();
     const editor = studioEditor();
     if (!editor) continue;
+    const sceneValues = valuesOf(editor);
+    // AI helper controls are session choices, not creative scene values. Keeping
+    // them out of drafts prevents old defaults from reappearing as if selected.
+    delete sceneValues["โหมดผู้กำกับ AI"];
+    delete sceneValues["ความแตกต่างจากครั้งก่อน"];
     scenes.push({
-      values: valuesOf(editor),
+      values: sceneValues,
       checks: checksOf(editor),
       dialogue: Array.from(editor.querySelectorAll<HTMLElement>("[class*='dialogueCard']")).map((card) => ({ name: compact(card.querySelector("b")?.textContent), text: card.querySelector<HTMLTextAreaElement>("textarea")?.value || "" })),
     });
@@ -160,7 +165,7 @@ async function restoreStudio(data: StudioDraft) {
   if (!setup) return;
   const model = setup.querySelector<HTMLSelectElement>('select[aria-label="โมเดลวิดีโอ"]');
   if (model) {
-    blankOption(model, "— เลือกโมเดล AI —");
+    blankOption(model, "");
     const storedModel = data.setup["โมเดลวิดีโอ"] ?? data.setup["Model"] ?? "";
     setValue(model, storedModel);
     await nextFrame();
@@ -189,7 +194,16 @@ async function restoreStudio(data: StudioDraft) {
     await nextFrame();
     const editor = studioEditor();
     if (!editor) continue;
-    restoreValues(editor, data.scenes[index].values);
+    const sceneValues = { ...data.scenes[index].values };
+    delete sceneValues["โหมดผู้กำกับ AI"];
+    delete sceneValues["ความแตกต่างจากครั้งก่อน"];
+    restoreValues(editor, sceneValues);
+    // Old drafts may contain pre-empty-default AI helper values; force those
+    // two controls back to true blank on every restore.
+    const aiMode = findControl(editor, ["โหมดผู้กำกับ AI"]);
+    const aiNovelty = findControl(editor, ["ความแตกต่างจากครั้งก่อน"]);
+    if (aiMode instanceof HTMLSelectElement) blankSelect(aiMode);
+    if (aiNovelty instanceof HTMLSelectElement) blankSelect(aiNovelty);
     restoreChecks(editor, data.scenes[index].checks);
     const cards = Array.from(editor.querySelectorAll<HTMLElement>("[class*='dialogueCard']"));
     data.scenes[index].dialogue.forEach((line, lineIndex) => {
