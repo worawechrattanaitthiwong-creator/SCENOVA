@@ -1370,6 +1370,12 @@ export default function SingleEpisodeStudio() {
                 <div><span>เวลาที่ใช้ในฉาก</span><b>{usedDuration}/{totalDuration} วินาที</b></div>
                 <div><span>สถานะ</span><b>{message}</b></div>
               </div>
+              {readiness.missing.length ? <div className={v11.missingBox}><b>ข้อมูลที่ยังควรเติม</b><p>{readiness.missing.join(" • ")}</p></div> : <div className={v11.readyBox}>✓ ข้อมูลสำคัญครบแล้ว</div>}
+              <div className={v11.productionActions}>
+                <label><span>วงเงินสูงสุดของ Agent</span><div><input type="number" min={1} max={2000} step={50} value={agentBudgetThb} onChange={(event) => setAgentBudgetThb(Math.max(1, Math.min(2000, Number(event.target.value) || 1)))} /><b>บาท</b></div></label>
+                <Link className={v11.outlineButton} href="/profile/api" prefetch={false}>ตรวจ API &amp; Models</Link>
+                <button type="button" className={v11.purpleButton} onClick={() => void sendToAgent()} disabled={agentSubmitting}>{agentSubmitting ? "กำลังส่งงาน..." : "ส่ง Storyboard ให้ทีม AI →"}</button>
+              </div>
             </div>
           </details>
         </section>
@@ -1387,7 +1393,7 @@ export default function SingleEpisodeStudio() {
           <div className={v11.summaryHead}><h3>สรุปการตั้งค่า</h3><button type="button" className={v11.summaryEdit} onClick={() => document.getElementById("setup")?.scrollIntoView({ behavior: "smooth", block: "start" })}>✎ แก้ไข</button></div>
 
           <div className={v11.summaryRows}>
-            <div><span>โมเดล</span><b>{model ? selectedModelProfile.label : "ยังไม่ได้เลือก"}</b></div>
+            <div><span>โมเดล</span><span className={v11.modelSummary}>{model ? <ModelBrandIcon label={selectedModelProfile.label} size={24} /> : null}<b>{model ? selectedModelProfile.label : "ยังไม่ได้เลือก"}</b></span></div>
             <div><span>รูปแบบ</span><b>แบบเดี่ยว (Single)</b></div>
             <div><span>ความยาว</span><b>{totalDuration} วินาที</b></div>
             <div><span>จำนวนฉาก</span><b>{scenes.length} ฉาก</b></div>
@@ -1402,7 +1408,11 @@ export default function SingleEpisodeStudio() {
           </div>
 
           <button type="button" className={v11.summaryPrimary} onClick={() => setMessage("ภาพตัวอย่างพร้อมตรวจสอบแล้ว")}>✦ สร้างภาพตัวอย่างก่อน</button>
-          <button type="button" className={v11.summarySecondary} disabled={!model || !story.trim() || !aspect || !visualStyle} onClick={() => document.getElementById("direct-render")?.scrollIntoView({ behavior: "smooth", block: "start" })}>♙ สร้างวิดีโอ (ใช้ ~ {estimatedCredits} เครดิต)</button>
+          <button type="button" className={v11.summarySecondary} disabled={!model || !story.trim() || !aspect || !visualStyle} onClick={() => {
+            const target = document.getElementById("scenova-direct-render-host") || document.getElementById("review");
+            target?.scrollIntoView({ behavior: "smooth", block: "start" });
+            setMessage(target ? "เปิดส่วน Prompt & Direct Render แล้ว" : "ส่วน Direct Render ยังไม่พร้อม กรุณารอสักครู่");
+          }}>♙ ไปที่ Prompt &amp; Direct Render</button>
           <p className={v11.refundNote}>♡ หากเกิดข้อผิดพลาด เครดิตจะคืนให้อัตโนมัติ</p>
         </section>
       </aside>
