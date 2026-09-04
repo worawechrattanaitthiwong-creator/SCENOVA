@@ -144,10 +144,10 @@ function AspectPicker({
           setOpen((current) => !current);
         }}
       >
-        {selected ? <RatioFrame ratio={selected} /> : <span className="sc-ratio-frame-shell" aria-hidden="true">—</span>}
+        {selected ? <RatioFrame ratio={selected} /> : <span className="sc-ratio-frame-shell" aria-hidden="true">&nbsp;</span>}
         <span className="sc-ratio-trigger-copy">
-          <strong>{selected ? selected.value : "— เลือกอัตราส่วนภาพ —"}</strong>
-          <small>{selected ? selected.orientation : "ยังไม่ได้เลือก"}</small>
+          <strong>{selected ? selected.value : "\u00A0"}</strong>
+          <small>{selected ? selected.orientation : "\u00A0"}</small>
         </span>
         <span className="sc-ratio-chevron" aria-hidden="true">⌄</span>
       </button>
