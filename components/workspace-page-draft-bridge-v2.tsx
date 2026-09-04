@@ -6,6 +6,8 @@ import {
   getWorkspaceDraftScope,
   readWorkspaceDraft,
   saveWorkspaceDraft,
+  WORKSPACE_DRAFT_SAVE_REQUEST_EVENT,
+  WORKSPACE_DRAFT_SAVED_EVENT,
   WORKSPACE_DRAFT_SCOPE_READY_EVENT,
   type WorkspaceDraftKind,
 } from "@/lib/workspace-drafts-client";
@@ -20,7 +22,6 @@ type DraftData = StudioDraft | AgentDraft | SeriesDraft;
 
 const SERIES_KEY = "scenova-series-workspace-v3";
 const SERIES_RESTORE = "scenova-series-draft-restore-v2";
-const SERIES_MIGRATED = "scenova-series-draft-migrated-v2";
 
 const compact = (value: string | null | undefined) => (value || "").replace(/\s+/g, " ").trim();
 const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
@@ -200,22 +201,6 @@ async function restoreStudio(data: StudioDraft) {
   studioSceneButtons()[Math.min(data.selectedSceneIndex, Math.max(0, studioSceneButtons().length - 1))]?.click();
 }
 
-async function blankStudio() {
-  const setup = document.getElementById("setup");
-  if (!setup) return;
-  Array.from(setup.querySelectorAll<HTMLSelectElement>("select")).forEach((select) => blankSelect(select, select.getAttribute("aria-label") === "โมเดลวิดีโอ" ? "— เลือกโมเดล AI —" : undefined));
-  studioCharacters().forEach((card) => Array.from(card.querySelectorAll<HTMLSelectElement>("select")).forEach((select) => blankSelect(select)));
-  const buttons = studioSceneButtons();
-  const selected = Math.max(0, buttons.findIndex((button) => String(button.className).toLocaleLowerCase().includes("active")));
-  for (let index = 0; index < buttons.length; index += 1) {
-    studioSceneButtons()[index]?.click();
-    await nextFrame();
-    const editor = studioEditor();
-    if (editor) Array.from(editor.querySelectorAll<HTMLSelectElement>("select")).forEach((select) => blankSelect(select));
-  }
-  studioSceneButtons()[selected]?.click();
-}
-
 function plannerButtons() { return Array.from(document.querySelectorAll<HTMLButtonElement>("button")); }
 function plannerTarget() {
   const studio = plannerButtons().find((button) => compact(button.textContent) === "AI Studio");
@@ -282,63 +267,14 @@ export default function WorkspacePageDraftBridgeV2() {
   const draftId = useRef("");
   const suppress = useRef(false);
   const captureBusy = useRef(false);
-  const timer = useRef<number | null>(null);
 
   useEffect(() => {
     if (!workspace) return;
     let active = true;
 
-    const schedule = () => {
-      if (!active || suppress.current || captureBusy.current || !getWorkspaceDraftScope()) return;
-      if (timer.current) window.clearTimeout(timer.current);
-      timer.current = window.setTimeout(async () => {
-        if (!active || suppress.current || captureBusy.current) return;
-        captureBusy.current = true;
-        suppress.current = true;
-        try {
-          let data: DraftData | null = null;
-          if (workspace === "studio") data = await captureStudio();
-          else if (workspace === "agent") data = captureAgent();
-          else {
-            await new Promise((resolve) => window.setTimeout(resolve, 80));
-            const series = seriesRaw();
-            if (series) data = { version: 2, series };
-          }
-          if (!data) return;
-          const meaningful = workspace === "studio" ? Object.entries((data as StudioDraft).setup).some(([key, value]) => key !== "ความยาวรวมของตอน" && Boolean(compact(value)) && !compact(value).toLocaleLowerCase().startsWith("untitled")) : workspace === "agent" ? Boolean((data as AgentDraft).instruction.trim()) : true;
-          if (!meaningful) return;
-          const saved = saveWorkspaceDraft({ id: draftId.current || undefined, workspace, title: titleFor(workspace, data), data });
-          if (!saved) return;
-          draftId.current = saved.id;
-          const url = new URL(window.location.href);
-          if (url.searchParams.get("draft") !== saved.id) {
-            url.searchParams.set("draft", saved.id);
-            window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
-          }
-          if (workspace === "series") localStorage.removeItem(SERIES_KEY);
-        } finally {
-          captureBusy.current = false;
-          window.setTimeout(() => { suppress.current = false; }, 100);
-        }
-      }, 1000);
-    };
-
     const initialize = async () => {
       if (!active || initialized.current || !getWorkspaceDraftScope()) return;
       const requested = new URLSearchParams(window.location.search).get("draft") || "";
-
-      if (workspace === "series" && !requested && sessionStorage.getItem(SERIES_MIGRATED) !== "yes") {
-        const old = seriesRaw();
-        if (old && typeof old === "object") {
-          const record = old as { updatedAt?: string; title?: string };
-          if (record.updatedAt && Date.now() - Date.parse(record.updatedAt) < 24 * 60 * 60 * 1000) saveWorkspaceDraft({ workspace: "series", title: record.title || "ร่าง Series Studio เดิม", data: { version: 2, series: old } satisfies SeriesDraft });
-          localStorage.removeItem(SERIES_KEY);
-          sessionStorage.setItem(SERIES_MIGRATED, "yes");
-          window.location.reload();
-          return;
-        }
-        sessionStorage.setItem(SERIES_MIGRATED, "yes");
-      }
 
       suppress.current = true;
       if (requested) {
@@ -357,15 +293,71 @@ export default function WorkspacePageDraftBridgeV2() {
           else if (workspace === "agent" && "instruction" in saved.data) await restoreAgent(saved.data as AgentDraft);
         }
       } else {
-        if (workspace === "studio") await blankStudio();
-        else if (workspace === "agent") blankAgent();
-        else await blankSeries();
+        // AI Studio now owns its true empty defaults in React state. Do not
+        // mutate controlled selects through the DOM on first load.
+        if (workspace === "agent") blankAgent();
+        else if (workspace === "series") await blankSeries();
       }
       initialized.current = true;
       window.setTimeout(() => { suppress.current = false; }, 450);
     };
 
-    const eventChanged = () => { if (!captureBusy.current && !suppress.current) schedule(); };
+    const publishSaveResult = (ok: boolean, message: string) => {
+      window.dispatchEvent(new CustomEvent(WORKSPACE_DRAFT_SAVED_EVENT, { detail: { ok, message } }));
+    };
+
+    const saveCurrent = async () => {
+      if (!active || captureBusy.current || suppress.current) {
+        publishSaveResult(false, "ระบบกำลังเตรียม Workspace กรุณาลองอีกครั้ง");
+        return;
+      }
+      if (!getWorkspaceDraftScope()) {
+        publishSaveResult(false, "ยังไม่พร้อมบันทึกร่าง กรุณารอให้ระบบยืนยันบัญชีก่อน");
+        return;
+      }
+
+      captureBusy.current = true;
+      suppress.current = true;
+      try {
+        let data: DraftData | null = null;
+        if (workspace === "studio") data = await captureStudio();
+        else if (workspace === "agent") data = captureAgent();
+        else {
+          await new Promise((resolve) => window.setTimeout(resolve, 80));
+          const series = seriesRaw();
+          if (series) data = { version: 2, series };
+        }
+        if (!data) {
+          publishSaveResult(false, "ไม่พบข้อมูล Workspace ที่จะบันทึก");
+          return;
+        }
+
+        const saved = saveWorkspaceDraft({
+          id: draftId.current || undefined,
+          workspace,
+          title: titleFor(workspace, data),
+          data,
+        });
+        if (!saved) {
+          publishSaveResult(false, "บันทึกร่างไม่สำเร็จ");
+          return;
+        }
+
+        draftId.current = saved.id;
+        const url = new URL(window.location.href);
+        if (url.searchParams.get("draft") !== saved.id) {
+          url.searchParams.set("draft", saved.id);
+          window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+        }
+        if (workspace === "series") localStorage.removeItem(SERIES_KEY);
+        publishSaveResult(true, "บันทึกร่างแล้ว");
+      } finally {
+        captureBusy.current = false;
+        window.setTimeout(() => { suppress.current = false; }, 100);
+      }
+    };
+
+    const saveRequested = () => { void saveCurrent(); };
     const clickGuard = (event: MouseEvent) => {
       if (workspace !== "agent") return;
       const button = event.target instanceof Element ? event.target.closest("button") as HTMLButtonElement | null : null;
@@ -387,17 +379,12 @@ export default function WorkspacePageDraftBridgeV2() {
 
     initialize();
     window.addEventListener(WORKSPACE_DRAFT_SCOPE_READY_EVENT, initialize);
-    document.addEventListener("input", eventChanged, true);
-    document.addEventListener("change", eventChanged, true);
-    document.addEventListener("click", eventChanged, true);
+    window.addEventListener(WORKSPACE_DRAFT_SAVE_REQUEST_EVENT, saveRequested);
     document.addEventListener("click", clickGuard, true);
     return () => {
       active = false;
-      if (timer.current) window.clearTimeout(timer.current);
       window.removeEventListener(WORKSPACE_DRAFT_SCOPE_READY_EVENT, initialize);
-      document.removeEventListener("input", eventChanged, true);
-      document.removeEventListener("change", eventChanged, true);
-      document.removeEventListener("click", eventChanged, true);
+      window.removeEventListener(WORKSPACE_DRAFT_SAVE_REQUEST_EVENT, saveRequested);
       document.removeEventListener("click", clickGuard, true);
       delete document.documentElement.dataset.scPlannerTargetChosen;
       initialized.current = false;

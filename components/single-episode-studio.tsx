@@ -209,12 +209,12 @@ function makeId(prefix: string) {
 function makeCharacter(index: number): Character {
   return {
     id: makeId("character"),
-    name: `ตัวละคร ${index}`,
-    role: index === 1 ? "ตัวละครหลัก" : "ตัวละครรอง",
+    name: "",
+    role: "",
     appearance: "",
-    voice: VOICE_PROFILES[0] || "Default",
-    identityLock: true,
-    voiceLock: true,
+    voice: "",
+    identityLock: false,
+    voiceLock: false,
     references: [],
   };
 }
@@ -226,8 +226,8 @@ function normalizeCharacter(input: Partial<Character>, index: number): Character
     ...input,
     id: input.id || base.id,
     name: input.name || base.name,
-    identityLock: input.identityLock ?? true,
-    voiceLock: input.voiceLock ?? true,
+    identityLock: input.identityLock ?? false,
+    voiceLock: input.voiceLock ?? false,
     references: Array.isArray(input.references) ? input.references : base.references,
   };
 }
@@ -237,7 +237,7 @@ function makeAnimal(index: number): Animal {
 }
 
 function makeDirection(): CharacterDirection {
-  return { blocking: "", action: "", emotion: "Natural", eyeline: "", dialogue: "" };
+  return { blocking: "", action: "", emotion: "", eyeline: "", dialogue: "" };
 }
 
 function legacyDialogueFor(dialogue: string, characterName: string) {
@@ -261,38 +261,38 @@ function makeScene(index: number, duration: number): StoryScene {
     title: `ฉาก ${index}`,
     duration,
     location: "",
-    objective: index === 1 ? "Establish World" : "Reveal Information",
-    beat: index === 1 ? "Opening" : "Turn",
-    transition: "Hard Cut",
+    objective: "",
+    beat: "",
+    transition: "",
     action: "",
     dialogue: "",
     characterIds: [],
     animalIds: [],
     characterDirections: {},
     cameraSubjectId: "",
-    shot: "Medium",
-    angle: "Eye Level",
-    lens: "50mm",
-    movement: "Static",
-    height: "Eye",
-    cameraSpeed: "Normal",
-    focus: "Auto Subject",
-    dof: "Natural",
-    composition: "Rule of Thirds",
-    lighting: "Natural Soft",
-    colorTemp: "Neutral 4500K",
-    emotion: "Natural",
-    performance: "Natural",
-    ambience: "Room Tone",
-    secondaryAmbience: "Silence",
-    sfx: "None",
+    shot: "",
+    angle: "",
+    lens: "",
+    movement: "",
+    height: "",
+    cameraSpeed: "",
+    focus: "",
+    dof: "",
+    composition: "",
+    lighting: "",
+    colorTemp: "",
+    emotion: "",
+    performance: "",
+    ambience: "",
+    secondaryAmbience: "",
+    sfx: "",
     sfxTimeline: "",
-    music: "None",
+    music: "",
     ambienceLevel: 55,
     sfxLevel: 80,
     dialogueLevel: 100,
     musicLevel: 35,
-    continuityNote: "รักษาหน้าตา เสื้อผ้า Props ทิศทางการเคลื่อน แสง และสถานะจากฉากก่อนหน้า",
+    continuityNote: "",
     negativePrompt: "",
   };
 }
@@ -352,6 +352,7 @@ function ChoiceField({ label, value, options, onChange, compact = false }: { lab
   return <label className={`${styles.field} ${compact ? styles.compactField : ""}`}>
     <span>{label}</span>
     <select value={value} onChange={(event) => onChange(event.target.value)}>
+      <option value="">— เลือก —</option>
       {options.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
     </select>
     {selected?.help ? <small>{selected.help}</small> : null}
@@ -360,14 +361,14 @@ function ChoiceField({ label, value, options, onChange, compact = false }: { lab
 
 export default function SingleEpisodeStudio() {
   const router = useRouter();
-  const [episodeTitle, setEpisodeTitle] = useState("Untitled Episode");
-  const [model, setModel] = useState("runway:seedance2_5");
-  const [modelVersion, setModelVersion] = useState("seedance2_5");
-  const [aspect, setAspect] = useState("16:9 — Widescreen");
-  const [visualStyle, setVisualStyle] = useState(STYLES[0]);
+  const [episodeTitle, setEpisodeTitle] = useState("");
+  const [model, setModel] = useState("");
+  const [modelVersion, setModelVersion] = useState("");
+  const [aspect, setAspect] = useState("");
+  const [visualStyle, setVisualStyle] = useState("");
   const [story, setStory] = useState("");
-  const [globalNegative, setGlobalNegative] = useState("character drift, face change, costume change, extra fingers, duplicated limbs, warped anatomy, unwanted text, watermark");
-  const [locks, setLocks] = useState<string[]>(["Character", "Voice", "Visual Style", "Camera Language"]);
+  const [globalNegative, setGlobalNegative] = useState("");
+  const [locks, setLocks] = useState<string[]>([]);
   const [characters, setCharacters] = useState<Character[]>([makeCharacter(1), makeCharacter(2)]);
   const [hasAnimals, setHasAnimals] = useState(false);
   const [animals, setAnimals] = useState<Animal[]>([makeAnimal(1)]);
@@ -380,8 +381,8 @@ export default function SingleEpisodeStudio() {
   const [uploadingCharacterId, setUploadingCharacterId] = useState("");
   const [sceneAiBusy, setSceneAiBusy] = useState(false);
   const [sceneAiSummary, setSceneAiSummary] = useState("");
-  const [aiDirectorMode, setAiDirectorMode] = useState<AiDirectorMode>("production");
-  const [aiDirectorNovelty, setAiDirectorNovelty] = useState<AiDirectorNovelty>("balanced");
+  const [aiDirectorMode, setAiDirectorMode] = useState<AiDirectorMode | "">("");
+  const [aiDirectorNovelty, setAiDirectorNovelty] = useState<AiDirectorNovelty | "">("");
   const [sceneAiMeta, setSceneAiMeta] = useState<AiDirectorMeta | null>(null);
   const [sceneAiUndo, setSceneAiUndo] = useState<StoryScene[] | null>(null);
   const [videoConnections, setVideoConnections] = useState<StudioVideoConnection[]>([]);
@@ -417,11 +418,11 @@ export default function SingleEpisodeStudio() {
       const imported: Character = {
         id: payload.id ? `library_${payload.id}` : makeId("library"),
         name: payload.title,
-        role: meta.role?.toLowerCase().includes("protagonist") ? "ตัวละครหลัก" : "ตัวละครรอง",
+        role: meta.role ? (meta.role.toLowerCase().includes("protagonist") ? "ตัวละครหลัก" : "ตัวละครรอง") : "",
         appearance: detail || "นำเข้าจากคลังตัวละคร",
-        voice: meta.voiceProfile && VOICE_PROFILES.includes(meta.voiceProfile) ? meta.voiceProfile : VOICE_PROFILES[0] || "Default",
-        identityLock: true,
-        voiceLock: true,
+        voice: meta.voiceProfile && VOICE_PROFILES.includes(meta.voiceProfile) ? meta.voiceProfile : "",
+        identityLock: false,
+        voiceLock: false,
         references: (meta.referenceImages || []).filter(Boolean).slice(0, 8).map((url, referenceIndex) => ({
           id: payload.id ? "library_" + payload.id + "_reference_" + referenceIndex : makeId("library_reference"),
           label: "Library Reference " + (referenceIndex + 1),
@@ -471,8 +472,8 @@ export default function SingleEpisodeStudio() {
 
   const selectedScene = scenes.find((scene) => scene.id === selectedSceneId) || scenes[0];
   const selectedModelProfile = MODEL_PROFILES.find((item) => item.value === model) || MODEL_PROFILES[0];
-  const modelVersions = useMemo(() => getVideoModelVersions(selectedModelProfile.catalogKey), [selectedModelProfile.catalogKey]);
-  const selectedModelVersion = modelVersions.find((item) => item.apiModelId === modelVersion) || modelVersions[0];
+  const modelVersions = useMemo(() => model ? getVideoModelVersions(selectedModelProfile.catalogKey) : [], [model, selectedModelProfile.catalogKey]);
+  const selectedModelVersion = modelVersion ? modelVersions.find((item) => item.apiModelId === modelVersion) : undefined;
   const modelConnectionStates = useMemo(() => Object.fromEntries(MODEL_PROFILES.map((profile) => {
     const provider = videoProviders.find((item) => item.id === profile.providerId);
     const connection = videoConnections.find((item) => item.provider === profile.providerId && item.kind === "VIDEO");
@@ -512,14 +513,19 @@ export default function SingleEpisodeStudio() {
   const readiness = useMemo(() => {
     const checks = [
       { ok: episodeTitle.trim().length > 2, label: "ตั้งชื่อตอน" },
+      { ok: Boolean(model), label: "เลือกโมเดลวิดีโอ" },
+      { ok: Boolean(aspect), label: "เลือกอัตราส่วนภาพ" },
+      { ok: Boolean(visualStyle), label: "เลือกสไตล์ภาพ" },
       { ok: story.trim().length > 12, label: "เขียนแก่นเรื่อง" },
-      { ok: characters.every((character) => character.name.trim() && character.appearance.trim().length > 5), label: "ใส่ข้อมูลตัวละคร" },
+      { ok: characters.every((character) => character.name.trim() && character.role && character.voice && character.appearance.trim().length > 5), label: "ใส่ข้อมูลตัวละคร" },
       { ok: usedDuration === totalDuration, label: "จัดเวลาฉากให้ครบ" },
       { ok: scenes.every((scene) => scene.location.trim() && scene.action.trim().length > 5), label: "ใส่สถานที่และ Action ทุกฉาก" },
-      { ok: scenes.every((scene) => scene.shot && scene.angle && scene.lens && scene.movement), label: "กำหนดกล้องทุกฉาก" },
+      { ok: scenes.every((scene) => scene.objective && scene.beat && scene.transition), label: "กำหนดจังหวะและการเปลี่ยนฉาก" },
+      { ok: scenes.every((scene) => scene.shot && scene.angle && scene.lens && scene.movement && scene.height && scene.cameraSpeed && scene.focus && scene.dof && scene.composition), label: "กำหนดกล้องทุกฉาก" },
+      { ok: scenes.every((scene) => scene.lighting && scene.colorTemp && scene.emotion && scene.performance), label: "กำหนดภาพและการแสดงทุกฉาก" },
     ];
     return { score: Math.round(checks.filter((item) => item.ok).length / checks.length * 100), missing: checks.filter((item) => !item.ok).map((item) => item.label) };
-  }, [episodeTitle, story, characters, scenes, totalDuration, usedDuration]);
+  }, [episodeTitle, model, aspect, visualStyle, story, characters, scenes, totalDuration, usedDuration]);
 
   function resizeCharacters(count: number) {
     const safeCount = Math.max(1, Math.min(8, count));
@@ -560,6 +566,11 @@ export default function SingleEpisodeStudio() {
   }
 
   function changeModel(nextModel: string) {
+    if (!nextModel) {
+      setModel("");
+      setModelVersion("");
+      return;
+    }
     const profile = MODEL_PROFILES.find((item) => item.value === nextModel) || MODEL_PROFILES[0];
     const capability = getVideoUiCapability(profile.catalogKey);
     const maxSeconds = Math.max(...capability.durationSeconds);
@@ -712,6 +723,10 @@ export default function SingleEpisodeStudio() {
 
   async function arrangeSceneWithAi(scope: AiDirectorScope = "all") {
     if (!selectedScene || sceneAiBusy) return;
+    if (!aiDirectorMode || !aiDirectorNovelty) {
+      setMessage("กรุณาเลือกโหมดผู้กำกับ AI และระดับความแตกต่างก่อนให้ AI ช่วยคิด");
+      return;
+    }
     if (!story.trim() && !selectedScene.action.trim()) {
       setMessage("กรุณาเขียนเรื่องหรือ Action ของฉากก่อนให้ AI Director ช่วยคิด");
       return;
@@ -867,6 +882,7 @@ export default function SingleEpisodeStudio() {
           <span>โมเดลวิดีโอ</span>
           <div style={{ display: "grid", gridTemplateColumns: selectedModelProfile.fixedModelId ? "minmax(0,1fr)" : "minmax(0,1fr) minmax(0,1.2fr)", gap: 6 }}>
             <select aria-label="โมเดลวิดีโอ" value={model} onChange={(event) => changeModel(event.target.value)}>
+              <option value="">— เลือกโมเดล AI —</option>
               {MODEL_PROFILES.map((item) => {
                 const state = modelConnectionStates[item.value];
                 const marker = videoConnectionLoading ? "⚪" : state?.operationalReady ? (item.mode === "generate" ? "🟢" : "🟣") : state?.adapterReady ? "🟠" : "🔴";
@@ -874,7 +890,8 @@ export default function SingleEpisodeStudio() {
                 return <option key={item.value} value={item.value}>{marker} {inputMarker} {item.label}</option>;
               })}
             </select>
-            {!selectedModelProfile.fixedModelId ? <select aria-label="รุ่นโมเดล" value={modelVersion} onChange={(event) => setModelVersion(event.target.value)}>
+            {!model || !selectedModelProfile.fixedModelId ? <select aria-label="รุ่นโมเดล" value={modelVersion} onChange={(event) => setModelVersion(event.target.value)}>
+              <option value="">— เลือกรุ่น / Version —</option>
               {modelVersions.map((item) => {
                 const versionReady = Boolean(selectedProvider?.systemConfigured) || Boolean(selectedConnection?.enabled && selectedConnection.status === "CONNECTED" && (selectedEnabledIds.length === 0 || selectedEnabledIds.includes(item.apiModelId) || selectedConnection.modelId === item.apiModelId));
                 return <option key={item.apiModelId} value={item.apiModelId}>{versionReady ? "🟢" : "⚪"} {item.label}</option>;
@@ -883,20 +900,20 @@ export default function SingleEpisodeStudio() {
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, marginTop: 6 }}>
             <span style={{ padding: "3px 7px", borderRadius: 999, border: "1px solid rgba(255,255,255,.12)", fontSize: 10 }}>
-              {videoConnectionLoading ? "⚪ กำลังตรวจ Connection…" : selectedConnectionState?.operationalReady ? (selectedModelProfile.mode === "generate" ? "🟢 คีย์เชื่อมต่อแล้ว" : "🟣 คีย์เชื่อมต่อแล้ว · เครื่องมือแปลงวิดีโอ") : selectedConnectionState?.adapterReady ? "🟠 ยังไม่ได้เชื่อมต่อ / Connection ไม่พร้อม" : "🔴 Adapter ยังไม่พร้อม"}
+              {!model ? "⚪ ยังไม่ได้เลือกโมเดล" : videoConnectionLoading ? "⚪ กำลังตรวจ Connection…" : selectedConnectionState?.operationalReady ? (selectedModelProfile.mode === "generate" ? "🟢 คีย์เชื่อมต่อแล้ว" : "🟣 คีย์เชื่อมต่อแล้ว · เครื่องมือแปลงวิดีโอ") : selectedConnectionState?.adapterReady ? "🟠 ยังไม่ได้เชื่อมต่อ / Connection ไม่พร้อม" : "🔴 Adapter ยังไม่พร้อม"}
             </span>
             <span style={{ padding: "3px 7px", borderRadius: 999, border: "1px solid rgba(255,255,255,.12)", fontSize: 10 }}>
-              {selectedModelProfile.image === "ready" ? "🖼 รับรูปอ้างอิง" : selectedModelProfile.image === "adapter" ? "⚠️🖼 Model รองรับรูป แต่ SCENOVA Adapter ยังไม่ส่งรูป" : "🎞 ใช้วิดีโอต้นฉบับ ไม่รับรูป"}
+              {!model ? "เลือกรูปแบบอินพุตหลังเลือกโมเดล" : selectedModelProfile.image === "ready" ? "🖼 รับรูปอ้างอิง" : selectedModelProfile.image === "adapter" ? "⚠️🖼 Model รองรับรูป แต่ SCENOVA Adapter ยังไม่ส่งรูป" : "🎞 ใช้วิดีโอต้นฉบับ ไม่รับรูป"}
             </span>
-            {selectedModelProfile.nativeAudio ? <span style={{ padding: "3px 7px", borderRadius: 999, border: "1px solid rgba(255,255,255,.12)", fontSize: 10 }}>🔊 Native Audio</span> : null}
-            {selectedModelProfile.mode === "video-edit" ? <span style={{ padding: "3px 7px", borderRadius: 999, border: "1px solid rgba(167,112,255,.35)", fontSize: 10 }}>🎞 Video Edit เท่านั้น · ต้องมีวิดีโอต้นฉบับ</span> : null}
-            {selectedModelProfile.mode === "hdr" ? <span style={{ padding: "3px 7px", borderRadius: 999, border: "1px solid rgba(167,112,255,.35)", fontSize: 10 }}>🎞 HDR Post-process เท่านั้น · ต้องมีวิดีโอต้นฉบับ</span> : null}
-            {!videoConnectionLoading && selectedModelProfile.mode === "generate" && !selectedModelReady ? <Link href="/profile/api" style={{ fontSize: 10, color: "#bd8cff" }}>ตั้งค่า Provider →</Link> : null}
+            {model && selectedModelProfile.nativeAudio ? <span style={{ padding: "3px 7px", borderRadius: 999, border: "1px solid rgba(255,255,255,.12)", fontSize: 10 }}>🔊 Native Audio</span> : null}
+            {model && selectedModelProfile.mode === "video-edit" ? <span style={{ padding: "3px 7px", borderRadius: 999, border: "1px solid rgba(167,112,255,.35)", fontSize: 10 }}>🎞 Video Edit เท่านั้น · ต้องมีวิดีโอต้นฉบับ</span> : null}
+            {model && selectedModelProfile.mode === "hdr" ? <span style={{ padding: "3px 7px", borderRadius: 999, border: "1px solid rgba(167,112,255,.35)", fontSize: 10 }}>🎞 HDR Post-process เท่านั้น · ต้องมีวิดีโอต้นฉบับ</span> : null}
+            {model && !videoConnectionLoading && selectedModelProfile.mode === "generate" && !selectedModelReady ? <Link href="/profile/api" style={{ fontSize: 10, color: "#bd8cff" }}>ตั้งค่า Provider →</Link> : null}
           </div>
-          <small>{selectedModelVersion ? `ระบบจะส่ง Model ID จริง: ${selectedModelVersion.apiModelId} · ${selectedModelVersion.note} · สิทธิ์รายโมเดลยืนยันเมื่อ Provider รับงานครั้งแรก` : "เลือกรุ่นของ Provider ที่จะใช้สร้างคลิปจริง"}</small>
+          <small>{!model ? "เลือกโมเดล AI ก่อน ระบบจะไม่กำหนด Provider หรือ Version แทนคุณ" : selectedModelVersion ? `ระบบจะส่ง Model ID จริง: ${selectedModelVersion.apiModelId} · ${selectedModelVersion.note} · สิทธิ์รายโมเดลยืนยันเมื่อ Provider รับงานครั้งแรก` : "เลือกรุ่นของ Provider ที่จะใช้สร้างคลิปจริง"}</small>
         </div>
-        <label className={styles.field}><span>อัตราส่วนภาพ</span><select value={aspect} onChange={(event) => setAspect(event.target.value)}>{ASPECTS.map((item) => <option key={item}>{item}</option>)}</select><small>ใช้สัดส่วนเดียวกันทุกฉากของตอนนี้</small></label>
-        <label className={styles.field}><span>สไตล์ภาพ</span><select value={visualStyle} onChange={(event) => setVisualStyle(event.target.value)}>{STYLES.map((item) => <option key={item}>{item}</option>)}</select><small>Master Style ของตอนนี้</small></label>
+        <label className={styles.field}><span>อัตราส่วนภาพ</span><select value={aspect} onChange={(event) => setAspect(event.target.value)}><option value="">— เลือกอัตราส่วนภาพ —</option>{ASPECTS.map((item) => <option key={item}>{item}</option>)}</select><small>ใช้สัดส่วนเดียวกันทุกฉากของตอนนี้</small></label>
+        <label className={styles.field}><span>สไตล์ภาพ</span><select value={visualStyle} onChange={(event) => setVisualStyle(event.target.value)}><option value="">— เลือกสไตล์ภาพ —</option>{STYLES.map((item) => <option key={item}>{item}</option>)}</select><small>Master Style ของตอนนี้</small></label>
         <label className={`${styles.field} ${styles.storyField}`}><span>เรื่อง / เหตุการณ์ของตอน</span><textarea value={story} onChange={(event) => setStory(event.target.value)} placeholder="เล่าว่าใครต้องการอะไร เกิดปัญหาอะไร เหตุการณ์ดำเนินอย่างไร และจบแบบไหน" /><small>เขียนเป็นภาษาธรรมชาติได้ Analyzer จะนำข้อมูลนี้ไปจัดโครง Prompt ภายหลัง</small></label>
         <div className={styles.episodeTiming}>
           <label className={styles.timingField}>
@@ -924,9 +941,9 @@ export default function SingleEpisodeStudio() {
           <div className={styles.characterNumber}>{index + 1}</div>
           <div className={styles.characterFields}>
             <div className={styles.threeGrid}>
-              <label className={styles.field}><span>ชื่อ</span><input value={character.name} onChange={(event) => patchCharacter(character.id, { name: event.target.value })} /></label>
-              <label className={styles.field}><span>บทบาท</span><select value={character.role} onChange={(event) => patchCharacter(character.id, { role: event.target.value })}>{ROLES.map((role) => <option key={role}>{role}</option>)}</select></label>
-              <label className={styles.field}><span>โปรไฟล์เสียง</span><select value={character.voice} onChange={(event) => patchCharacter(character.id, { voice: event.target.value })}>{VOICE_PROFILES.map((voice) => <option key={voice}>{voice}</option>)}</select></label>
+              <label className={styles.field}><span>ชื่อ</span><input value={character.name} onChange={(event) => patchCharacter(character.id, { name: event.target.value })} placeholder={`ตัวละคร ${index + 1}`} /></label>
+              <label className={styles.field}><span>บทบาท</span><select value={character.role} onChange={(event) => patchCharacter(character.id, { role: event.target.value })}><option value="">— เลือกบทบาท —</option>{ROLES.map((role) => <option key={role}>{role}</option>)}</select></label>
+              <label className={styles.field}><span>โปรไฟล์เสียง</span><select value={character.voice} onChange={(event) => patchCharacter(character.id, { voice: event.target.value })}><option value="">— เลือกโปรไฟล์เสียง —</option>{VOICE_PROFILES.map((voice) => <option key={voice}>{voice}</option>)}</select></label>
             </div>
             <label className={styles.field}><span>รูปลักษณ์ / เสื้อผ้า / บุคลิก / จุดจำ</span><textarea value={character.appearance} onChange={(event) => patchCharacter(character.id, { appearance: event.target.value })} placeholder="ใบหน้า ทรงผม อายุ รูปร่าง เสื้อผ้า เครื่องประดับ บุคลิก และรายละเอียดที่ห้ามเปลี่ยน" /></label>
             <div className={styles.referencePicker}>
@@ -1010,7 +1027,7 @@ export default function SingleEpisodeStudio() {
 
           <section className={styles.directorBlock}>
             <div className={styles.blockHead}><div><span>กำกับกล้อง</span><h4>กล้อง เลนส์ มุม และการเคลื่อนครบชุด</h4></div><p>เลือก “กล้องตามใคร” ก่อน แล้วกำหนดภาษากล้องของ Shot นี้อย่างละเอียด</p></div>
-            <label className={styles.field}><span>Camera Subject — กล้องโฟกัส/ตามใคร</span><select value={selectedScene.cameraSubjectId} onChange={(event) => patchScene({ cameraSubjectId: event.target.value })}><option value="">ฉากโดยรวม / Environment</option>{selectedScene.characterIds.map((id) => { const character = characters.find((item) => item.id === id); return character ? <option key={id} value={id}>{character.name}</option> : null; })}</select><small>ถ้าเลือกตัวละคร ระบบ Prompt จะผูก Camera Movement และ Focus กับตัวละครคนนั้นโดยตรง</small></label>
+            <label className={styles.field}><span>Camera Subject — กล้องโฟกัส/ตามใคร</span><select value={selectedScene.cameraSubjectId} onChange={(event) => patchScene({ cameraSubjectId: event.target.value })}><option value="">— เลือก / ฉากโดยรวม —</option>{selectedScene.characterIds.map((id) => { const character = characters.find((item) => item.id === id); return character ? <option key={id} value={id}>{character.name}</option> : null; })}</select><small>ถ้าเลือกตัวละคร ระบบ Prompt จะผูก Camera Movement และ Focus กับตัวละครคนนั้นโดยตรง</small></label>
             <div className={styles.threeGrid}><ChoiceField label="ระยะภาพ" value={selectedScene.shot} options={SHOT_TYPES} onChange={(value) => patchScene({ shot: value })} /><ChoiceField label="มุมกล้อง" value={selectedScene.angle} options={CAMERA_ANGLES} onChange={(value) => patchScene({ angle: value })} /><ChoiceField label="เลนส์" value={selectedScene.lens} options={LENSES} onChange={(value) => patchScene({ lens: value })} /></div>
             <div className={styles.threeGrid}><ChoiceField label="การเคลื่อนกล้อง" value={selectedScene.movement} options={CAMERA_MOVEMENTS} onChange={(value) => patchScene({ movement: value })} /><ChoiceField label="ความสูงกล้อง" value={selectedScene.height} options={CAMERA_HEIGHTS} onChange={(value) => patchScene({ height: value })} /><ChoiceField label="ความเร็วกล้อง" value={selectedScene.cameraSpeed} options={CAMERA_SPEEDS} onChange={(value) => patchScene({ cameraSpeed: value })} /></div>
             <div className={styles.threeGrid}><ChoiceField label="จุดโฟกัส" value={selectedScene.focus} options={FOCUS_OPTIONS} onChange={(value) => patchScene({ focus: value })} /><ChoiceField label="ระยะชัดลึก" value={selectedScene.dof} options={DOF_OPTIONS} onChange={(value) => patchScene({ dof: value })} /><ChoiceField label="องค์ประกอบภาพ" value={selectedScene.composition} options={COMPOSITION_OPTIONS} onChange={(value) => patchScene({ composition: value })} /></div>
@@ -1044,7 +1061,7 @@ export default function SingleEpisodeStudio() {
       <div className={styles.reviewGrid}>
         <article><b>{scenes.length}</b><span>ฉาก</span><small>{usedDuration}/{totalDuration} วินาที</small></article>
         <article><b>{characters.length}</b><span>ตัวละคร</span><small>{locks.length} Locks เปิดอยู่</small></article>
-        <article><b>{model}</b><span>Video Model</span><small>{aspect}</small></article>
+        <article><b>{model || "ยังไม่ได้เลือก"}</b><span>Video Model</span><small>{aspect || "ยังไม่ได้เลือกอัตราส่วนภาพ"}</small></article>
         <article><b>{readiness.missing.length ? readiness.missing.length : "✓"}</b><span>รายการที่ต้องเติม</span><small>{readiness.missing.length ? readiness.missing.join(" • ") : "ข้อมูลหลักครบแล้ว"}</small></article>
       </div>
       <div className={styles.reviewActions}>

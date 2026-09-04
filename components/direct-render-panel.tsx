@@ -181,7 +181,7 @@ export default function DirectRenderPanel({
   const [run, setRun] = useState<RunResponse | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [coveragePresetId, setCoveragePresetId] = useState("creature-encounter");
+  const [coveragePresetId, setCoveragePresetId] = useState("");
   const [coverageInstruction, setCoverageInstruction] = useState("");
   const [coverageCategory, setCoverageCategory] = useState<CoverageCategory>("all");
   const [coverageSearch, setCoverageSearch] = useState("");
@@ -212,12 +212,14 @@ export default function DirectRenderPanel({
     setError("");
     setNotice("");
     setSelectedOrder(1);
+    setCoveragePresetId("");
+    setCoverageInstruction("");
     setFinalReady(false);
     setFinalFailed(false);
   }, [sourceSignature]);
 
   const selectedPreset = useMemo(
-    () => CINEMATIC_COVERAGE_PRESETS.find((preset) => preset.id === coveragePresetId) || CINEMATIC_COVERAGE_PRESETS[10]!,
+    () => CINEMATIC_COVERAGE_PRESETS.find((preset) => preset.id === coveragePresetId) || null,
     [coveragePresetId],
   );
   const visiblePresets = useMemo(() => {
@@ -247,7 +249,7 @@ export default function DirectRenderPanel({
   const hudState = useMemo(() => {
     if (finalFailed) return { title: "Final Assembly ต้องตรวจสอบ", detail: "คลิปย่อยสร้างครบแล้ว แต่การรวม Final Video มีปัญหา", percent: 100, tone: "error" };
     if (assemblingFinal) return { title: "กำลังประกอบ Final Video", detail: "SCENOVA Bot กำลังเรียง Shot, ต่อเสียง และตัดเวลาให้ตรง Timeline", percent: 96, tone: "assemble" };
-    if (promptBusy) return { title: "AI Brain กำลังวาง Coverage", detail: `${selectedPreset.nameTh} · วิเคราะห์มุมกล้อง, eyeline, 180° axis และ Continuity`, percent: 14, tone: "brain" };
+    if (promptBusy) return { title: "AI Brain กำลังวาง Coverage", detail: `${selectedPreset?.nameTh || "Coverage ที่เลือก"} · วิเคราะห์มุมกล้อง, eyeline, 180° axis และ Continuity`, percent: 14, tone: "brain" };
     if (renderBusy && !run?.runId) return { title: "กำลังเตรียม Generate", detail: "ตรวจ Video Provider, Prompt และ Shot Timeline", percent: 24, tone: "prepare" };
     if (activeRun) {
       const status = currentRunSegment?.status || run?.status || "READY";
@@ -263,7 +265,7 @@ export default function DirectRenderPanel({
       };
     }
     return { title: "SCENOVA Bot พร้อมทำงาน", detail: "เลือก Coverage แล้วกดสร้าง Prompt", percent: 0, tone: "idle" };
-  }, [activeRun, assemblingFinal, currentRunSegment, finalFailed, modelLabel, promptBusy, renderBusy, run?.percent, run?.runId, run?.status, selectedPreset.nameTh]);
+  }, [activeRun, assemblingFinal, currentRunSegment, finalFailed, modelLabel, promptBusy, renderBusy, run?.percent, run?.runId, run?.status, selectedPreset?.nameTh]);
 
   function invalidatePrompt() {
     setPromptData(null);
@@ -282,6 +284,11 @@ export default function DirectRenderPanel({
 
   async function createPrompts() {
     if (promptBusy) return null;
+    if (!coveragePresetId || !selectedPreset) {
+      setError("กรุณาเลือก Cinematic Coverage 1 แบบก่อนสร้าง Prompt");
+      setNotice("");
+      return null;
+    }
     setPromptBusy(true);
     setHudCollapsed(false);
     setError("");
@@ -438,7 +445,11 @@ export default function DirectRenderPanel({
           </button>)}
         </div>
         <div className={styles.selectedCoverage}>
-          <div><small>เลือกอยู่</small><strong>{selectedPreset.nameTh}</strong><span>{selectedPreset.descriptionTh}</span></div>
+          <div>
+            <small>เลือกอยู่</small>
+            <strong>{selectedPreset ? selectedPreset.nameTh : "ยังไม่ได้เลือก Coverage"}</strong>
+            <span>{selectedPreset ? selectedPreset.descriptionTh : "เลือก 1 แบบจากรายการก่อนสร้าง Prompt เพื่อไม่ให้ระบบกำหนดมุมกล้องแทนคุณ"}</span>
+          </div>
           <textarea value={coverageInstruction} onChange={(event) => { setCoverageInstruction(event.target.value); invalidatePrompt(); }} placeholder="คำสั่งเพิ่มเติม (ไม่บังคับ) เช่น: กลับมาที่ Close-up ตัวละคร A อย่างน้อย 3 ครั้ง, ใช้ foreground wipe ตอนเปลี่ยนมุม, ห้ามข้ามแกน 180°" aria-label="คำสั่ง Cinematic Coverage เพิ่มเติม" />
         </div>
       </div>

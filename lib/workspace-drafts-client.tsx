@@ -16,10 +16,13 @@ export type WorkspaceDraft<T = unknown> = {
 
 export const WORKSPACE_DRAFTS_CHANGED_EVENT = "scenova:workspace-drafts-changed";
 export const WORKSPACE_DRAFT_SCOPE_READY_EVENT = "scenova:workspace-draft-scope-ready";
+export const WORKSPACE_DRAFT_SAVE_REQUEST_EVENT = "scenova:workspace-draft-save-request";
+export const WORKSPACE_DRAFT_SAVED_EVENT = "scenova:workspace-draft-saved";
 export const WORKSPACE_DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
 
 const SCOPE_KEY = "scenova-workspace-draft-scope-v1";
-const STORAGE_PREFIX = "scenova-workspace-drafts-v1:";
+const LEGACY_STORAGE_PREFIX = "scenova-workspace-drafts-v1:";
+const STORAGE_PREFIX = "scenova-workspace-drafts-v2:";
 const MAX_DRAFTS = 30;
 
 function browserReady() {
@@ -41,6 +44,9 @@ export function setWorkspaceDraftScope(identity: string) {
   const scope = identityHash(identity);
   const current = localStorage.getItem(SCOPE_KEY) || "";
   localStorage.setItem(SCOPE_KEY, scope);
+  // v1 drafts were created implicitly by autosave. Manual-draft mode starts clean
+  // so no draft appears unless the user explicitly presses “บันทึกร่าง”.
+  localStorage.removeItem(`${LEGACY_STORAGE_PREFIX}${scope}`);
   if (current !== scope) window.dispatchEvent(new CustomEvent(WORKSPACE_DRAFTS_CHANGED_EVENT));
   window.dispatchEvent(new CustomEvent(WORKSPACE_DRAFT_SCOPE_READY_EVENT, { detail: { scope } }));
   return scope;

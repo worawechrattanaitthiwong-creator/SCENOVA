@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   deleteWorkspaceDraft,
@@ -10,6 +11,8 @@ import {
   workspaceDraftHref,
   workspaceDraftLabel,
   WORKSPACE_DRAFTS_CHANGED_EVENT,
+  WORKSPACE_DRAFT_SAVE_REQUEST_EVENT,
+  WORKSPACE_DRAFT_SAVED_EVENT,
   WORKSPACE_DRAFT_SCOPE_READY_EVENT,
   type WorkspaceDraft,
 } from "@/lib/workspace-drafts-client";
@@ -31,10 +34,15 @@ function expiresText(draft: WorkspaceDraft) {
 }
 
 export default function WorkspaceDraftTray() {
+  const pathname = usePathname();
   const [drafts, setDrafts] = useState<WorkspaceDraft[]>([]);
   const [open, setOpen] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [saveMessage, setSaveMessage] = useState("");
   const rootRef = useRef<HTMLDivElement>(null);
+  const saveResetTimer = useRef<number | null>(null);
+  const canSaveHere = pathname === "/studio" || pathname === "/agent" || pathname === "/series";
 
   const refresh = () => setDrafts(listWorkspaceDrafts());
 
@@ -67,6 +75,24 @@ export default function WorkspaceDraftTray() {
   }, []);
 
   useEffect(() => {
+    const saved = (event: Event) => {
+      const detail = (event as CustomEvent<{ ok?: boolean; message?: string }>).detail || {};
+      setSaveStatus(detail.ok ? "saved" : "error");
+      setSaveMessage(detail.message || (detail.ok ? "บันทึกร่างแล้ว" : "บันทึกร่างไม่สำเร็จ"));
+      if (saveResetTimer.current) window.clearTimeout(saveResetTimer.current);
+      saveResetTimer.current = window.setTimeout(() => {
+        setSaveStatus("idle");
+        setSaveMessage("");
+      }, 2200);
+    };
+    window.addEventListener(WORKSPACE_DRAFT_SAVED_EVENT, saved);
+    return () => {
+      window.removeEventListener(WORKSPACE_DRAFT_SAVED_EVENT, saved);
+      if (saveResetTimer.current) window.clearTimeout(saveResetTimer.current);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!open) return;
     const close = (event: PointerEvent) => {
       if (event.target instanceof Node && rootRef.current?.contains(event.target)) return;
@@ -85,6 +111,18 @@ export default function WorkspaceDraftTray() {
   if (!authenticated) return null;
 
   return <div className={styles.root} ref={rootRef} data-sc-help-ignore>
+    {canSaveHere ? <button
+      type="button"
+      className={styles.save}
+      data-state={saveStatus}
+      disabled={saveStatus === "saving"}
+      title={saveMessage || "บันทึก Workspace ปัจจุบันเป็นงานร่าง"}
+      onClick={() => {
+        setSaveStatus("saving");
+        setSaveMessage("กำลังบันทึกร่าง...");
+        window.dispatchEvent(new CustomEvent(WORKSPACE_DRAFT_SAVE_REQUEST_EVENT));
+      }}
+    >{saveStatus === "saving" ? "กำลังบันทึก…" : saveStatus === "saved" ? "✓ บันทึกแล้ว" : saveStatus === "error" ? "ลองบันทึกอีกครั้ง" : "＋ บันทึกร่าง"}</button> : null}
     <button type="button" className={styles.trigger} data-has-drafts={drafts.length > 0} onClick={() => setOpen((current) => !current)} aria-expanded={open} aria-label={title} title={title}>
       <span className={styles.dot} aria-hidden="true" />
       <span>งานร่าง</span>
@@ -92,7 +130,7 @@ export default function WorkspaceDraftTray() {
     </button>
     {open ? <div className={styles.panel} role="dialog" aria-label="รายการงานร่าง 24 ชั่วโมง">
       <div className={styles.head}>
-        <div><b>งานร่างของคุณ</b><small>บันทึกอัตโนมัติบนอุปกรณ์นี้ · อายุ 24 ชั่วโมงจากการแก้ไขล่าสุด</small></div>
+        <div><b>งานร่างของคุณ</b><small>เก็บเฉพาะเมื่อกด “บันทึกร่าง” · อายุ 24 ชั่วโมงจากการบันทึกล่าสุด</small></div>
         <button type="button" onClick={() => setOpen(false)} aria-label="ปิด">×</button>
       </div>
       {drafts.length ? <div className={styles.list}>{drafts.map((draft) => <article className={styles.item} key={draft.id}>
@@ -105,8 +143,8 @@ export default function WorkspaceDraftTray() {
           <Link className={styles.open} href={workspaceDraftHref(draft)} prefetch={false} onClick={() => setOpen(false)}>ทำต่อ</Link>
           <button type="button" className={styles.delete} onClick={() => { deleteWorkspaceDraft(draft.id); refresh(); }}>ลบ</button>
         </div>
-      </article>)}</div> : <div className={styles.empty}><b>ยังไม่มีร่างที่บันทึกไว้</b><span>เมื่อเริ่มแก้ข้อมูลใน AI Studio, AI Planner หรือ Series Studio ระบบจะสร้างร่างให้อัตโนมัติ</span></div>}
-      <div className={styles.foot}>ร่างที่เกิน 24 ชั่วโมงจะถูกลบอัตโนมัติ และไม่ถือเป็นงานที่ Generate หรือใช้เครดิต</div>
+      </article>)}</div> : <div className={styles.empty}><b>ยังไม่มีร่างที่บันทึกไว้</b><span>กรอกข้อมูลใน Workspace แล้วกด “บันทึกร่าง” เมื่อต้องการเก็บงานไว้ทำต่อ</span></div>}
+      <div className={styles.foot}>SCENOVA จะไม่สร้างร่างจากการพิมพ์หรือการเปลี่ยนค่าอัตโนมัติ · ร่างที่บันทึกจะหมดอายุใน 24 ชั่วโมงและไม่ใช้เครดิต</div>
     </div> : null}
   </div>;
 }
