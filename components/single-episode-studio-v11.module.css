@@ -1773,6 +1773,23 @@
   white-space: nowrap;
 }
 
+.modelSummary :global(.sc-model-brand) {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border-radius: 7px;
+  background: #12101a;
+  color: #f7f4ff;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
+}
+
+.modelSummary :global(.sc-model-brand svg) {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
 @media (max-width: 980px) {
   .creatureGrid,
   .directionCard,
