@@ -64,6 +64,8 @@ describe("AI Studio UI integrity", () => {
     expect(directBridge).toContain('data-studio-dialogue-card="true"');
     expect(directBridge).toContain('data-studio-model-ready="true"');
     expect(directBridge).not.toContain("suppressLegacyAgentSubmit()");
+    expect(directBridge).toContain("snapshot && !stale");
+    expect(directBridge).toContain("setSnapshot(null)");
     expect(agentBridge).toContain('data-studio-character-card="true"');
     expect(agentBridge).toContain('data-studio-character-presence="true"');
     expect(agentBridge).toContain('data-studio-dialogue-card="true"');
