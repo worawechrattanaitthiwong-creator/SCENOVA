@@ -763,7 +763,7 @@ export default function SingleEpisodeStudio() {
           currentScene: selectedScene,
           previousScene: sceneIndex > 0 ? scenes[sceneIndex - 1] : null,
           nextScene: sceneIndex < scenes.length - 1 ? scenes[sceneIndex + 1] : null,
-          cast: characters.map((item) => ({ id: item.id, name: item.name, role: item.role, appearance: item.appearance, voice: item.voice })),
+          cast: characters.filter((item) => item.name.trim()).map((item) => ({ id: item.id, name: item.name, role: item.role, appearance: item.appearance, voice: item.voice })),
           manualSections,
           history,
         }),
