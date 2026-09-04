@@ -483,11 +483,12 @@ export default function SingleEpisodeStudio() {
 
   useEffect(() => {
     if (!model || !aspect) return;
-    const capability = getVideoUiCapability(selectedModelProfile.catalogKey);
+    const profile = MODEL_PROFILES.find((item) => item.value === model) || MODEL_PROFILES[0];
+    const capability = getVideoUiCapability(profile.catalogKey);
     if (capability.ratioValues.includes(aspect)) return;
     setAspect(capability.ratioValues[0] || "");
     setMessage("อัตราส่วนภาพเดิมไม่รองรับกับโมเดลที่เลือก ระบบเปลี่ยนเป็นค่าที่ Provider รองรับแล้ว");
-  }, [model, aspect, selectedModelProfile.catalogKey]);
+  }, [model, aspect]);
 
   useEffect(() => {
     setSceneAiMeta(null);
