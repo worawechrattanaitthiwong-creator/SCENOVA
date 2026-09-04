@@ -616,7 +616,7 @@ function buildDirections(profile: ProfileId, input: AiDirectorRequest, selected:
       const actual = normalize(character.name);
       return suggested === actual || suggested.includes(actual) || actual.includes(suggested);
     });
-    const current = input.currentScene.characterDirections[character.id] || { blocking: "", action: "", emotion: "Natural", eyeline: "", dialogue: "" };
+    const current = input.currentScene.characterDirections[character.id] || { blocking: "", action: "", emotion: "", eyeline: "", dialogue: "" };
     const opposite = selected.length > 1 ? selected[(index + 1) % selected.length] : null;
     const leftFirst = rng() < 0.5;
     const side = selected.length === 1 ? "กลางเฟรม / จุดเด่นหลัก" : ((index + (leftFirst ? 0 : 1)) % 2 === 0 ? "ซ้ายเฟรม" : "ขวาเฟรม");
