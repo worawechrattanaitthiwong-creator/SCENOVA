@@ -366,8 +366,7 @@ export default function StudioDirectRenderBridge() {
       if (!node) {
         node = document.createElement("div");
         node.id = "scenova-direct-render-host";
-        const anchor = document.getElementById("studio-kept-preview-summary") || review;
-        anchor.insertAdjacentElement("afterend", node);
+        review.insertAdjacentElement("afterend", node);
       }
       setHost(node);
       suppressLegacyAgentSubmit();
