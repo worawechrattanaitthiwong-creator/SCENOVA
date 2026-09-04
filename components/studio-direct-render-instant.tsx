@@ -18,13 +18,14 @@ function findRefreshButton() {
 function hideLegacySyncUi() {
   const host = document.getElementById("scenova-direct-render-host");
   if (!host) return;
+  const hasDirectRender = Boolean(host.querySelector("#direct-render"));
   const title = Array.from(host.querySelectorAll<HTMLElement>("strong")).find((element) => compact(element.textContent) === "Direct Render Data Sync");
   const bar = title?.parentElement?.parentElement;
-  if (bar) bar.style.display = "none";
+  if (bar) bar.style.display = hasDirectRender ? "none" : "";
 
   Array.from(host.querySelectorAll<HTMLElement>("div")).forEach((element) => {
     const text = compact(element.textContent);
-    if (text.startsWith("Direct Render จะใช้ข้อมูลที่คุณกรอกใน AI Studio เท่านั้น")) element.style.display = "none";
+    if (text.startsWith("Direct Render จะใช้ข้อมูลที่คุณกรอกใน AI Studio เท่านั้น")) element.style.display = hasDirectRender ? "none" : "";
   });
 }
 
@@ -77,10 +78,5 @@ export default function StudioDirectRenderInstant() {
     };
   }, []);
 
-  return <style>{`
-    #scenova-direct-render-host [class*="syncBar"],
-    #scenova-direct-render-host [class*="placeholder"] {
-      display: none !important;
-    }
-  `}</style>;
+  return null;
 }
