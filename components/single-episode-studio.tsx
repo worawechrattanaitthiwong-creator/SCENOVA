@@ -936,16 +936,15 @@ export default function SingleEpisodeStudio() {
       </div>
     </header>
 
-    <nav className={`${styles.flowBar} ${v11.steps}`} aria-label="ขั้นตอนสร้างวิดีโอ">
-      <a href="#setup"><b>1</b><span>ไอเดีย &amp; ตั้งค่า</span></a>
-      <a href="#characters"><b>2</b><span>เลือกตัวละคร</span></a>
-      <a href="#scenes"><b>3</b><span>สร้างฉาก</span></a>
-      <a href="#advanced"><b>4</b><span>ตรวจสอบ</span></a>
-      <a href="#final-step"><b>5</b><span>สร้างวิดีโอ</span></a>
-    </nav>
-
     <div className={v11.workspaceGrid}>
       <div className={v11.leftColumn}>
+        <nav className={`${styles.flowBar} ${v11.steps}`} aria-label="ขั้นตอนสร้างวิดีโอ">
+          <a href="#setup"><b>1</b><span>ไอเดีย &amp; ตั้งค่า</span></a>
+          <a href="#characters"><b>2</b><span>เลือกตัวละคร</span></a>
+          <a href="#scenes"><b>3</b><span>สร้างฉาก</span></a>
+          <a href="#advanced"><b>4</b><span>ตรวจสอบ</span></a>
+          <a href="#final-step"><b>5</b><span>สร้างวิดีโอ</span></a>
+        </nav>
         <section id="setup" className={v11.stepCard}>
           <div className={v11.stepHead}>
             <div className={v11.stepTitle}>
