@@ -1041,6 +1041,16 @@ export default function SingleEpisodeStudio() {
                 </label>
               </div>
 
+              <div className={v11.modelCapabilities}>
+                <span>{!model ? "⚪ ยังไม่ได้เลือกโมเดล" : videoConnectionLoading ? "⚪ กำลังตรวจ Connection…" : selectedConnectionState?.operationalReady ? selectedModelProfile.mode === "generate" ? "🟢 คีย์เชื่อมต่อแล้ว" : "🟣 คีย์เชื่อมต่อแล้ว · เครื่องมือแปลงวิดีโอ" : selectedConnectionState?.adapterReady ? "🟠 ยังไม่ได้เชื่อมต่อ / Connection ไม่พร้อม" : "🔴 Adapter ยังไม่พร้อม"}</span>
+                <span>{!model ? "เลือกรูปแบบอินพุตหลังเลือกโมเดล" : selectedModelProfile.image === "ready" ? "🖼 รับรูปอ้างอิง" : selectedModelProfile.image === "adapter" ? "⚠️🖼 Model รองรับรูป แต่ SCENOVA Adapter ยังไม่ส่งรูป" : "🎞 ใช้วิดีโอต้นฉบับ ไม่รับรูป"}</span>
+                {model && selectedModelProfile.nativeAudio ? <span>🔊 Native Audio</span> : null}
+                {model && selectedModelProfile.mode === "video-edit" ? <span>🎞 Video Edit เท่านั้น · ต้องมีวิดีโอต้นฉบับ</span> : null}
+                {model && selectedModelProfile.mode === "hdr" ? <span>🎞 HDR Post-process เท่านั้น · ต้องมีวิดีโอต้นฉบับ</span> : null}
+                {model && !videoConnectionLoading && selectedModelProfile.mode === "generate" && !selectedModelReady ? <Link href="/profile/api" prefetch={false}>ตั้งค่า Provider →</Link> : null}
+                {model && selectedModelVersion ? <small>ระบบจะส่ง Model ID จริง: {selectedModelVersion.apiModelId} · {selectedModelVersion.note}</small> : null}
+              </div>
+
               <div className={v11.durationPanel}>
                 <div className={v11.durationCopy}>
                   <span>ความยาววิดีโอ (วินาที)</span>
