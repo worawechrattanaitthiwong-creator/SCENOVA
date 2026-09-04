@@ -116,11 +116,21 @@ function styleIdFor(value: string) {
   return matched?.id || STYLE_PRESETS[0]?.id || "cinematic-anime";
 }
 
+function suppressLegacyAgentSubmit() {
+  const main = document.querySelector("main");
+  if (!main) return;
+  Array.from(main.querySelectorAll<HTMLButtonElement>("button")).forEach((button) => {
+    const text = compact(button.textContent);
+    if (text.includes("ส่งให้ทีม AI ผลิต") || text.includes("ส่ง Storyboard ให้ทีม AI")) button.style.display = "none";
+  });
+  Array.from(main.querySelectorAll<HTMLElement>("label")).forEach((label) => {
+    if (compact(label.textContent).includes("วงเงินสูงสุดของงาน")) label.style.display = "none";
+  });
+}
+
 function characterCards() {
   const root = document.getElementById("characters");
-  if (!root) return [];
-  const tagged = Array.from(root.querySelectorAll<HTMLElement>('[data-studio-character-card="true"]'));
-  return tagged.length ? tagged : Array.from(root.querySelectorAll<HTMLElement>("article"));
+  return root ? Array.from(root.querySelectorAll<HTMLElement>("article")) : [];
 }
 
 function captureCharacters() {
@@ -154,9 +164,7 @@ function captureCharacters() {
 }
 
 function dialogueFromEditor(editor: HTMLElement, characterIdByName: Map<string, string>, start: number, end: number) {
-  const tagged = Array.from(editor.querySelectorAll<HTMLElement>('[data-studio-dialogue-card="true"]'));
-  const cards = tagged.length ? tagged : Array.from(editor.querySelectorAll<HTMLElement>("[class*='dialogueCard']"));
-  return cards.flatMap((card, index) => {
+  return Array.from(editor.querySelectorAll<HTMLElement>("[class*='dialogueCard']")).flatMap((card, index) => {
     const name = compact(card.querySelector("b")?.textContent);
     const text = compact(card.querySelector<HTMLTextAreaElement>("textarea")?.value);
     if (!text) return [];
@@ -174,7 +182,7 @@ function dialogueFromEditor(editor: HTMLElement, characterIdByName: Map<string, 
 
 async function captureSegments(characters: ReturnType<typeof captureCharacters>) {
   const buttons = sceneButtons();
-  const originalIndex = Math.max(0, buttons.findIndex((button) => button.dataset.active === "true" || String(button.className).toLocaleLowerCase().includes("active")));
+  const originalIndex = Math.max(0, buttons.findIndex((button) => String(button.className).toLocaleLowerCase().includes("active")));
   const characterIdByName = new Map(characters.map((character) => [character.name.toLocaleLowerCase(), character.id]));
   const segments: TimelineSegment[] = [];
   let cursor = 0;
@@ -229,8 +237,7 @@ async function captureSegments(characters: ReturnType<typeof captureCharacters>)
       throw new Error(`ฉาก ${index + 1}: กรุณาเลือก ${missingCamera.join(", ")} ก่อนสร้าง Prompt`);
     }
 
-    const taggedPresence = Array.from(editor.querySelectorAll<HTMLLabelElement>('[data-studio-character-presence="true"] label'));
-    const presenceLabels = taggedPresence.length ? taggedPresence : Array.from(editor.querySelectorAll<HTMLLabelElement>("[class*='presenceChips'] label"));
+    const presenceLabels = Array.from(editor.querySelectorAll<HTMLLabelElement>("[class*='presenceChips'] label"));
     const names = presenceLabels.filter((label) => label.querySelector<HTMLInputElement>('input[type="checkbox"]')?.checked).map((label) => compact(label.textContent));
     const characterIds = names.map((name) => characterIdByName.get(name.toLocaleLowerCase())).filter((id): id is string => Boolean(id));
     const dialogue = dialogueFromEditor(editor, characterIdByName, start, end);
@@ -282,8 +289,7 @@ async function captureStudioSnapshot(): Promise<DirectSnapshot> {
   const versionSelect = setup.querySelector<HTMLSelectElement>('select[aria-label="รุ่นโมเดล"]');
   const version = versionSelect?.value || meta.fixedVersion;
   const modelField = findField(setup, ["โมเดลวิดีโอ"]);
-  const modelReady = setup.querySelector<HTMLElement>('[data-studio-model-ready="true"]') !== null
-    || compact(modelField?.textContent).includes("คีย์เชื่อมต่อแล้ว");
+  const modelReady = compact(modelField?.textContent).includes("คีย์เชื่อมต่อแล้ว");
   const aspect = valueOf(setup, ["อัตราส่วนภาพ"]);
   if (!aspect) throw new Error("กรุณาเลือกอัตราส่วนภาพก่อนสร้าง Prompt");
   const visualStyle = valueOf(setup, ["สไตล์ภาพ"]);
@@ -347,6 +353,7 @@ export default function StudioDirectRenderBridge() {
   useEffect(() => {
     let stopped = false;
     let timer = 0;
+    let observer: MutationObserver | null = null;
     const discover = () => {
       if (stopped) return;
       const review = document.getElementById("review");
@@ -362,6 +369,9 @@ export default function StudioDirectRenderBridge() {
         review.insertAdjacentElement("afterend", node);
       }
       setHost(node);
+      suppressLegacyAgentSubmit();
+      observer = new MutationObserver(suppressLegacyAgentSubmit);
+      observer.observe(main, { childList: true, subtree: true });
       const changed = () => {
         if (!capturingRef.current && snapshot) {
           setStale(true);
@@ -379,6 +389,7 @@ export default function StudioDirectRenderBridge() {
     return () => {
       stopped = true;
       window.clearTimeout(timer);
+      observer?.disconnect();
       const node = document.getElementById("scenova-direct-render-host") as (HTMLElement & { __cleanup?: () => void }) | null;
       node?.__cleanup?.();
     };
@@ -397,11 +408,9 @@ export default function StudioDirectRenderBridge() {
     };
     document.addEventListener("input", changed, true);
     document.addEventListener("change", changed, true);
-    window.addEventListener("scenova-studio-data-change", changed);
     return () => {
       document.removeEventListener("input", changed, true);
       document.removeEventListener("change", changed, true);
-      window.removeEventListener("scenova-studio-data-change", changed);
     };
   }, [snapshot]);
 
@@ -418,8 +427,6 @@ export default function StudioDirectRenderBridge() {
       const episode = next.project.episodes[0];
       setStatus(`ซิงก์แล้ว · ${episode.segments.length} Scenes · ${episode.duration}s · ${next.modelLabel} · พร้อมสร้าง Prompt`);
     } catch (reason) {
-      setSnapshot(null);
-      setStale(true);
       setError(reason instanceof Error ? reason.message : "ซิงก์ข้อมูล Studio ไม่สำเร็จ");
     } finally {
       capturingRef.current = false;
@@ -433,13 +440,13 @@ export default function StudioDirectRenderBridge() {
       <div className={styles.syncCopy}><strong>Direct Render Data Sync</strong><span className={error ? styles.error : stale ? styles.stale : snapshot ? styles.ready : ""}>{error || status}</span></div>
       <div className={styles.actions}><button type="button" onClick={() => void syncNow()} disabled={syncing}>{syncing ? "กำลังซิงก์..." : snapshot ? "↻ ซิงก์ข้อมูลล่าสุด" : "ซิงก์ข้อมูล Studio"}</button></div>
     </div>
-    {snapshot && !stale ? <DirectRenderPanel
+    {snapshot ? <DirectRenderPanel
       project={snapshot.project}
       providerId={snapshot.providerId}
       modelVersionId={snapshot.modelVersionId}
       modelLabel={snapshot.modelLabel}
       modelReady={snapshot.modelReady}
       modelMode={snapshot.modelMode}
-    /> : <div className={styles.placeholder}>Direct Render จะใช้ข้อมูลล่าสุดจาก AI Studio เท่านั้น หากข้อมูลเปลี่ยน ระบบจะหยุด Panel เดิมและซิงก์ใหม่ก่อนอนุญาตให้สร้างวิดีโอ</div>}
+    /> : <div className={styles.placeholder}>Direct Render จะใช้ข้อมูลที่คุณกรอกใน AI Studio เท่านั้น กด “ซิงก์ข้อมูล Studio” เพื่อเตรียม Structured Project สำหรับสร้าง Prompt / Copy Prompt / สร้างวิดีโอตรง โดยไม่ผ่าน AI Agent</div>}
   </div>, host);
 }
