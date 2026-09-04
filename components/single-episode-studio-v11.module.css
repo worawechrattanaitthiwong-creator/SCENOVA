@@ -1280,24 +1280,24 @@
   text-align: center;
 }
 
-:global(#scenova-direct-render-host) {
+.main :global(#scenova-direct-render-host) {
   margin-top: 10px;
 }
 
-:global(#scenova-direct-render-host [class*="panel"]) {
+.main :global(#scenova-direct-render-host [class*="panel"]) {
   border-radius: 10px !important;
 }
 
-:global(main[class*="single-episode-studio_main"] [class*="single-episode-studio_field"]) {
+.main :global([class*="single-episode-studio_field"]) {
   margin: 0 !important;
 }
 
-:global(main[class*="single-episode-studio_main"] [class*="single-episode-studio_field"] > span) {
+.main :global([class*="single-episode-studio_field"] > span) {
   margin-bottom: 4px !important;
   font-size: 8px !important;
 }
 
-:global(main[class*="single-episode-studio_main"] [class*="single-episode-studio_field"] > small) {
+.main :global([class*="single-episode-studio_field"] > small) {
   display: none !important;
 }
 
