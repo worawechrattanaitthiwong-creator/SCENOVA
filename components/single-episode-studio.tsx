@@ -1081,7 +1081,7 @@ export default function SingleEpisodeStudio() {
                   </div>
                   <div className={v11.durationFineTune}>
                     <label><span>กำหนดเอง</span><input type="number" min={1} max={180} value={totalDuration} onChange={(event) => changeTotalDuration(Number(event.target.value))} /><small>วินาที</small></label>
-                    <label><span>จำนวนฉาก</span><Counter value={scenes.length} min={providerMinScenes} max={totalDuration} onChange={resizeScenes} label="จำนวนฉาก" /></label>
+                    <div className={v11.counterField}><span>จำนวนฉาก</span><Counter value={scenes.length} min={providerMinScenes} max={totalDuration} onChange={resizeScenes} label="จำนวนฉาก" /></div>
                   </div>
                 </div>
                 <div className={v11.creditEstimate}>
