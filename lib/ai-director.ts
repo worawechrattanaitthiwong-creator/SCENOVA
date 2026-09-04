@@ -563,26 +563,53 @@ function sceneTransition(profile: ProfileId, input: AiDirectorRequest, rng: () =
   return findChoice(TRANSITIONS, ["seamless", "hard cut", "cut"], input.currentScene.transition, rng);
 }
 
+function isWholeSceneEmptyFill(input: AiDirectorRequest) {
+  return input.scope === "all" && input.fillMode === "empty-only";
+}
+
 function selectCharacters(input: AiDirectorRequest) {
+  const suggestions = input.analysis.characters.filter((item) => item.name?.trim());
+  const used = new Set<string>();
+  const effective = (member: AiDirectorCastMember, suggestedName?: string): AiDirectorCastMember => ({
+    ...member,
+    name: member.name.trim() || suggestedName?.trim() || "",
+  });
+
   if (input.fillMode === "empty-only" && input.currentScene.characterIds.length) {
     const fixed = input.currentScene.characterIds
-      .map((id) => input.cast.find((item) => item.id === id))
-      .filter((item): item is AiDirectorCastMember => Boolean(item));
+      .map((id, index) => {
+        const member = input.cast.find((item) => item.id === id);
+        return member ? effective(member, suggestions[index]?.name) : null;
+      })
+      .filter((item): item is AiDirectorCastMember => Boolean(item?.name.trim()));
     if (fixed.length) return fixed;
   }
+
   const matched: AiDirectorCastMember[] = [];
-  for (const suggestion of input.analysis.characters) {
+  for (const suggestion of suggestions) {
     const wanted = normalize(suggestion.name);
-    const member = input.cast.find((candidate) => {
+    let member = input.cast.find((candidate) => {
+      if (used.has(candidate.id)) return false;
       const name = normalize(candidate.name);
-      return name === wanted || (name && wanted.includes(name)) || (wanted && name.includes(wanted));
+      return Boolean(name) && (name === wanted || wanted.includes(name) || name.includes(wanted));
     });
-    if (member && !matched.some((item) => item.id === member.id)) matched.push(member);
+    if (!member) member = input.cast.find((candidate) => !used.has(candidate.id) && !candidate.name.trim());
+    if (!member) continue;
+    used.add(member.id);
+    matched.push(effective(member, suggestion.name));
   }
   if (matched.length) return matched;
-  const current = input.currentScene.characterIds.map((id) => input.cast.find((item) => item.id === id)).filter((item): item is AiDirectorCastMember => Boolean(item));
+
+  const current = input.currentScene.characterIds
+    .map((id) => input.cast.find((item) => item.id === id))
+    .filter((item): item is AiDirectorCastMember => Boolean(item?.name.trim()));
   if (current.length) return current;
-  return input.cast.slice(0, Math.min(2, input.cast.length));
+
+  // Whole-scene fill must not invent people when the Analyzer found no
+  // character in the story/action. Scoped regenerate keeps the historical
+  // fallback behavior for users who explicitly ask to rethink that section.
+  if (isWholeSceneEmptyFill(input)) return [];
+  return input.cast.filter((item) => item.name.trim()).slice(0, Math.min(2, input.cast.length));
 }
 
 function estimateSpeechSeconds(text: string) {
@@ -699,13 +726,19 @@ function buildCandidate(profile: ProfileId, input: AiDirectorRequest, seed: numb
   const look = profileLook(profile, input, rng);
   const audio = profileAudio(profile, input, rng);
   const selected = selectCharacters(input);
-  const directions = input.manualSections.blocking
+  const fillEveryEmpty = isWholeSceneEmptyFill(input);
+  const freezeBlocking = input.manualSections.blocking && !fillEveryEmpty;
+  const freezeCamera = input.manualSections.camera && !fillEveryEmpty;
+  const freezeLook = input.manualSections.look && !fillEveryEmpty;
+  const freezeSound = input.manualSections.sound && !fillEveryEmpty;
+  const freezeContinuity = input.manualSections.continuity && !fillEveryEmpty;
+  const directions = freezeBlocking
     ? input.currentScene.characterDirections
     : buildDirections(profile, input, selected, rng);
-  const dialogue = input.manualSections.blocking
+  const dialogue = freezeBlocking
     ? input.currentScene.dialogue
     : combinedDialogue(selected, directions);
-  const cameraSubjectId = input.manualSections.camera
+  const cameraSubjectId = freezeCamera
     ? input.currentScene.cameraSubjectId
     : (selected.length ? pick(selected, rng, selected[0]).id : "");
 
@@ -717,7 +750,7 @@ function buildCandidate(profile: ProfileId, input: AiDirectorRequest, seed: numb
     transition: sceneTransition(profile, input, rng),
     action: input.analysis.scene.description?.trim() || input.currentScene.action,
     dialogue,
-    characterIds: input.manualSections.blocking ? input.currentScene.characterIds : selected.map((item) => item.id),
+    characterIds: freezeBlocking ? input.currentScene.characterIds : selected.map((item) => item.id),
     characterDirections: directions,
     cameraSubjectId,
     ...camera,
@@ -728,16 +761,16 @@ function buildCandidate(profile: ProfileId, input: AiDirectorRequest, seed: numb
     negativePrompt: input.currentScene.negativePrompt,
   };
 
-  if (!input.manualSections.continuity) {
+  if (!freezeContinuity) {
     next.continuityNote = continuityNote(input, selected, next);
     next.negativePrompt = negativePrompt(input, selected);
   }
-  if (input.manualSections.camera) CAMERA_FIELDS.forEach((key) => { (next as unknown as Record<string, unknown>)[key] = input.currentScene[key]; });
-  if (input.manualSections.look) LOOK_FIELDS.forEach((key) => { (next as unknown as Record<string, unknown>)[key] = input.currentScene[key]; });
-  if (input.manualSections.sound) SOUND_FIELDS.forEach((key) => { (next as unknown as Record<string, unknown>)[key] = input.currentScene[key]; });
+  if (freezeCamera) CAMERA_FIELDS.forEach((key) => { (next as unknown as Record<string, unknown>)[key] = input.currentScene[key]; });
+  if (freezeLook) LOOK_FIELDS.forEach((key) => { (next as unknown as Record<string, unknown>)[key] = input.currentScene[key]; });
+  if (freezeSound) SOUND_FIELDS.forEach((key) => { (next as unknown as Record<string, unknown>)[key] = input.currentScene[key]; });
   if (input.locks.includes("Lighting")) {
-    next.lighting = input.currentScene.lighting;
-    next.colorTemp = input.currentScene.colorTemp;
+    if (!fillEveryEmpty || input.currentScene.lighting.trim()) next.lighting = input.currentScene.lighting;
+    if (!fillEveryEmpty || input.currentScene.colorTemp.trim()) next.colorTemp = input.currentScene.colorTemp;
   }
   return next;
 }
@@ -909,23 +942,24 @@ function preserveFilledDirections(
 
 function filterScope(scene: AiDirectorScene, input: AiDirectorRequest) {
   const patch: AiDirectorScenePatch = {};
+  const fillEveryEmpty = isWholeSceneEmptyFill(input);
   const copy = (keys: readonly (keyof AiDirectorScene)[]) => keys.forEach((key) => { (patch as unknown as Record<string, unknown>)[key] = scene[key]; });
   if (input.scope === "all" || input.scope === "story") copy(STORY_FIELDS);
   if (input.scope === "all" || input.scope === "camera") copy(CAMERA_FIELDS);
   if (input.scope === "all" || input.scope === "look") copy(LOOK_FIELDS);
   if (input.scope === "all" || input.scope === "sound") copy(SOUND_FIELDS);
   if (input.scope === "all" || input.scope === "continuity") copy(CONTINUITY_FIELDS);
-  if (input.manualSections.blocking) {
+  if (input.manualSections.blocking && !fillEveryEmpty) {
     delete patch.characterIds;
     delete patch.characterDirections;
   }
-  if (input.manualSections.camera) CAMERA_FIELDS.forEach((key) => delete patch[key]);
-  if (input.manualSections.look) LOOK_FIELDS.forEach((key) => delete patch[key]);
-  if (input.manualSections.sound) SOUND_FIELDS.forEach((key) => delete patch[key]);
-  if (input.manualSections.continuity) CONTINUITY_FIELDS.forEach((key) => delete patch[key]);
+  if (input.manualSections.camera && !fillEveryEmpty) CAMERA_FIELDS.forEach((key) => delete patch[key]);
+  if (input.manualSections.look && !fillEveryEmpty) LOOK_FIELDS.forEach((key) => delete patch[key]);
+  if (input.manualSections.sound && !fillEveryEmpty) SOUND_FIELDS.forEach((key) => delete patch[key]);
+  if (input.manualSections.continuity && !fillEveryEmpty) CONTINUITY_FIELDS.forEach((key) => delete patch[key]);
   if (input.locks.includes("Lighting")) {
-    delete patch.lighting;
-    delete patch.colorTemp;
+    if (!fillEveryEmpty || input.currentScene.lighting.trim()) delete patch.lighting;
+    if (!fillEveryEmpty || input.currentScene.colorTemp.trim()) delete patch.colorTemp;
   }
   if (input.locks.includes("Location") && input.currentScene.location.trim()) delete patch.location;
 
@@ -982,11 +1016,12 @@ function validatePlan(scene: AiDirectorScene, patch: AiDirectorScenePatch, input
 
 function frozenSections(input: AiDirectorRequest) {
   const result: string[] = [];
-  if (input.manualSections.blocking) result.push("Blocking");
-  if (input.manualSections.camera) result.push("Camera");
-  if (input.manualSections.look) result.push("Look / Performance");
-  if (input.manualSections.sound) result.push("Sound");
-  if (input.manualSections.continuity) result.push("Continuity");
+  const manualProtectsOnlyFilled = isWholeSceneEmptyFill(input);
+  if (input.manualSections.blocking) result.push(manualProtectsOnlyFilled ? "Blocking: คงค่าที่กรอกแล้ว / เติมช่องว่างได้" : "Blocking");
+  if (input.manualSections.camera) result.push(manualProtectsOnlyFilled ? "Camera: คงค่าที่เลือกแล้ว / เติมช่องว่างได้" : "Camera");
+  if (input.manualSections.look) result.push(manualProtectsOnlyFilled ? "Look: คงค่าที่เลือกแล้ว / เติมช่องว่างได้" : "Look / Performance");
+  if (input.manualSections.sound) result.push(manualProtectsOnlyFilled ? "Sound: คงค่าที่เลือกแล้ว / เติมช่องว่างได้" : "Sound");
+  if (input.manualSections.continuity) result.push(manualProtectsOnlyFilled ? "Continuity: คงค่าที่กรอกแล้ว / เติมช่องว่างได้" : "Continuity");
   if (input.locks.includes("Lighting")) result.push("Lighting Lock");
   if (input.locks.includes("Location") && input.currentScene.location.trim()) result.push("Location Lock");
   if (input.fillMode === "empty-only") result.push("ค่าที่ผู้ใช้กรอก/เลือกไว้แล้ว");

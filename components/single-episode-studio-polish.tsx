@@ -197,6 +197,12 @@ export default function SingleEpisodeStudioPolish() {
   useEffect(() => {
     let lastStatus = "";
     let clearTimer = 0;
+    let probeTimer = 0;
+
+    const armAutoHide = () => {
+      window.clearTimeout(clearTimer);
+      clearTimer = window.setTimeout(() => setSubmissionNotice(null), 6000);
+    };
 
     const publish = (text: string) => {
       const value = compact(text);
@@ -204,12 +210,7 @@ export default function SingleEpisodeStudioPolish() {
       lastStatus = value;
       const tone = submissionTone(value);
       setSubmissionNotice({ tone, text: value });
-      window.clearTimeout(clearTimer);
-      if (tone === "success") {
-        clearTimer = window.setTimeout(() => setSubmissionNotice(null), 5000);
-      } else if (tone === "info") {
-        clearTimer = window.setTimeout(() => setSubmissionNotice(null), 15000);
-      }
+      armAutoHide();
     };
 
     const syncStatus = () => publish(readStudioSubmissionStatus());
@@ -222,11 +223,11 @@ export default function SingleEpisodeStudioPolish() {
 
       lastStatus = "";
       setSubmissionNotice({ tone: "info", text: "กำลังตรวจสอบข้อมูลก่อนส่งงานให้ทีม AI..." });
-      window.clearTimeout(clearTimer);
-      clearTimer = window.setTimeout(() => {
+      armAutoHide();
+      window.clearTimeout(probeTimer);
+      probeTimer = window.setTimeout(() => {
         const status = readStudioSubmissionStatus();
         if (status && status !== "พร้อมสร้างตอนเดียว") publish(status);
-        else setSubmissionNotice(null);
       }, 1200);
       window.setTimeout(syncStatus, 0);
       window.setTimeout(syncStatus, 150);
@@ -241,6 +242,7 @@ export default function SingleEpisodeStudioPolish() {
       observer.disconnect();
       document.removeEventListener("click", clickHandler, true);
       window.clearTimeout(clearTimer);
+      window.clearTimeout(probeTimer);
     };
   }, []);
 

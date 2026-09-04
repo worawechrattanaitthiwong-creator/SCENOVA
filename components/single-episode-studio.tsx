@@ -386,6 +386,7 @@ export default function SingleEpisodeStudio() {
   const [aiRequiredErrors, setAiRequiredErrors] = useState<string[]>([]);
   const [sceneAiMeta, setSceneAiMeta] = useState<AiDirectorMeta | null>(null);
   const [sceneAiUndo, setSceneAiUndo] = useState<StoryScene[] | null>(null);
+  const [sceneAiCharacterUndo, setSceneAiCharacterUndo] = useState<Character[] | null>(null);
   const [videoConnections, setVideoConnections] = useState<StudioVideoConnection[]>([]);
   const [videoProviders, setVideoProviders] = useState<StudioVideoProvider[]>([]);
   const [videoConnectionLoading, setVideoConnectionLoading] = useState(true);
@@ -469,6 +470,7 @@ export default function SingleEpisodeStudio() {
     setSceneAiMeta(null);
     setSceneAiSummary("");
     setSceneAiUndo(null);
+    setSceneAiCharacterUndo(null);
     setAiRequiredErrors([]);
   }, [selectedSceneId]);
 
@@ -781,7 +783,7 @@ export default function SingleEpisodeStudio() {
           currentScene: selectedScene,
           previousScene: sceneIndex > 0 ? scenes[sceneIndex - 1] : null,
           nextScene: sceneIndex < scenes.length - 1 ? scenes[sceneIndex + 1] : null,
-          cast: characters.filter((item) => item.name.trim()).map((item) => ({ id: item.id, name: item.name, role: item.role, appearance: item.appearance, voice: item.voice })),
+          cast: characters.map((item) => ({ id: item.id, name: item.name, role: item.role, appearance: item.appearance, voice: item.voice })),
           manualSections,
           history,
         }),
@@ -791,11 +793,49 @@ export default function SingleEpisodeStudio() {
         meta?: AiDirectorMeta;
         provider?: string;
         usage?: { costThb?: number };
+        characters?: Array<{
+          id: string;
+          name: string;
+          role: string;
+          appearance: string;
+          voice: string;
+          action: string;
+          emotion: string;
+          dialogue: string;
+        }>;
         error?: string;
       };
       if (!response.ok || !data.scene || !data.meta) throw new Error(data.error || "AI_DIRECTOR_FAILED");
 
       setSceneAiUndo(cloneAiDirectorScenes(scenes));
+      setSceneAiCharacterUndo(characters.map((item) => ({ ...item, references: [...item.references] })));
+      if (scope === "all" && data.characters?.length) {
+        setCharacters((current) => {
+          const suggestions = new Map(data.characters!.map((item) => [item.id, item]));
+          const next = current.map((character) => {
+            const suggestion = suggestions.get(character.id);
+            if (!suggestion) return character;
+            return {
+              ...character,
+              name: character.name.trim() || suggestion.name,
+              role: character.role.trim() || suggestion.role,
+              appearance: character.appearance.trim() || suggestion.appearance,
+              voice: character.voice.trim() || suggestion.voice,
+            };
+          });
+          for (const suggestion of data.characters!) {
+            if (next.some((item) => item.id === suggestion.id) || next.length >= 8) continue;
+            next.push(normalizeCharacter({
+              id: suggestion.id,
+              name: suggestion.name,
+              role: suggestion.role,
+              appearance: suggestion.appearance,
+              voice: suggestion.voice,
+            }, next.length + 1));
+          }
+          return next.slice(0, 8);
+        });
+      }
       setScenes((current) => current.map((scene) => scene.id === selectedScene.id
         ? applyAiDirectorPatch(scene, data.scene!, manualSections, locks, { preserveFilled: fillMode === "empty-only" })
         : scene));
@@ -804,8 +844,9 @@ export default function SingleEpisodeStudio() {
       const cost = Number(data.usage?.costThb || 0);
       const providerCopy = `${data.provider || "AI Director"}${cost > 0 ? ` · ฿${cost.toFixed(4)}` : " · BYOK"}`;
       setSceneAiSummary(`${data.meta.rationaleTh} · ${providerCopy}`);
+      const castFilled = scope === "all" ? (data.characters?.length || 0) : 0;
       setMessage(scope === "all"
-        ? `AI Director เติมช่องว่างแล้ว ${data.meta.changedFields.length} ค่า · ค่าที่คุณกรอก/เลือกไว้เดิมไม่ถูกเปลี่ยน · เชื่อมเนื้อเรื่องกับฉากก่อน/ถัดไปแล้ว`
+        ? `AI Director เติมทุกช่องว่างที่วิเคราะห์ได้แล้ว ${data.meta.changedFields.length} ค่า${castFilled ? ` · จัดตัวละคร ${castFilled} คน` : ""} · ค่าที่คุณกรอก/เลือกไว้เดิมไม่ถูกเปลี่ยน`
         : `AI Director จัด ${scopeLabel} ใหม่แล้ว · เปลี่ยน ${data.meta.changedFields.length} ค่า · คุมความซ้ำด้วยประวัติ ${history.length + 1} รุ่น`);
     } catch (error) {
       const raw = error instanceof Error ? error.message : "AI_DIRECTOR_FAILED";
@@ -818,7 +859,9 @@ export default function SingleEpisodeStudio() {
   function undoLastAiSceneChange() {
     if (!sceneAiUndo || sceneAiBusy) return;
     setScenes(cloneAiDirectorScenes(sceneAiUndo));
+    if (sceneAiCharacterUndo) setCharacters(sceneAiCharacterUndo.map((item) => ({ ...item, references: [...item.references] })));
     setSceneAiUndo(null);
+    setSceneAiCharacterUndo(null);
     setSceneAiMeta(null);
     setSceneAiSummary("");
     setMessage("ย้อนกลับค่าจาก AI ครั้งล่าสุดแล้ว");

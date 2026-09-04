@@ -23,7 +23,7 @@ const manualSchema = z.object({
 
 const castSchema = z.object({
   id: z.string().min(1).max(300),
-  name: z.string().min(1).max(300),
+  name: z.string().max(300),
   role: z.string().max(300),
   appearance: z.string().max(10_000).optional(),
   voice: z.string().max(1000).optional(),
@@ -61,6 +61,109 @@ const requestSchema = z.object({
   provider: z.enum(["inception", "groq", "openrouter", "gemini"]).optional(),
 }).strict();
 
+type CastSuggestion = {
+  id: string;
+  name: string;
+  role: string;
+  appearance: string;
+  voice: string;
+  action: string;
+  emotion: string;
+  dialogue: string;
+};
+
+function normalizeCastName(value: string) {
+  return value.trim().toLocaleLowerCase().replace(/[\s_\-—–/]+/g, " ");
+}
+
+function sourceSnippetForCharacter(story: string, sceneDescription: string, name: string, action: string) {
+  const sources = [story, sceneDescription].filter(Boolean);
+  const needle = normalizeCastName(name);
+  for (const source of sources) {
+    const sentences = source.split(/(?<=[.!?。！？])\s+|\n+/).map((item) => item.trim()).filter(Boolean);
+    const match = sentences.find((sentence) => {
+      const normalized = normalizeCastName(sentence);
+      return needle && normalized.includes(needle);
+    });
+    if (match) return match.slice(0, 700);
+  }
+  const actionNeedle = normalizeCastName(action);
+  if (actionNeedle) {
+    const match = sources.find((source) => normalizeCastName(source).includes(actionNeedle));
+    if (match) return match.slice(0, 700);
+  }
+  return sources.length === 1 ? sources[0].slice(0, 700) : "";
+}
+
+function inferVoiceProfile(name: string, source: string) {
+  const text = normalizeCastName(name + " " + source);
+  const senior = /\b(senior|elderly|old man|old woman|grandfather|grandmother)\b|ผู้สูงอายุ|ชายชรา|หญิงชรา|คุณตา|คุณยาย/.test(text);
+  if (senior) return "Orin — ชาย Senior ลุ่มลึก น่าเชื่อถือ";
+  const girl = /\b(girl|teen girl|young woman)\b|เด็กหญิง|วัยรุ่นหญิง|หญิงสาว/.test(text);
+  if (girl) return /\bteen\b|วัยรุ่น/.test(text) ? "Lumi — Teen สดใส Coming-of-age" : "Nami — หญิง Young สดใส เป็นกันเอง";
+  const boy = /\b(boy|teen boy|young man)\b|เด็กชาย|วัยรุ่นชาย|ชายหนุ่ม/.test(text);
+  if (boy) return /\bteen\b|วัยรุ่น/.test(text) ? "Kai — Teen เป็นกันเอง มีพลัง" : "Noah — ชาย Young นุ่ม เป็นธรรมชาติ";
+  const woman = /\b(woman|female|mother|wife)\b|ผู้หญิง|หญิง|แม่|ภรรยา/.test(text);
+  if (woman) return "Mira — หญิง Adult อบอุ่น เป็นธรรมชาติ";
+  const man = /\b(man|male|father|husband)\b|ผู้ชาย|ชาย|พ่อ|สามี/.test(text);
+  if (man) return "Arin — ชาย Adult สุขุม ภาพยนตร์";
+  return "";
+}
+
+function enrichCastForPlanning(
+  cast: z.infer<typeof castSchema>[],
+  analysis: { characters: Array<{ name: string; action: string; emotion: string; dialogue: string | null }>; scene: { description: string } },
+  story: string,
+) {
+  const planCast = cast.map((item) => ({ ...item }));
+  const used = new Set<string>();
+  const suggestions: CastSuggestion[] = [];
+
+  analysis.characters.slice(0, 8).forEach((character, index) => {
+    const wanted = normalizeCastName(character.name);
+    let slotIndex = planCast.findIndex((item) => {
+      if (used.has(item.id) || !item.name.trim()) return false;
+      const actual = normalizeCastName(item.name);
+      return actual === wanted || (actual && wanted.includes(actual)) || (wanted && actual.includes(wanted));
+    });
+    if (slotIndex < 0) slotIndex = planCast.findIndex((item) => !used.has(item.id) && !item.name.trim());
+    if (slotIndex < 0 && planCast.length < 8) {
+      planCast.push({
+        id: `ai-character-${randomInt(1, 2_147_483_646)}`,
+        name: "",
+        role: "",
+        appearance: "",
+        voice: "",
+      });
+      slotIndex = planCast.length - 1;
+    }
+    if (slotIndex < 0) return;
+
+    const slot = planCast[slotIndex];
+    used.add(slot.id);
+    const name = slot.name.trim() || character.name.trim();
+    if (!name) return;
+    const source = sourceSnippetForCharacter(story, analysis.scene.description || "", name, character.action || "");
+    const role = slot.role.trim() || (index === 0 ? "ตัวละครหลัก" : "ตัวละครรอง");
+    const appearance = slot.appearance?.trim() || (source ? "รายละเอียดจากเนื้อเรื่อง: " + source : "");
+    const voice = slot.voice?.trim() || inferVoiceProfile(name, source);
+
+    planCast[slotIndex] = { ...slot, name, role, appearance, voice };
+    suggestions.push({
+      id: slot.id,
+      name,
+      role,
+      appearance,
+      voice,
+      action: character.action?.trim() || "",
+      emotion: character.emotion?.trim() || "",
+      dialogue: character.dialogue?.trim() || "",
+    });
+  });
+
+  return { planCast, suggestions };
+}
+
 function analyzerPrompt(input: z.infer<typeof requestSchema>) {
   const sceneNumber = input.sceneIndex + 1;
   const spokenBudget = Math.max(0.5, Number(((Number((input.currentScene as { duration?: unknown }).duration) || 6) * 0.72).toFixed(1)));
@@ -88,9 +191,11 @@ function analyzerPrompt(input: z.infer<typeof requestSchema>) {
     "ฉากถัดไป: " + next,
     "ลำดับความสำคัญ: (1) เหตุและผลของเนื้อเรื่องและแรงจูงใจตัวละคร (2) ความต่อเนื่องจากฉากก่อนและสิ่งที่ต้องส่งต่อไปฉากถัดไป (3) รักษาค่าที่ผู้ใช้เลือกแล้ว (4) Camera/Look/Sound ที่เสริมเรื่อง ไม่ใช่แย่งความสำคัญจากเรื่อง",
     "วิเคราะห์ฉากนี้เป็นสะพานเชิงเหตุผล: อะไรเกิดจากฉากก่อน → ฉากนี้เปลี่ยนอะไร → ฉากถัดไปต้องรับผลอะไร",
-    "ใช้ชื่อเฉพาะ Cast ที่ส่งให้เท่านั้น ห้ามสร้างตัวละครใหม่",
+    "ตัวละคร: ยึด Cast ที่มีชื่ออยู่แล้วเป็นข้อเท็จจริง แต่ถ้ามีช่อง Cast ว่างและเนื้อเรื่อง/Action ระบุตัวละครชัดเจน ให้สกัดชื่อหรือคำเรียกตัวละครจากเนื้อเรื่องเพื่อเติมช่องว่างได้ ห้ามสร้างบุคคลที่เรื่องไม่ได้กล่าวถึง และถ้าเรื่องไม่มีตัวละครให้คืน characters เป็น []",
     "บทพูดทั้งหมดควรพูดได้ภายในประมาณ " + spokenBudget + " วินาที เพื่อเหลือเวลาให้ Action และ Reaction",
-    "ค่าที่ Lock หรือ Manual ใน context เป็นข้อบังคับ ห้ามเสนอการเปลี่ยนอัตลักษณ์ เสียง สไตล์ สถานที่ที่ล็อก หรือข้อมูล Canon",
+    input.fillMode === "empty-only"
+      ? "ค่าที่มีอยู่แล้วใน Manual/Lock เป็นข้อบังคับและห้ามเปลี่ยน แต่ช่องที่ยังว่างใน Manual section สามารถวิเคราะห์และเสนอค่าเพื่อเติมได้"
+      : "ค่าที่ Lock หรือ Manual ใน context เป็นข้อบังคับ ห้ามเสนอการเปลี่ยนอัตลักษณ์ เสียง สไตล์ สถานที่ที่ล็อก หรือข้อมูล Canon",
     "หลีกเลี่ยงการทำ Camera/Lens/Movement/Lighting combination ซ้ำกับ recent history ถ้ายังมีทางเลือกที่เหมาะสมกว่าและยังสัมพันธ์กับเรื่อง",
   ].join("\n");
 }
@@ -126,13 +231,15 @@ export async function POST(request: Request) {
         nextScene: input.nextScene || null,
         fillMode: input.fillMode,
         preserveFilledValues: input.fillMode === "empty-only",
-        cast: input.cast,
+        cast: enrichedCast.planCast,
         manualSections: input.manualSections,
         recentCreativeFingerprints: input.history.slice(-12).map((item) => item.fingerprint),
       },
       billingMode: input.billingMode,
       preferredProvider: input.provider,
     });
+
+    const enrichedCast = enrichCastForPlanning(input.cast, analyzer.analysis, input.story);
 
     const plan = buildAiDirectorPlan({
       mode: input.mode,
@@ -167,6 +274,7 @@ export async function POST(request: Request) {
       modelId: analyzer.modelId,
       billingMode: analyzer.billingMode,
       usage: analyzer.usage,
+      characters: enrichedCast.suggestions,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "AI_DIRECTOR_FAILED";

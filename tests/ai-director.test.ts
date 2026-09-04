@@ -201,6 +201,104 @@ describe("production AI Director", () => {
     expect(result.scene.movement).toBeTruthy();
   });
 
+  it("fills every empty AI-capable field even when sections are marked Manual", () => {
+    const input = request(8008);
+    input.fillMode = "empty-only";
+    input.manualSections = { blocking: true, camera: true, look: true, sound: true, continuity: true };
+    input.currentScene = {
+      ...input.currentScene,
+      location: "",
+      objective: "",
+      beat: "",
+      transition: "",
+      action: "เด็กเดินสำรวจสวนอย่างเงียบ ๆ",
+      dialogue: "",
+      characterIds: [],
+      characterDirections: {},
+      cameraSubjectId: "",
+      shot: "",
+      angle: "",
+      lens: "",
+      movement: "",
+      height: "",
+      cameraSpeed: "",
+      focus: "",
+      dof: "",
+      composition: "",
+      lighting: "",
+      colorTemp: "",
+      emotion: "",
+      performance: "",
+      ambience: "",
+      secondaryAmbience: "",
+      sfx: "",
+      sfxTimeline: "",
+      music: "",
+      continuityNote: "",
+      negativePrompt: "",
+    };
+    input.cast = [
+      { id: "c1", name: "", role: "" },
+      { id: "c2", name: "", role: "" },
+    ];
+    input.analysis = {
+      ...analysis,
+      scene: { ...analysis.scene, description: "เด็กเดินสำรวจสวนเงียบ ๆ ด้วยความอยากรู้อยากเห็น", location: "สวนสาธารณะเงียบสงบ" },
+      characters: [{ name: "เด็ก", action: "เดินสำรวจรอบสวน", emotion: "Curious", dialogue: null }],
+      audio: { ...analysis.audio, ambience: "Birds Morning", soundEffects: ["Footsteps"], music: "None" },
+    };
+
+    const result = buildAiDirectorPlan(input);
+
+    expect(result.scene.location).toBeTruthy();
+    expect(result.scene.objective).toBeTruthy();
+    expect(result.scene.beat).toBeTruthy();
+    expect(result.scene.transition).toBeTruthy();
+    expect(result.scene.characterIds).toEqual(["c1"]);
+    expect(result.scene.characterDirections?.c1.blocking).toBeTruthy();
+    expect(result.scene.characterDirections?.c1.action).toBeTruthy();
+    expect(result.scene.characterDirections?.c1.emotion).toBeTruthy();
+    expect(result.scene.characterDirections?.c1.eyeline).toBeTruthy();
+    expect(result.scene.cameraSubjectId).toBe("c1");
+    expect(result.scene.shot).toBeTruthy();
+    expect(result.scene.angle).toBeTruthy();
+    expect(result.scene.lens).toBeTruthy();
+    expect(result.scene.movement).toBeTruthy();
+    expect(result.scene.height).toBeTruthy();
+    expect(result.scene.cameraSpeed).toBeTruthy();
+    expect(result.scene.focus).toBeTruthy();
+    expect(result.scene.dof).toBeTruthy();
+    expect(result.scene.composition).toBeTruthy();
+    expect(result.scene.lighting).toBeTruthy();
+    expect(result.scene.colorTemp).toBeTruthy();
+    expect(result.scene.emotion).toBeTruthy();
+    expect(result.scene.performance).toBeTruthy();
+    expect(result.scene.ambience).toBeTruthy();
+    expect(result.scene.secondaryAmbience).toBeTruthy();
+    expect(result.scene.sfx).toBeTruthy();
+    expect(result.scene.music).toBeTruthy();
+    expect(result.scene.continuityNote).toBeTruthy();
+    expect(result.scene.negativePrompt).toBeTruthy();
+  });
+
+  it("does not invent scene characters when the Analyzer found none", () => {
+    const input = request(9009);
+    input.fillMode = "empty-only";
+    input.currentScene.characterIds = [];
+    input.currentScene.characterDirections = {};
+    input.currentScene.cameraSubjectId = "";
+    input.cast = [
+      { id: "c1", name: "", role: "" },
+      { id: "c2", name: "", role: "" },
+    ];
+    input.analysis = { ...analysis, characters: [] };
+
+    const result = buildAiDirectorPlan(input);
+
+    expect(result.scene.characterIds).toEqual([]);
+    expect(result.scene.cameraSubjectId).toBe("");
+  });
+
   it("keeps locked lighting unchanged", () => {
     const input = request(5005);
     input.locks = [...input.locks, "Lighting"];
