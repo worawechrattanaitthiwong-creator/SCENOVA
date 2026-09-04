@@ -385,6 +385,38 @@
   color: #77dca9;
 }
 
+.modelCapabilities {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  margin-top: -2px;
+}
+
+.modelCapabilities > span,
+.modelCapabilities > a {
+  min-height: 22px;
+  padding: 3px 6px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(145, 98, 202, .2);
+  border-radius: 999px;
+  background: rgba(10, 8, 17, .62);
+  color: #998fa3;
+  font-size: 7px;
+  text-decoration: none;
+}
+
+.modelCapabilities > a {
+  color: #c584ff;
+}
+
+.modelCapabilities > small {
+  flex-basis: 100%;
+  color: #756b80;
+  font-size: 6.8px;
+}
+
 .durationPanel {
   min-height: 66px;
   padding: 9px 11px;
