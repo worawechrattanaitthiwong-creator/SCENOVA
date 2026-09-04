@@ -137,7 +137,8 @@ export function applyAiDirectorPatch<T extends AiDirectorScene>(
   locks: string[],
   options?: { preserveFilled?: boolean },
 ): T {
-  const effectivePatch = options?.preserveFilled ? protectFilledPatch(base, patch) : patch;
+  const preserveFilled = Boolean(options?.preserveFilled);
+  const effectivePatch = preserveFilled ? protectFilledPatch(base, patch) : patch;
   const next: AiDirectorScene = {
     ...base,
     ...effectivePatch,
@@ -146,45 +147,36 @@ export function applyAiDirectorPatch<T extends AiDirectorScene>(
     characterDirections: effectivePatch.characterDirections ? { ...base.characterDirections, ...effectivePatch.characterDirections } : base.characterDirections,
   };
   if (manual.blocking) {
-    next.characterIds = base.characterIds;
-    next.characterDirections = base.characterDirections;
+    if (!preserveFilled || base.characterIds.length) next.characterIds = base.characterIds;
+    if (!preserveFilled) next.characterDirections = base.characterDirections;
   }
   if (manual.camera) {
-    next.cameraSubjectId = base.cameraSubjectId;
-    next.shot = base.shot;
-    next.angle = base.angle;
-    next.lens = base.lens;
-    next.movement = base.movement;
-    next.height = base.height;
-    next.cameraSpeed = base.cameraSpeed;
-    next.focus = base.focus;
-    next.dof = base.dof;
-    next.composition = base.composition;
+    const fields = ["cameraSubjectId", "shot", "angle", "lens", "movement", "height", "cameraSpeed", "focus", "dof", "composition"] as const;
+    fields.forEach((key) => {
+      if (!preserveFilled || hasFilledValue(base[key])) next[key] = base[key];
+    });
   }
   if (manual.look) {
-    next.lighting = base.lighting;
-    next.colorTemp = base.colorTemp;
-    next.emotion = base.emotion;
-    next.performance = base.performance;
+    const fields = ["lighting", "colorTemp", "emotion", "performance"] as const;
+    fields.forEach((key) => {
+      if (!preserveFilled || hasFilledValue(base[key])) next[key] = base[key];
+    });
   }
   if (manual.sound) {
-    next.ambience = base.ambience;
-    next.secondaryAmbience = base.secondaryAmbience;
-    next.sfx = base.sfx;
-    next.sfxTimeline = base.sfxTimeline;
-    next.music = base.music;
-    next.ambienceLevel = base.ambienceLevel;
-    next.sfxLevel = base.sfxLevel;
-    next.dialogueLevel = base.dialogueLevel;
-    next.musicLevel = base.musicLevel;
+    const fields = ["ambience", "secondaryAmbience", "sfx", "sfxTimeline", "music", "ambienceLevel", "sfxLevel", "dialogueLevel", "musicLevel"] as const;
+    fields.forEach((key) => {
+      if (!preserveFilled || hasFilledValue(base[key])) (next as unknown as Record<string, unknown>)[key] = base[key];
+    });
   }
   if (manual.continuity) {
-    next.continuityNote = base.continuityNote;
-    next.negativePrompt = base.negativePrompt;
+    const fields = ["continuityNote", "negativePrompt"] as const;
+    fields.forEach((key) => {
+      if (!preserveFilled || hasFilledValue(base[key])) next[key] = base[key];
+    });
   }
   if (locks.includes("Lighting")) {
-    next.lighting = base.lighting;
-    next.colorTemp = base.colorTemp;
+    if (!preserveFilled || base.lighting.trim()) next.lighting = base.lighting;
+    if (!preserveFilled || base.colorTemp.trim()) next.colorTemp = base.colorTemp;
   }
   if (locks.includes("Location") && base.location.trim()) next.location = base.location;
   return next as T;
