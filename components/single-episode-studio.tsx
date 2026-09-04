@@ -363,18 +363,18 @@ function ChoiceField({ label, value, options, onChange, compact = false }: { lab
 export default function SingleEpisodeStudio() {
   const router = useRouter();
   const [episodeTitle, setEpisodeTitle] = useState("");
-  const [model, setModel] = useState("");
-  const [modelVersion, setModelVersion] = useState("");
-  const [aspect, setAspect] = useState("");
-  const [visualStyle, setVisualStyle] = useState("");
+  const [model, setModel] = useState("runway:seedance2_5");
+  const [modelVersion, setModelVersion] = useState("seedance2_5");
+  const [aspect, setAspect] = useState("16:9 — Widescreen");
+  const [visualStyle, setVisualStyle] = useState("Sci-Fi Neon — ไซไฟนีออน");
   const [story, setStory] = useState("");
   const [globalNegative, setGlobalNegative] = useState("");
   const [locks, setLocks] = useState<string[]>([]);
   const [characters, setCharacters] = useState<Character[]>([makeCharacter(1), makeCharacter(2)]);
   const [hasAnimals, setHasAnimals] = useState(false);
   const [animals, setAnimals] = useState<Animal[]>([makeAnimal(1)]);
-  const [totalDuration, setTotalDuration] = useState(30);
-  const [scenes, setScenes] = useState<StoryScene[]>(() => distributeScenes([], 3, 30));
+  const [totalDuration, setTotalDuration] = useState(10);
+  const [scenes, setScenes] = useState<StoryScene[]>(() => distributeScenes([], 1, 10));
   const [selectedSceneId, setSelectedSceneId] = useState("");
   const [message, setMessage] = useState("พร้อมสร้างตอนเดียว");
   const [agentBudgetThb, setAgentBudgetThb] = useState(500);
