@@ -1085,6 +1085,7 @@ export default function SingleEpisodeStudio() {
               </div>
             </div>
             <div className={v11.characterToolbar}>
+              <Counter value={characters.length} min={1} max={8} onChange={resizeCharacters} label="จำนวนตัวละคร" />
               <Link className={v11.outlineButton} href="/libraries?tab=characters" prefetch={false}>♧ ไปที่ไลบรารีตัวละคร</Link>
               <button type="button" className={v11.purpleButton} onClick={() => resizeCharacters(Math.min(8, characters.length + 1))}>＋ เพิ่มตัวละครใหม่</button>
             </div>
@@ -1092,7 +1093,7 @@ export default function SingleEpisodeStudio() {
 
           <div className={v11.characterRow}>
             <div className={v11.characterCards}>
-              {characters.map((character, index) => <article className={v11.characterCard} key={character.id}>
+              {characters.map((character, index) => <article className={v11.characterCard} data-studio-character-card="true" key={character.id}>
                 <div className={v11.characterVisual}>{(character.name || (index === 0 ? "ตัวละครหลัก" : index === 1 ? "ตัวละครรอง" : `C${index + 1}`)).trim().slice(0, 1)}</div>
                 <button type="button" className={v11.characterMenu} aria-label="แก้ไขตัวละคร">•••</button>
                 <strong>{character.name || (index === 0 ? "ตัวละครหลัก" : index === 1 ? "ตัวละครรอง" : `ตัวละคร ${index + 1}`)}</strong>
@@ -1336,7 +1337,7 @@ export default function SingleEpisodeStudio() {
                       <div className={v11.subsectionHead}><div><b>ตัวละครในฉาก</b><small>เลือกตัวละคร แล้วกำหนด Blocking / Action / Emotion / Eyeline / Dialogue รายคน</small></div>
                         <label><span>Camera Subject</span><select value={selectedScene.cameraSubjectId} onChange={(event) => patchScene({ cameraSubjectId: event.target.value })}><option value="">Auto / ยังไม่ระบุ</option>{selectedScene.characterIds.map((id) => { const character = characters.find((item) => item.id === id); return character ? <option key={id} value={id}>{character.name || "ตัวละคร"}</option> : null; })}</select></label>
                       </div>
-                      <div className={styles.presenceChips}>{characters.map((character, index) => <label key={character.id} className={selectedScene.characterIds.includes(character.id) ? styles.chipActive : ""}><input type="checkbox" checked={selectedScene.characterIds.includes(character.id)} onChange={() => toggleSceneCharacter(character.id)} />{character.name || `ตัวละคร ${index + 1}`}</label>)}</div>
+                      <div className={styles.presenceChips} data-studio-character-presence="true">{characters.map((character, index) => <label key={character.id} className={selectedScene.characterIds.includes(character.id) ? styles.chipActive : ""}><input type="checkbox" checked={selectedScene.characterIds.includes(character.id)} onChange={() => toggleSceneCharacter(character.id)} />{character.name || `ตัวละคร ${index + 1}`}</label>)}</div>
 
                       {hasAnimals ? <div className={v11.creaturePresence}><span>สัตว์ / Creature ในฉาก</span><div className={styles.presenceChips}>{animals.map((animal) => <label key={animal.id} className={selectedScene.animalIds.includes(animal.id) ? styles.chipActive : ""}><input type="checkbox" checked={selectedScene.animalIds.includes(animal.id)} onChange={() => toggleSceneAnimal(animal.id)} />{animal.name}</label>)}</div></div> : null}
 
@@ -1351,7 +1352,7 @@ export default function SingleEpisodeStudio() {
                           <label><span>Action ของคนนี้</span><input value={direction.action} onChange={(event) => patchCharacterDirection(id, { action: event.target.value })} placeholder="เดิน, หยุด, หยิบของ, หันหน้า..." /></label>
                           <ChoiceField label="Emotion" value={direction.emotion} options={EMOTIONS} onChange={(value) => patchCharacterDirection(id, { emotion: value })} compact />
                           <label><span>Eyeline / มองไปที่</span><input value={direction.eyeline} onChange={(event) => patchCharacterDirection(id, { eyeline: event.target.value })} placeholder="ตัวละครอีกคน / กล้อง / ประตู" /></label>
-                          <label className={v11.directionDialogue}><span>Dialogue</span><textarea value={dialogue} onChange={(event) => patchCharacterDialogue(id, event.target.value)} placeholder="เว้นว่างได้หากไม่มีบทพูด" /></label>
+                          <label className={v11.directionDialogue} data-studio-dialogue-card="true"><span><b>{character.name || "ตัวละคร"}</b><small>Dialogue</small></span><textarea value={dialogue} onChange={(event) => patchCharacterDialogue(id, event.target.value)} placeholder="เว้นว่างได้หากไม่มีบทพูด" /></label>
                         </article>;
                       })}</div> : <p className={v11.emptyHint}>ยังไม่ได้เลือกตัวละครในฉากนี้</p>}
                     </section>
