@@ -793,6 +793,10 @@
   margin-left: auto;
 }
 
+.sceneStage {
+  min-width: 0;
+}
+
 .sceneCapture {
   min-width: 0;
 }
@@ -805,6 +809,17 @@
   overflow-x: auto !important;
   border: 0 !important;
   background: transparent !important;
+}
+
+.sceneTabsSingle {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(50%) !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
 .sceneTabs > button {
