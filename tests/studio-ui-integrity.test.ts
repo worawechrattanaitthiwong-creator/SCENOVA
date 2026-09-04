@@ -47,6 +47,8 @@ describe("AI Studio UI integrity", () => {
     expect(studio).toContain("วงเงินสูงสุดของ Agent");
     expect(studio).toContain("ส่ง Storyboard ให้ทีม AI");
     expect(studio).toContain("มีสัตว์หรือสิ่งมีชีวิตในตอนนี้หรือไม่?");
+    expect(studio).toContain("capability.ratioValues.includes(aspect)");
+    expect(studio).toContain("อัตราส่วนภาพเดิมไม่รองรับกับโมเดลที่เลือก");
   });
 
   it("keeps stable DOM contracts required by Agent and Direct Render bridges", () => {
