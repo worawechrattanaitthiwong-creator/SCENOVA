@@ -82,7 +82,7 @@ export default function SingleEpisodeAiDirectorPanel({
     {validationMessage ? <div className={styles.aiRequiredMessage} role="alert">⚠ {validationMessage}</div> : null}
 
     {!meta ? <div className={styles.aiDirectorHint} aria-live="polite">
-      {busy ? "AI Director กำลังวิเคราะห์เนื้อเรื่อง ฉากก่อนหน้า/ถัดไป และเติมเฉพาะช่องที่ยังว่าง โดยรักษาค่าที่คุณเลือกไว้…" : "ปุ่ม AI ช่วยคิดทั้งฉากด้านบนจะเติมเฉพาะช่องว่างตามลำดับ Story → Blocking → Camera → Look → Sound → Continuity และยึดความสัมพันธ์ของเนื้อเรื่องกับฉากก่อน/ถัดไปเป็นหลัก ค่าที่คุณกรอกหรือเลือกไว้แล้ว รวมถึง Manual/Lock จะไม่ถูกเปลี่ยน"}
+      {busy ? "AI Director กำลังไล่ตรวจทุกช่องว่าง วิเคราะห์ตัวละครจากเรื่อง และเติม Story → Blocking → Camera → Look → Sound → Continuity โดยรักษาค่าที่คุณใส่ไว้…" : "AI ช่วยคิดทั้งฉากจะเติมทุกช่องที่ยังว่างและวิเคราะห์ตัวละครจากเรื่อง/Action ให้ด้วย ค่าที่คุณกรอกหรือเลือกไว้แล้วจะไม่ถูกทับ; แม้ section จะเป็น Manual ช่องที่มีค่าเดิมจะถูกล็อกไว้ แต่ช่องที่ยังว่างยังให้ AI เติมได้"}
       {summary ? <span> · {summary}</span> : null}
     </div> : <div className={styles.aiDirectorResults} aria-live="polite">
       <div className={styles.aiScoreGrid}>
