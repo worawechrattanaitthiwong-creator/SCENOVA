@@ -1108,7 +1108,9 @@ export default function SingleEpisodeStudio() {
           </div>
         </section>
 
-        <section id="scenes" className={v11.stepCard}>
+        <section id="scenes" className={v11.sceneStage}>
+          <div className={`${styles.sceneEditor} ${v11.sceneEditor}`}>
+            <div className={v11.stepCard}>
           <div className={v11.stepHead}>
             <div className={v11.stepTitle}>
               <span className={v11.stepBubble}>3</span>
@@ -1134,7 +1136,7 @@ export default function SingleEpisodeStudio() {
               {scenes.map((scene, index) => <button type="button" key={scene.id} data-active={scene.id === selectedScene?.id ? "true" : "false"} onClick={() => setSelectedSceneId(scene.id)}>ฉากที่ {index + 1} · {scene.duration}s</button>)}
             </div>
 
-            {selectedScene ? <div className={`${styles.sceneEditor} ${v11.sceneEditor}`}>
+            {selectedScene ? <>
               <div className={v11.sceneRow}>
                 <div className={v11.sceneThumb}>◈<small>ฉาก {selectedSceneIndex + 1}</small></div>
 
@@ -1204,8 +1206,11 @@ export default function SingleEpisodeStudio() {
               </div>
 
               <button type="button" className={v11.addScene} onClick={() => resizeScenes(Math.min(totalDuration, scenes.length + 1))}>＋ เพิ่มฉาก</button>
+            </> : null}
+          </div>
+            </div>
 
-              <details id="advanced" className={v11.advancedDetails}>
+            {selectedScene ? <details id="advanced" className={v11.advancedDetails}>
                 <summary><span className={v11.miniBubble}>4</span><b>ตั้งค่าเพิ่มเติม (ตัวเลือก)</b><small>ล็อกสไตล์, เสียง, Negative Prompt และการควบคุมขั้นสูง</small></summary>
                 <div className={v11.advancedContent}>
                   <SingleEpisodeAiDirectorPanel
@@ -1270,8 +1275,7 @@ export default function SingleEpisodeStudio() {
                     })}</div> : null}
                   </div>
                 </div>
-              </details>
-            </div> : null}
+              </details> : null}
           </div>
         </section>
 
