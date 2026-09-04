@@ -160,52 +160,19 @@ function WorkspaceShell({ children, pathname }: { children: React.ReactNode; pat
     </Link>;
   };
 
-  const studioShell = pathname === "/studio";
-
-  return <div className={`${styles.shell} ${studioShell ? styles.studioShell : ""}`} data-sc-shell>
-    <aside className={`${styles.sidebar} ${studioShell ? styles.studioSidebar : ""}`} data-sc-sidebar>
+  return <div className={styles.shell} data-sc-shell>
+    <aside className={styles.sidebar} data-sc-sidebar>
       <Link href="/portal" className={styles.brand} prefetch={false} aria-label="SCENOVA Studio — หน้าเริ่มต้น">
         <span className={styles.logo}><ScenovaMark /></span>
         <span className={styles.brandName}>SCENOVA</span>
         <small data-keep-small>STUDIO</small>
       </Link>
 
-      {studioShell ? <nav className={styles.studioNav} data-sc-main-nav aria-label="เมนู AI Studio">
-        <Link href="/portal" prefetch={false}><span className={styles.studioNavIcon}><Icon name="home" /></span><span>หน้าแรก</span></Link>
-        <Link href="/studio" prefetch={false} className={styles.studioActive}><span className={styles.studioNavIcon}><b>AI</b></span><span>AI Studio</span></Link>
-        <Link href="/agent" prefetch={false}><span className={styles.studioNavIcon}><b>AG</b></span><span>AI Agent</span></Link>
-        <Link href="/series" prefetch={false}><span className={styles.studioNavIcon}><b>EP</b></span><span>Series Studio</span></Link>
-
-        <div className={styles.studioLibrary}>
-          <div className={styles.studioLibraryHead}><span className={styles.studioNavIcon}><Icon name="library" /></span><b>ไลบรารี</b><span>⌃</span></div>
-          <Link href="/libraries?tab=characters" prefetch={false}><span>♧</span>ตัวละคร</Link>
-          <Link href="/libraries?tab=images" prefetch={false}><span>◈</span>สไตล์</Link>
-          <Link href="/libraries?tab=voices" prefetch={false}><span>◉</span>เสียง</Link>
-          <Link href="/libraries?tab=images" prefetch={false}><span>▧</span>สถานที่</Link>
-          <Link href="/libraries?tab=images" prefetch={false}><span>♧</span>พร็อพ</Link>
-        </div>
-
-        <div className={styles.studioNavDivider} />
-        <Link href="/series" prefetch={false}><span className={styles.studioNavIcon}><Icon name="project" /></span><span>โปรเจกต์ของฉัน</span></Link>
-        <Link href="/libraries?tab=videos" prefetch={false}><span className={styles.studioNavIcon}>◴</span><span>ประวัติการสร้าง</span></Link>
-        <Link href="/wallet" prefetch={false}><span className={styles.studioNavIcon}>▣</span><span>เครดิต &amp; การชำระเงิน</span></Link>
-        <Link href="/profile" prefetch={false}><span className={styles.studioNavIcon}><Icon name="settings" /></span><span>ตั้งค่า</span></Link>
-      </nav> : <nav className={styles.mainNav} data-sc-main-nav aria-label="เมนูหลัก">
+      <nav className={styles.mainNav} data-sc-main-nav aria-label="เมนูหลัก">
         {WORKSPACE_NAV.map((item) => navLink(item))}
-      </nav>}
+      </nav>
 
-      {studioShell ? <div className={styles.studioSidebarBottom}>
-        <div className={styles.studioCreditCard}>
-          <small>เครดิตคงเหลือ</small>
-          <strong>{formatCredits(balance?.available)}</strong>
-          <Link href="/wallet" prefetch={false}>เติมเครดิต</Link>
-        </div>
-        <Link href="/profile" prefetch={false} className={styles.studioProfileCard} data-sc-profile>
-          <span className={styles.studioProfileMark}><ScenovaMark /></span>
-          <span><b>{me.name || "SCENOVA Admin"}</b><small>{me.role === "ADMIN" ? "Administrator" : "สมาชิก SCENOVA"}</small></span>
-          <span>›</span>
-        </Link>
-      </div> : <div className={`${styles.sidebarBottom} ${targetedStyles.sidebarBottomRefined}`}>
+      <div className={`${styles.sidebarBottom} ${targetedStyles.sidebarBottomRefined}`}>
         <div className="sc-theme-switch" role="group" aria-label="ธีมหน้าจอ">
           <button type="button" data-active={theme === "light"} aria-pressed={theme === "light"} onClick={() => applyTheme("light")}>☀ ขาว</button>
           <button type="button" data-active={theme === "dark"} aria-pressed={theme === "dark"} onClick={() => applyTheme("dark")}>☾ มืด</button>
@@ -229,7 +196,7 @@ function WorkspaceShell({ children, pathname }: { children: React.ReactNode; pat
           <span className={styles.profileCopy}><b>{me.name || "SCENOVA"}</b><small>{me.role === "ADMIN" ? "Administrator" : "สมาชิก SCENOVA"}</small></span>
           <span className={styles.profileArrow}><Icon name="arrow" /></span>
         </Link>
-      </div>}
+      </div>
     </aside>
 
     <div className={styles.workspace} data-sc-workspace style={hideTopbar ? { gridTemplateRows: "minmax(0, 1fr)" } : undefined}>
