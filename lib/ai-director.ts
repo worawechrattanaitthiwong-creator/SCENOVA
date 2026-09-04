@@ -776,12 +776,27 @@ function maxHistorySimilarity(scene: AiDirectorScene, history: AiDirectorHistory
 }
 
 function resolveCapability(input: AiDirectorRequest): AiDirectorCapability {
-  const capability = getVideoUiCapability(input.model);
   const timeline = Math.max(1, Math.round(input.currentScene.duration));
+  if (!input.model.trim()) {
+    return {
+      model: "AI Planning",
+      timelineDurationSec: timeline,
+      renderDurationSec: timeline,
+      trimSec: 0,
+      aspectSupported: true,
+      durationSupported: true,
+      cameraControl: "prompt",
+      lightingControl: "prompt",
+      audioControl: "prompt",
+      continuityControl: "scenova",
+    };
+  }
+
+  const capability = getVideoUiCapability(input.model);
   const sorted = [...capability.durationSeconds].sort((a, b) => a - b);
   const renderDuration = sorted.find((value) => value >= timeline) ?? sorted[sorted.length - 1];
   const durationSupported = timeline <= (sorted[sorted.length - 1] || timeline);
-  const aspectSupported = capability.ratioValues.includes(input.aspect);
+  const aspectSupported = !input.aspect.trim() || capability.ratioValues.includes(input.aspect);
   return {
     model: input.model,
     timelineDurationSec: timeline,
@@ -948,7 +963,7 @@ function validatePlan(scene: AiDirectorScene, patch: AiDirectorScenePatch, input
     if (typeof value !== "string") continue;
     if (normalize(value) === "ai" || !realChoices(options).some((item) => item.value === value)) warnings.push("ค่า " + String(key) + " ไม่อยู่ใน Production Catalog");
   }
-  if (!capability.aspectSupported) warnings.push("อัตราส่วนภาพนี้ไม่อยู่ในรายการที่ " + input.model + " รองรับในระบบ");
+  if (input.aspect.trim() && !capability.aspectSupported) warnings.push("อัตราส่วนภาพนี้ไม่อยู่ในรายการที่ " + input.model + " รองรับในระบบ");
   if (!capability.durationSupported) warnings.push("เวลาฉากยาวเกิน Generation สูงสุดของ " + input.model);
   if (capability.trimSec > 0) warnings.push("Timeline " + capability.timelineDurationSec + "s จะใช้ Generation " + capability.renderDurationSec + "s แล้วตัดส่วนเกิน " + capability.trimSec + "s");
   const speech = estimateSpeechSeconds(scene.dialogue);
