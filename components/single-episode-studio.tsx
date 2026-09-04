@@ -1150,7 +1150,7 @@ export default function SingleEpisodeStudio() {
       id="studio-kept-preview-summary"
       className={v11.rightRail}
       aria-label="ตัวอย่างภาพและสรุปการตั้งค่า"
-      style={{ width: "min(520px, 100%)", margin: "16px 0 0 auto", position: "static" }}
+      style={{ width: "min(520px, 100%)", margin: "16px 0 0 auto", position: "static", gridTemplateColumns: "1fr" }}
     >
       <section className={v11.previewCard}>
         <h3>ตัวอย่างภาพจากฉากแรก</h3>
