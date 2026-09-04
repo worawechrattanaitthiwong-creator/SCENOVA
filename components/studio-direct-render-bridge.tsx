@@ -282,7 +282,8 @@ async function captureStudioSnapshot(): Promise<DirectSnapshot> {
   const versionSelect = setup.querySelector<HTMLSelectElement>('select[aria-label="รุ่นโมเดล"]');
   const version = versionSelect?.value || meta.fixedVersion;
   const modelField = findField(setup, ["โมเดลวิดีโอ"]);
-  const modelReady = compact(modelField?.textContent).includes("คีย์เชื่อมต่อแล้ว");
+  const modelReady = setup.querySelector<HTMLElement>('[data-studio-model-ready="true"]') !== null
+    || compact(modelField?.textContent).includes("คีย์เชื่อมต่อแล้ว");
   const aspect = valueOf(setup, ["อัตราส่วนภาพ"]);
   if (!aspect) throw new Error("กรุณาเลือกอัตราส่วนภาพก่อนสร้าง Prompt");
   const visualStyle = valueOf(setup, ["สไตล์ภาพ"]);
