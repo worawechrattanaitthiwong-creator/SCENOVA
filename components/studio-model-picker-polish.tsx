@@ -299,13 +299,15 @@ export default function StudioModelPickerPolish() {
           grid.parentElement?.insertBefore(currentHost, grid);
         }
 
-        if (hiddenGrid && hiddenGrid !== grid) hiddenGrid.style.display = "";
+        if (hiddenGrid && hiddenGrid !== grid && hiddenGrid.style.display) hiddenGrid.style.display = "";
         hiddenGrid = grid;
-        hiddenGrid.style.display = "none";
-        field.classList.add("sc-ai-model-field");
+        if (hiddenGrid.style.display !== "none") hiddenGrid.style.display = "none";
+        if (!field.classList.contains("sc-ai-model-field")) field.classList.add("sc-ai-model-field");
 
         const capabilityRow = grid.nextElementSibling as HTMLElement | null;
-        if (capabilityRow?.tagName === "DIV") capabilityRow.dataset.scModelCapabilities = "true";
+        if (capabilityRow?.tagName === "DIV" && capabilityRow.dataset.scModelCapabilities !== "true") {
+          capabilityRow.dataset.scModelCapabilities = "true";
+        }
 
         setHost(currentHost);
         setModelSelect(nextModelSelect);
