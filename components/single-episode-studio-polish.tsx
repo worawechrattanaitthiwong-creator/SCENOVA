@@ -206,7 +206,7 @@ export default function SingleEpisodeStudioPolish() {
 
     const publish = (text: string) => {
       const value = compact(text);
-      if (!value || value === "พร้อมสร้างตอนเดียว") return;
+      if (!value || value === "พร้อมสร้างตอนเดียว" || value === lastStatus) return;
       lastStatus = value;
       const tone = submissionTone(value);
       setSubmissionNotice({ tone, text: value });
