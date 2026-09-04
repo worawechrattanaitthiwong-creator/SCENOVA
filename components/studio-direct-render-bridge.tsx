@@ -116,21 +116,11 @@ function styleIdFor(value: string) {
   return matched?.id || STYLE_PRESETS[0]?.id || "cinematic-anime";
 }
 
-function suppressLegacyAgentSubmit() {
-  const main = document.querySelector("main");
-  if (!main) return;
-  Array.from(main.querySelectorAll<HTMLButtonElement>("button")).forEach((button) => {
-    const text = compact(button.textContent);
-    if (text.includes("ส่งให้ทีม AI ผลิต") || text.includes("ส่ง Storyboard ให้ทีม AI")) button.style.display = "none";
-  });
-  Array.from(main.querySelectorAll<HTMLElement>("label")).forEach((label) => {
-    if (compact(label.textContent).includes("วงเงินสูงสุดของงาน")) label.style.display = "none";
-  });
-}
-
 function characterCards() {
   const root = document.getElementById("characters");
-  return root ? Array.from(root.querySelectorAll<HTMLElement>("article")) : [];
+  if (!root) return [];
+  const tagged = Array.from(root.querySelectorAll<HTMLElement>('[data-studio-character-card="true"]'));
+  return tagged.length ? tagged : Array.from(root.querySelectorAll<HTMLElement>("article"));
 }
 
 function captureCharacters() {
@@ -164,7 +154,9 @@ function captureCharacters() {
 }
 
 function dialogueFromEditor(editor: HTMLElement, characterIdByName: Map<string, string>, start: number, end: number) {
-  return Array.from(editor.querySelectorAll<HTMLElement>("[class*='dialogueCard']")).flatMap((card, index) => {
+  const tagged = Array.from(editor.querySelectorAll<HTMLElement>('[data-studio-dialogue-card="true"]'));
+  const cards = tagged.length ? tagged : Array.from(editor.querySelectorAll<HTMLElement>("[class*='dialogueCard']"));
+  return cards.flatMap((card, index) => {
     const name = compact(card.querySelector("b")?.textContent);
     const text = compact(card.querySelector<HTMLTextAreaElement>("textarea")?.value);
     if (!text) return [];
@@ -182,7 +174,7 @@ function dialogueFromEditor(editor: HTMLElement, characterIdByName: Map<string, 
 
 async function captureSegments(characters: ReturnType<typeof captureCharacters>) {
   const buttons = sceneButtons();
-  const originalIndex = Math.max(0, buttons.findIndex((button) => String(button.className).toLocaleLowerCase().includes("active")));
+  const originalIndex = Math.max(0, buttons.findIndex((button) => button.dataset.active === "true" || String(button.className).toLocaleLowerCase().includes("active")));
   const characterIdByName = new Map(characters.map((character) => [character.name.toLocaleLowerCase(), character.id]));
   const segments: TimelineSegment[] = [];
   let cursor = 0;
@@ -237,7 +229,8 @@ async function captureSegments(characters: ReturnType<typeof captureCharacters>)
       throw new Error(`ฉาก ${index + 1}: กรุณาเลือก ${missingCamera.join(", ")} ก่อนสร้าง Prompt`);
     }
 
-    const presenceLabels = Array.from(editor.querySelectorAll<HTMLLabelElement>("[class*='presenceChips'] label"));
+    const taggedPresence = Array.from(editor.querySelectorAll<HTMLLabelElement>('[data-studio-character-presence="true"] label'));
+    const presenceLabels = taggedPresence.length ? taggedPresence : Array.from(editor.querySelectorAll<HTMLLabelElement>("[class*='presenceChips'] label"));
     const names = presenceLabels.filter((label) => label.querySelector<HTMLInputElement>('input[type="checkbox"]')?.checked).map((label) => compact(label.textContent));
     const characterIds = names.map((name) => characterIdByName.get(name.toLocaleLowerCase())).filter((id): id is string => Boolean(id));
     const dialogue = dialogueFromEditor(editor, characterIdByName, start, end);
@@ -353,7 +346,6 @@ export default function StudioDirectRenderBridge() {
   useEffect(() => {
     let stopped = false;
     let timer = 0;
-    let observer: MutationObserver | null = null;
     const discover = () => {
       if (stopped) return;
       const review = document.getElementById("review");
@@ -369,9 +361,6 @@ export default function StudioDirectRenderBridge() {
         review.insertAdjacentElement("afterend", node);
       }
       setHost(node);
-      suppressLegacyAgentSubmit();
-      observer = new MutationObserver(suppressLegacyAgentSubmit);
-      observer.observe(main, { childList: true, subtree: true });
       const changed = () => {
         if (!capturingRef.current && snapshot) {
           setStale(true);
@@ -389,7 +378,6 @@ export default function StudioDirectRenderBridge() {
     return () => {
       stopped = true;
       window.clearTimeout(timer);
-      observer?.disconnect();
       const node = document.getElementById("scenova-direct-render-host") as (HTMLElement & { __cleanup?: () => void }) | null;
       node?.__cleanup?.();
     };
