@@ -6,6 +6,8 @@ import { useEffect, useMemo, useState } from "react";
 import styles from "./single-episode-studio.module.css";
 import v11 from "./single-episode-studio-v11.module.css";
 import SingleEpisodeAiDirectorPanel from "@/components/single-episode-ai-director-panel";
+import ModelBrandIcon from "@/components/model-brand-icon";
+import StudioModelSelect, { type StudioModelSelectOption } from "@/components/studio-model-select";
 import { buildStudioAgentProject } from "@/lib/agent/studio-project";
 import type { AiDirectorMeta, AiDirectorMode, AiDirectorNovelty, AiDirectorScenePatch, AiDirectorScope } from "@/lib/ai-director";
 import {
@@ -363,18 +365,18 @@ function ChoiceField({ label, value, options, onChange, compact = false }: { lab
 export default function SingleEpisodeStudio() {
   const router = useRouter();
   const [episodeTitle, setEpisodeTitle] = useState("");
-  const [model, setModel] = useState("runway:seedance2_5");
-  const [modelVersion, setModelVersion] = useState("seedance2_5");
-  const [aspect, setAspect] = useState("16:9 — Widescreen");
-  const [visualStyle, setVisualStyle] = useState("Sci-Fi Neon — ไซไฟนีออน");
+  const [model, setModel] = useState("");
+  const [modelVersion, setModelVersion] = useState("");
+  const [aspect, setAspect] = useState("");
+  const [visualStyle, setVisualStyle] = useState("");
   const [story, setStory] = useState("");
   const [globalNegative, setGlobalNegative] = useState("");
   const [locks, setLocks] = useState<string[]>([]);
   const [characters, setCharacters] = useState<Character[]>([makeCharacter(1), makeCharacter(2)]);
   const [hasAnimals, setHasAnimals] = useState(false);
   const [animals, setAnimals] = useState<Animal[]>([makeAnimal(1)]);
-  const [totalDuration, setTotalDuration] = useState(10);
-  const [scenes, setScenes] = useState<StoryScene[]>(() => distributeScenes([], 1, 10));
+  const [totalDuration, setTotalDuration] = useState(30);
+  const [scenes, setScenes] = useState<StoryScene[]>(() => distributeScenes([], 3, 30));
   const [selectedSceneId, setSelectedSceneId] = useState("");
   const [message, setMessage] = useState("พร้อมสร้างตอนเดียว");
   const [agentBudgetThb, setAgentBudgetThb] = useState(500);
@@ -491,6 +493,32 @@ export default function SingleEpisodeStudio() {
   const selectedConnection = videoConnections.find((item) => item.provider === selectedModelProfile.providerId && item.kind === "VIDEO");
   const selectedProvider = videoProviders.find((item) => item.id === selectedModelProfile.providerId);
   const selectedConnectionState = modelConnectionStates[model];
+  const modelSelectOptions = useMemo<StudioModelSelectOption[]>(() => MODEL_PROFILES.map((profile) => {
+    const state = modelConnectionStates[profile.value];
+    const status: StudioModelSelectOption["status"] = videoConnectionLoading
+      ? "checking"
+      : state?.operationalReady
+        ? "ready"
+        : state?.adapterReady
+          ? "setup"
+          : "offline";
+    const statusLabel = videoConnectionLoading
+      ? "กำลังตรวจ"
+      : state?.operationalReady
+        ? "พร้อมใช้งาน"
+        : state?.adapterReady
+          ? "ต้องเชื่อม API"
+          : "Adapter ไม่พร้อม";
+    return {
+      value: profile.value,
+      label: profile.label,
+      status,
+      statusLabel,
+      image: profile.image,
+      mode: profile.mode,
+      nativeAudio: profile.nativeAudio,
+    };
+  }), [modelConnectionStates, videoConnectionLoading]);
   const selectedEnabledIds = Array.isArray(selectedConnection?.enabledModelIds) ? selectedConnection.enabledModelIds : [];
   const selectedVersionEnabled = Boolean(selectedProvider?.systemConfigured) || Boolean(
     selectedConnection?.enabled
@@ -985,12 +1013,9 @@ export default function SingleEpisodeStudio() {
                   <span className={v11.srLabel}>โมเดลวิดีโอ</span>
                   <b className={v11.fieldTitle}>เลือกโมเดล AI</b>
                   <div className={v11.modelSelectWrap}>
-                    <select aria-label="โมเดลวิดีโอ" value={model} onChange={(event) => changeModel(event.target.value)}>
-                      <option value="">เลือกโมเดล AI</option>
-                      {MODEL_PROFILES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-                    </select>
+                    <StudioModelSelect value={model} options={modelSelectOptions} onChange={changeModel} />
                     <small className={v11.modelStatus} data-ready={selectedConnectionState?.operationalReady ? "true" : "false"}>
-                      {!model ? "เลือกโมเดลก่อนเริ่มสร้าง" : videoConnectionLoading ? "กำลังตรวจ Connection…" : selectedConnectionState?.operationalReady ? "คีย์เชื่อมต่อแล้ว" : "Provider ยังไม่พร้อม"}
+                      {!model ? "เลือกโมเดลก่อนเริ่มสร้าง" : videoConnectionLoading ? "กำลังตรวจ Connection…" : selectedConnectionState?.operationalReady ? "🟢 คีย์เชื่อมต่อแล้ว" : selectedConnectionState?.adapterReady ? "🟠 ยังไม่ได้เชื่อมต่อ / Connection ไม่พร้อม" : "🔴 Adapter ยังไม่พร้อม"}
                     </small>
                   </div>
                 </label>
@@ -1034,6 +1059,8 @@ export default function SingleEpisodeStudio() {
           </div>
 
           <div className={v11.stateMirror} aria-hidden="true">
+            <label><span>โมเดลวิดีโอ</span><select aria-label="โมเดลวิดีโอ" value={model} onChange={(event) => changeModel(event.target.value)}><option value=""></option>{MODEL_PROFILES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
+            <label><span>รุ่นโมเดล</span><select aria-label="รุ่นโมเดล" value={modelVersion} onChange={(event) => setModelVersion(event.target.value)}><option value=""></option>{modelVersions.map((item) => <option key={item.apiModelId} value={item.apiModelId}>{item.label}</option>)}</select></label>
             <label><span>ชื่อตอน</span><input value={episodeTitle} onChange={(event) => setEpisodeTitle(event.target.value)} /></label>
             <label><span>เรื่อง / เหตุการณ์ของตอน</span><textarea value={story} onChange={(event) => setStory(event.target.value)} /></label>
             <label><span>ความยาวรวมของตอน</span><input type="number" value={totalDuration} onChange={(event) => changeTotalDuration(Number(event.target.value))} /></label>
