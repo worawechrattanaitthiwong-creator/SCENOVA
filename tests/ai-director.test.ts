@@ -79,6 +79,7 @@ function request(seed = 1001): AiDirectorRequest {
     mode: "production",
     novelty: "balanced",
     scope: "all",
+    fillMode: "replace-scope",
     seed,
     episodeTitle: "คืนในโกดัง",
     story: "สองคนพบกันในโกดังร้าง คนหนึ่งระแวงว่าอีกคนกำลังปิดบังความลับ",
@@ -137,6 +138,49 @@ describe("production AI Director", () => {
     expect(second.meta.fingerprint).not.toBe(first.meta.fingerprint);
     expect(second.meta.scores.novelty).toBeGreaterThan(0);
     expect(second.meta.alternatives.length).toBeGreaterThan(0);
+  });
+
+  it("fills only empty fields for the whole-scene helper and preserves user choices", () => {
+    const input = request(6006);
+    input.fillMode = "empty-only";
+    input.currentScene.location = "โกดังที่ผู้ใช้เลือก";
+    input.currentScene.objective = "Reveal Information";
+    input.currentScene.beat = "Turn";
+    input.currentScene.transition = "Hard Cut";
+    input.currentScene.shot = "Medium";
+    input.currentScene.angle = "";
+    input.currentScene.lens = "50mm";
+    input.currentScene.movement = "";
+    input.currentScene.lighting = "Natural Soft";
+    input.currentScene.characterIds = ["c1", "c2"];
+    input.currentScene.characterDirections = {
+      c1: {
+        blocking: "ซ้ายเฟรมหลังโต๊ะ",
+        action: "",
+        emotion: "",
+        eyeline: "",
+        dialogue: "ประโยคที่ผู้ใช้เขียนไว้",
+      },
+    };
+
+    const result = buildAiDirectorPlan(input);
+
+    expect(result.scene.location).toBeUndefined();
+    expect(result.scene.objective).toBeUndefined();
+    expect(result.scene.beat).toBeUndefined();
+    expect(result.scene.transition).toBeUndefined();
+    expect(result.scene.shot).toBeUndefined();
+    expect(result.scene.lens).toBeUndefined();
+    expect(result.scene.lighting).toBeUndefined();
+    expect(result.scene.characterIds).toBeUndefined();
+
+    expect(result.scene.angle).toBeTruthy();
+    expect(result.scene.movement).toBeTruthy();
+    expect(result.scene.characterDirections?.c1.blocking).toBe("ซ้ายเฟรมหลังโต๊ะ");
+    expect(result.scene.characterDirections?.c1.dialogue).toBe("ประโยคที่ผู้ใช้เขียนไว้");
+    expect(result.scene.characterDirections?.c1.action).toBeTruthy();
+    expect(result.meta.frozenSections).toContain("ค่าที่ผู้ใช้กรอก/เลือกไว้แล้ว");
+    expect(result.meta.rationaleTh).toContain("เชื่อมเหตุและผลกับฉากข้างเคียง");
   });
 
   it("keeps locked lighting unchanged", () => {
