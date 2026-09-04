@@ -489,6 +489,10 @@ export default function SingleEpisodeStudio() {
     setAiRequiredErrors([]);
   }, [selectedSceneId]);
 
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("scenova-studio-data-change"));
+  }, [episodeTitle, model, modelVersion, aspect, visualStyle, story, globalNegative, locks, characters, hasAnimals, animals, totalDuration, scenes]);
+
   const selectedScene = scenes.find((scene) => scene.id === selectedSceneId) || scenes[0];
   const selectedModelProfile = MODEL_PROFILES.find((item) => item.value === model) || MODEL_PROFILES[0];
   const modelVersions = useMemo(() => model ? getVideoModelVersions(selectedModelProfile.catalogKey) : [], [model, selectedModelProfile.catalogKey]);
