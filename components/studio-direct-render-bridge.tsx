@@ -397,9 +397,11 @@ export default function StudioDirectRenderBridge() {
     };
     document.addEventListener("input", changed, true);
     document.addEventListener("change", changed, true);
+    window.addEventListener("scenova-studio-data-change", changed);
     return () => {
       document.removeEventListener("input", changed, true);
       document.removeEventListener("change", changed, true);
+      window.removeEventListener("scenova-studio-data-change", changed);
     };
   }, [snapshot]);
 
