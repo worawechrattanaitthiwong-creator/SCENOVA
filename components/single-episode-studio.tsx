@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import styles from "./single-episode-studio.module.css";
-import v11 from "./single-episode-studio-v11.module.css";
+import rail from "./single-episode-summary-rail.module.css";
 import SingleEpisodeAiDirectorPanel from "@/components/single-episode-ai-director-panel";
 import StudioStylePreviewGallery from "@/components/studio-style-preview-gallery";
 import { buildStudioAgentProject } from "@/lib/agent/studio-project";
@@ -940,6 +940,8 @@ export default function SingleEpisodeStudio() {
       <a href="#review"><b>4</b><span>ตรวจความพร้อม<small>ส่ง Storyboard ให้ทีม AI</small></span></a>
     </nav>
 
+    <div className={styles.workspaceGrid}>
+      <div className={styles.primaryColumn}>
     <section id="setup" className={styles.panel}>
       <div className={styles.sectionHead}>
         <div><span>ตั้งค่าตอน</span><h2>กำหนดภาพรวมของตอนเดียว</h2></div>
@@ -1146,57 +1148,58 @@ export default function SingleEpisodeStudio() {
       </div>
     </section>
 
-    <aside
-      id="studio-kept-preview-summary"
-      className={v11.rightRail}
-      aria-label="ตัวอย่างภาพและสรุปการตั้งค่า"
-      style={{ width: "min(520px, 100%)", margin: "16px 0 0 auto", position: "static", gridTemplateColumns: "1fr" }}
-    >
-      <section className={v11.previewCard}>
-        <h3>ตัวอย่างภาพจากฉากแรก</h3>
-        <div className={v11.previewImage}>
-          <img src="/library/styles/sci-fi-neon.png" alt="ตัวอย่างภาพจากฉากแรก" />
-        </div>
-        <p className={v11.previewCaption}>ตัวอย่างภาพจากคำอธิบายและการตั้งค่าฉาก ใช้เป็นภาพอ้างอิงก่อนสร้างวิดีโอจริง</p>
-        <button type="button" className={v11.previewButton} onClick={() => setMessage("ภาพตัวอย่างพร้อมตรวจสอบแล้ว")}>▧ สร้างภาพตัวอย่าง</button>
-      </section>
+      <footer className={styles.stickyFooter}><div><strong>{episodeTitle || "Untitled Episode"}</strong><span>{scenes.length} ฉาก • {characters.length} ตัวละคร • {usedDuration}/{totalDuration}s • พร้อม {readiness.score}% • วงเงิน ฿{agentBudgetThb.toLocaleString("th-TH")}</span></div><div><button type="button" className={styles.primaryButton} onClick={() => void sendToAgent()} disabled={agentSubmitting}>{agentSubmitting ? "กำลังส่งงาน..." : "ส่งให้ทีม AI ผลิต →"}</button></div></footer>
+      </div>
 
-      <section className={v11.summaryCard}>
-        <div className={v11.summaryHead}>
-          <h3>สรุปการตั้งค่า</h3>
-          <button type="button" className={v11.summaryEdit} onClick={() => document.getElementById("setup")?.scrollIntoView({ behavior: "smooth", block: "start" })}>✎ แก้ไข</button>
-        </div>
+      <aside
+        id="studio-kept-preview-summary"
+        className={rail.rail}
+        aria-label="ตัวอย่างภาพและสรุปการตั้งค่า"
+      >
+        <section className={rail.card}>
+          <h3>ตัวอย่างภาพจากฉากแรก</h3>
+          <div className={rail.previewImage}>
+            <img src="/library/styles/sci-fi-neon.png" alt="ตัวอย่างภาพจากฉากแรก" />
+          </div>
+          <p className={rail.previewCaption}>ตัวอย่างภาพจากคำอธิบายและการตั้งค่าฉาก ใช้เป็นภาพอ้างอิงก่อนสร้างวิดีโอจริง</p>
+          <button type="button" className={rail.previewButton} onClick={() => setMessage("ภาพตัวอย่างพร้อมตรวจสอบแล้ว")}>▧ สร้างภาพตัวอย่าง</button>
+        </section>
 
-        <div className={v11.summaryRows}>
-          <div><span>โมเดล</span><b>{model ? selectedModelProfile.label : "ยังไม่ได้เลือก"}</b></div>
-          <div><span>รูปแบบ</span><b>แบบเดี่ยว (Single)</b></div>
-          <div><span>ความยาว</span><b>{totalDuration} วินาที</b></div>
-          <div><span>จำนวนฉาก</span><b>{scenes.length} ฉาก</b></div>
-          <div><span>จำนวนตัวละคร</span><b>{characters.length} ตัวละคร</b></div>
-          <div><span>เครดิตโดยประมาณ</span><b className={v11.purple}>~ {estimatedCredits} เครดิต</b></div>
-        </div>
+        <section className={rail.card}>
+          <div className={rail.summaryHead}>
+            <h3>สรุปการตั้งค่า</h3>
+            <button type="button" className={rail.summaryEdit} onClick={() => document.getElementById("setup")?.scrollIntoView({ behavior: "smooth", block: "start" })}>✎ แก้ไข</button>
+          </div>
 
-        <div className={v11.howTo}>
-          <b>ⓘ ขั้นตอนการสร้าง</b>
-          <div className={v11.howStep}><span>1</span><div><b>สร้างภาพตัวอย่าง (ไม่ใช้เครดิต)</b><small>ตรวจสอบภาพ ก่อนสร้างวิดีโอจริง</small></div></div>
-          <div className={v11.howStep}><span>2</span><div><b>สร้างวิดีโอ (ใช้เครดิต)</b><small>เมื่อยืนยันแล้ว จะหักเครดิตและเริ่มสร้าง</small></div></div>
-        </div>
+          <div className={rail.summaryRows}>
+            <div><span>โมเดล</span><b>{model ? selectedModelProfile.label : "ยังไม่ได้เลือก"}</b></div>
+            <div><span>รูปแบบ</span><b>แบบเดี่ยว (Single)</b></div>
+            <div><span>ความยาว</span><b>{totalDuration} วินาที</b></div>
+            <div><span>จำนวนฉาก</span><b>{scenes.length} ฉาก</b></div>
+            <div><span>จำนวนตัวละคร</span><b>{characters.length} ตัวละคร</b></div>
+            <div><span>เครดิตโดยประมาณ</span><b className={rail.purple}>~ {estimatedCredits} เครดิต</b></div>
+          </div>
 
-        <button type="button" className={v11.summaryPrimary} onClick={() => setMessage("ภาพตัวอย่างพร้อมตรวจสอบแล้ว")}>✦ สร้างภาพตัวอย่างก่อน</button>
-        <button
-          type="button"
-          className={v11.summarySecondary}
-          disabled={!model || !story.trim() || !aspect || !visualStyle}
-          onClick={() => {
-            const target = document.getElementById("direct-render") || document.getElementById("scenova-direct-render-host");
-            target?.scrollIntoView({ behavior: "smooth", block: "start" });
-            if (!target) setMessage("ส่วน Direct Render ยังไม่พร้อม กรุณารอสักครู่");
-          }}
-        >♙ สร้างวิดีโอ (ใช้ ~ {estimatedCredits} เครดิต)</button>
-        <p className={v11.refundNote}>♡ หากเกิดข้อผิดพลาด เครดิตจะคืนให้อัตโนมัติ</p>
-      </section>
-    </aside>
+          <div className={rail.howTo}>
+            <b>ⓘ ขั้นตอนการสร้าง</b>
+            <div className={rail.howStep}><span>1</span><div><b>สร้างภาพตัวอย่าง (ไม่ใช้เครดิต)</b><small>ตรวจสอบภาพ ก่อนสร้างวิดีโอจริง</small></div></div>
+            <div className={rail.howStep}><span>2</span><div><b>สร้างวิดีโอ (ใช้เครดิต)</b><small>เมื่อยืนยันแล้ว จะหักเครดิตและเริ่มสร้าง</small></div></div>
+          </div>
 
-    <footer className={styles.stickyFooter}><div><strong>{episodeTitle || "Untitled Episode"}</strong><span>{scenes.length} ฉาก • {characters.length} ตัวละคร • {usedDuration}/{totalDuration}s • พร้อม {readiness.score}% • วงเงิน ฿{agentBudgetThb.toLocaleString("th-TH")}</span></div><div><button type="button" className={styles.primaryButton} onClick={() => void sendToAgent()} disabled={agentSubmitting}>{agentSubmitting ? "กำลังส่งงาน..." : "ส่งให้ทีม AI ผลิต →"}</button></div></footer>
+          <button type="button" className={rail.summaryPrimary} onClick={() => setMessage("ภาพตัวอย่างพร้อมตรวจสอบแล้ว")}>✦ สร้างภาพตัวอย่างก่อน</button>
+          <button
+            type="button"
+            className={rail.summarySecondary}
+            disabled={!model || !story.trim() || !aspect || !visualStyle}
+            onClick={() => {
+              const target = document.getElementById("direct-render") || document.getElementById("scenova-direct-render-host");
+              target?.scrollIntoView({ behavior: "smooth", block: "start" });
+              if (!target) setMessage("ส่วน Direct Render ยังไม่พร้อม กรุณารอสักครู่");
+            }}
+          >♙ สร้างวิดีโอ (ใช้ ~ {estimatedCredits} เครดิต)</button>
+          <p className={rail.refundNote}>♡ หากเกิดข้อผิดพลาด เครดิตจะคืนให้อัตโนมัติ</p>
+        </section>
+      </aside>
+    </div>
   </main>;
 }

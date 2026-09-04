@@ -6,6 +6,8 @@ const page = readFileSync("app/studio/page.tsx", "utf8");
 const shell = readFileSync("components/app-shell.tsx", "utf8");
 const draftTray = readFileSync("components/workspace-draft-tray.tsx", "utf8");
 const directBridge = readFileSync("components/studio-direct-render-bridge.tsx", "utf8");
+const railCss = readFileSync("components/single-episode-summary-rail.module.css", "utf8");
+const studioCss = readFileSync("components/single-episode-studio.module.css", "utf8");
 
 describe("AI Studio pre-rebuild UI regression guard", () => {
   it("restores the original Single Episode workspace structure", () => {
@@ -37,7 +39,11 @@ describe("AI Studio pre-rebuild UI regression guard", () => {
     expect(studio).toContain("สร้างภาพตัวอย่างก่อน");
     expect(studio).toContain("หากเกิดข้อผิดพลาด เครดิตจะคืนให้อัตโนมัติ");
     expect(studio).toContain('id="studio-kept-preview-summary"');
-    expect(directBridge).toContain('document.getElementById("studio-kept-preview-summary") || review');
+    expect(studio).toContain("workspaceGrid");
+    expect(studio).toContain("primaryColumn");
+    expect(studioCss).toContain("grid-template-columns:minmax(0,1fr) 360px");
+    expect(railCss).toContain("position: sticky");
+    expect(directBridge).toContain('review.insertAdjacentElement("afterend", node)');
   });
 
   it("keeps the original behavioral defaults and controls", () => {
