@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import AppShell from "@/components/app-shell";
 import HelpHintNormalizer from "@/components/help-hint-normalizer";
-import SingleEpisodePreferences from "@/components/single-episode-preferences";
 import WorkspaceDraftTray from "@/components/workspace-draft-tray";
 import WorkspacePageDraftBridgeV2 from "@/components/workspace-page-draft-bridge-v2";
 import "./globals.css";
@@ -15,19 +14,13 @@ import "./series-workspace-v4.css";
 import "./story-mode-polish-v2.css";
 import "./theme-audit-v4.css";
 import "./series-theme-fix-v5.css";
-import "./single-episode-compact-v1.css";
-import "./single-episode-options-v2.css";
 import "./settings-system-v1.css";
 import "./help-system-v2.css";
-import "./single-episode-row-balance-v7.css";
-import "./single-episode-layout-v8.css";
 import "./theme-audit-v5.css";
 import "./theme-audit-cinematic-v1.css";
 import "./agent-workspace-v1.css";
 import "./theme-audit-admin-v1.css";
 import "./public-theme-v1.css";
-import "./single-episode-reference-v9.css";
-import "./single-episode-reference-v10.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://scnva.com"),
@@ -84,7 +77,6 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       </head>
       <body>
         <HelpHintNormalizer />
-        <SingleEpisodePreferences />
         <AppShell>{children}</AppShell>
         <WorkspacePageDraftBridgeV2 />
         <WorkspaceDraftTray />
