@@ -1,0 +1,96 @@
+/* AI Studio v10 — wide desktop fidelity pass.
+   This layer is visual only and is loaded after v9. */
+
+@media (min-width: 1800px) {
+  main[class*="single-episode-studio_main"] {
+    width: min(1540px, calc(100% - 64px)) !important;
+    max-width: 1540px !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  main[class*="single-episode-studio_main"] [class*="single-episode-studio_hero"] {
+    min-height: 78px !important;
+    padding-bottom: 11px !important;
+  }
+
+  main[class*="single-episode-studio_main"] [class*="single-episode-studio_hero"] h1 {
+    font-size: 34px !important;
+  }
+
+  main[class*="single-episode-studio_main"] [class*="single-episode-studio_hero"] p {
+    font-size: 11px !important;
+  }
+
+  main[class*="single-episode-studio_main"] [class*="single-episode-studio_panel"],
+  main[class*="single-episode-studio_main"] [class*="single-episode-studio_reviewPanel"] {
+    padding: 14px 15px !important;
+    margin-bottom: 9px !important;
+  }
+
+  main[class*="single-episode-studio_main"] [class*="single-episode-studio_sectionHead"] h2 {
+    font-size: 18px !important;
+  }
+
+  #setup [class*="single-episode-studio_setupGrid"] {
+    gap: 10px !important;
+  }
+
+  #setup [class*="single-episode-studio_field"] :is(input, select, textarea),
+  #characters [class*="single-episode-studio_field"] :is(input, select, textarea) {
+    min-height: 39px !important;
+    font-size: 12.5px !important;
+  }
+
+  #setup .sc-ai-select-trigger,
+  #setup .sc-ratio-trigger {
+    height: 39px !important;
+    min-height: 39px !important;
+    max-height: 39px !important;
+  }
+
+  #setup [class*="single-episode-studio_storyField"],
+  #setup [class*="single-episode-studio_episodeTiming"] {
+    height: 104px !important;
+    min-height: 104px !important;
+  }
+
+  #setup [class*="single-episode-studio_storyField"] > textarea {
+    height: 78px !important;
+    min-height: 78px !important;
+  }
+
+  #characters [class*="single-episode-studio_characterList"] {
+    gap: 10px !important;
+  }
+
+  #characters [class*="single-episode-studio_characterCard"] {
+    padding: 11px !important;
+  }
+
+  #characters [class*="single-episode-studio_characterCard"] textarea {
+    height: 58px !important;
+    min-height: 58px !important;
+  }
+
+  #characters [class*="single-episode-studio_referencePicker"] {
+    min-height: 80px !important;
+  }
+
+  #scenes [class*="single-episode-studio_timeline"] button {
+    flex-basis: 142px !important;
+    width: 142px !important;
+    min-width: 142px !important;
+    max-width: 142px !important;
+    height: 52px !important;
+    min-height: 52px !important;
+    max-height: 52px !important;
+  }
+}
+
+@media (min-width: 1181px) and (max-width: 1799px) {
+  main[class*="single-episode-studio_main"] {
+    width: min(1320px, calc(100% - 48px)) !important;
+    max-width: 1320px !important;
+  }
+}
