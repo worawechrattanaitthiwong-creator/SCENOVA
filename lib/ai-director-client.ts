@@ -98,13 +98,52 @@ export function cloneAiDirectorScenes<T extends AiDirectorScene>(scenes: T[]): T
   })) as T[];
 }
 
-export function applyAiDirectorPatch<T extends AiDirectorScene>(base: T, patch: AiDirectorScenePatch, manual: ManualAiSections, locks: string[]): T {
+function hasFilledValue(value: unknown) {
+  if (typeof value === "string") return value.trim().length > 0;
+  if (Array.isArray(value)) return value.length > 0;
+  if (value === null || value === undefined) return false;
+  if (typeof value === "number") return Number.isFinite(value);
+  if (typeof value === "object") return Object.keys(value as object).length > 0;
+  return true;
+}
+
+function protectFilledPatch(base: AiDirectorScene, patch: AiDirectorScenePatch) {
+  const safe: AiDirectorScenePatch = { ...patch };
+  Object.keys(safe).forEach((rawKey) => {
+    const key = rawKey as keyof AiDirectorScene;
+    if (key === "characterDirections") return;
+    if (hasFilledValue(base[key])) delete safe[key];
+  });
+  if (safe.characterDirections) {
+    safe.characterDirections = Object.fromEntries(Object.entries(safe.characterDirections).map(([id, generated]) => {
+      const current = base.characterDirections[id];
+      if (!current) return [id, generated];
+      return [id, {
+        blocking: current.blocking.trim() ? current.blocking : generated.blocking,
+        action: current.action.trim() ? current.action : generated.action,
+        emotion: current.emotion.trim() ? current.emotion : generated.emotion,
+        eyeline: current.eyeline.trim() ? current.eyeline : generated.eyeline,
+        dialogue: current.dialogue.trim() ? current.dialogue : generated.dialogue,
+      }];
+    }));
+  }
+  return safe;
+}
+
+export function applyAiDirectorPatch<T extends AiDirectorScene>(
+  base: T,
+  patch: AiDirectorScenePatch,
+  manual: ManualAiSections,
+  locks: string[],
+  options?: { preserveFilled?: boolean },
+): T {
+  const effectivePatch = options?.preserveFilled ? protectFilledPatch(base, patch) : patch;
   const next: AiDirectorScene = {
     ...base,
-    ...patch,
-    characterIds: Array.isArray(patch.characterIds) ? patch.characterIds : base.characterIds,
-    animalIds: Array.isArray(patch.animalIds) ? patch.animalIds : base.animalIds,
-    characterDirections: patch.characterDirections ? { ...base.characterDirections, ...patch.characterDirections } : base.characterDirections,
+    ...effectivePatch,
+    characterIds: Array.isArray(effectivePatch.characterIds) ? effectivePatch.characterIds : base.characterIds,
+    animalIds: Array.isArray(effectivePatch.animalIds) ? effectivePatch.animalIds : base.animalIds,
+    characterDirections: effectivePatch.characterDirections ? { ...base.characterDirections, ...effectivePatch.characterDirections } : base.characterDirections,
   };
   if (manual.blocking) {
     next.characterIds = base.characterIds;
