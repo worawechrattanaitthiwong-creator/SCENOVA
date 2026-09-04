@@ -65,6 +65,8 @@ export default function StudioDirectRenderInstant() {
     };
     document.addEventListener("input", changed, true);
     document.addEventListener("change", changed, true);
+    const dataChanged = () => scheduleRefresh(180);
+    window.addEventListener("scenova-studio-data-change", dataChanged);
 
     normalize();
     scheduleRefresh(80);
@@ -75,6 +77,7 @@ export default function StudioDirectRenderInstant() {
       observer.disconnect();
       document.removeEventListener("input", changed, true);
       document.removeEventListener("change", changed, true);
+      window.removeEventListener("scenova-studio-data-change", dataChanged);
     };
   }, []);
 
