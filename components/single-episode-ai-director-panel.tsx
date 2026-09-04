@@ -11,6 +11,9 @@ type Props = {
   mode: AiDirectorMode | "";
   novelty: AiDirectorNovelty | "";
   canUndo: boolean;
+  invalidMode?: boolean;
+  invalidNovelty?: boolean;
+  validationMessage?: string;
   onModeChange: (value: AiDirectorMode | "") => void;
   onNoveltyChange: (value: AiDirectorNovelty | "") => void;
   onGenerate: (scope: AiDirectorScope) => void;
@@ -44,6 +47,9 @@ export default function SingleEpisodeAiDirectorPanel({
   mode,
   novelty,
   canUndo,
+  invalidMode = false,
+  invalidNovelty = false,
+  validationMessage = "",
   onModeChange,
   onNoveltyChange,
   onGenerate,
@@ -52,17 +58,17 @@ export default function SingleEpisodeAiDirectorPanel({
   return <section className={styles.aiDirectorPanel} aria-label="AI Director Production Controls">
     <div className={styles.aiDirectorToolbar}>
       <div className={styles.aiDirectorSelects}>
-        <label>
+        <label className={invalidMode ? styles.aiRequiredField : ""}>
           <span>โหมดผู้กำกับ AI</span>
-          <select value={mode} onChange={(event) => onModeChange(event.target.value as AiDirectorMode | "")} disabled={busy}>
-            <option value="">— เลือกโหมดผู้กำกับ AI —</option>
+          <select data-ai-required-error={invalidMode ? "true" : undefined} value={mode} onChange={(event) => onModeChange(event.target.value as AiDirectorMode | "")} disabled={busy}>
+            <option value=""> </option>
             {AI_MODE_OPTIONS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
           </select>
         </label>
-        <label>
+        <label className={invalidNovelty ? styles.aiRequiredField : ""}>
           <span>ความแตกต่างจากครั้งก่อน</span>
-          <select value={novelty} onChange={(event) => onNoveltyChange(event.target.value as AiDirectorNovelty | "")} disabled={busy}>
-            <option value="">— เลือกระดับความแตกต่าง —</option>
+          <select data-ai-required-error={invalidNovelty ? "true" : undefined} value={novelty} onChange={(event) => onNoveltyChange(event.target.value as AiDirectorNovelty | "")} disabled={busy}>
+            <option value=""> </option>
             {AI_NOVELTY_OPTIONS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
           </select>
         </label>
@@ -72,6 +78,8 @@ export default function SingleEpisodeAiDirectorPanel({
         <button type="button" className={styles.aiUndoButton} disabled={busy || !canUndo} onClick={onUndo}>↶ Undo AI</button>
       </div>
     </div>
+
+    {validationMessage ? <div className={styles.aiRequiredMessage} role="alert">⚠ {validationMessage}</div> : null}
 
     {!meta ? <div className={styles.aiDirectorHint} aria-live="polite">
       {busy ? "AI Director กำลังวิเคราะห์เนื้อเรื่อง ฉากก่อนหน้า/ถัดไป และเติมเฉพาะช่องที่ยังว่าง โดยรักษาค่าที่คุณเลือกไว้…" : "ปุ่ม AI ช่วยคิดทั้งฉากด้านบนจะเติมเฉพาะช่องว่างตามลำดับ Story → Blocking → Camera → Look → Sound → Continuity และยึดความสัมพันธ์ของเนื้อเรื่องกับฉากก่อน/ถัดไปเป็นหลัก ค่าที่คุณกรอกหรือเลือกไว้แล้ว รวมถึง Manual/Lock จะไม่ถูกเปลี่ยน"}
