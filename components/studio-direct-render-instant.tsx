@@ -18,14 +18,13 @@ function findRefreshButton() {
 function hideLegacySyncUi() {
   const host = document.getElementById("scenova-direct-render-host");
   if (!host) return;
-  const hasDirectRender = Boolean(host.querySelector("#direct-render"));
   const title = Array.from(host.querySelectorAll<HTMLElement>("strong")).find((element) => compact(element.textContent) === "Direct Render Data Sync");
   const bar = title?.parentElement?.parentElement;
-  if (bar) bar.style.display = hasDirectRender ? "none" : "";
+  if (bar) bar.style.display = "none";
 
   Array.from(host.querySelectorAll<HTMLElement>("div")).forEach((element) => {
     const text = compact(element.textContent);
-    if (text.startsWith("Direct Render จะใช้ข้อมูลที่คุณกรอกใน AI Studio เท่านั้น")) element.style.display = hasDirectRender ? "none" : "";
+    if (text.startsWith("Direct Render จะใช้ข้อมูลที่คุณกรอกใน AI Studio เท่านั้น")) element.style.display = "none";
   });
 }
 
@@ -65,8 +64,6 @@ export default function StudioDirectRenderInstant() {
     };
     document.addEventListener("input", changed, true);
     document.addEventListener("change", changed, true);
-    const dataChanged = () => scheduleRefresh(180);
-    window.addEventListener("scenova-studio-data-change", dataChanged);
 
     normalize();
     scheduleRefresh(80);
@@ -77,9 +74,13 @@ export default function StudioDirectRenderInstant() {
       observer.disconnect();
       document.removeEventListener("input", changed, true);
       document.removeEventListener("change", changed, true);
-      window.removeEventListener("scenova-studio-data-change", dataChanged);
     };
   }, []);
 
-  return null;
+  return <style>{`
+    #scenova-direct-render-host [class*="syncBar"],
+    #scenova-direct-render-host [class*="placeholder"] {
+      display: none !important;
+    }
+  `}</style>;
 }
