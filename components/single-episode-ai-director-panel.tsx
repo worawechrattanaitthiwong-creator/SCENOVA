@@ -8,11 +8,11 @@ type Props = {
   busy: boolean;
   summary: string;
   meta: AiDirectorMeta | null;
-  mode: AiDirectorMode;
-  novelty: AiDirectorNovelty;
+  mode: AiDirectorMode | "";
+  novelty: AiDirectorNovelty | "";
   canUndo: boolean;
-  onModeChange: (value: AiDirectorMode) => void;
-  onNoveltyChange: (value: AiDirectorNovelty) => void;
+  onModeChange: (value: AiDirectorMode | "") => void;
+  onNoveltyChange: (value: AiDirectorNovelty | "") => void;
   onGenerate: (scope: AiDirectorScope) => void;
   onUndo: () => void;
 };
@@ -54,13 +54,15 @@ export default function SingleEpisodeAiDirectorPanel({
       <div className={styles.aiDirectorSelects}>
         <label>
           <span>โหมดผู้กำกับ AI</span>
-          <select value={mode} onChange={(event) => onModeChange(event.target.value as AiDirectorMode)} disabled={busy}>
+          <select value={mode} onChange={(event) => onModeChange(event.target.value as AiDirectorMode | "")} disabled={busy}>
+            <option value="">— เลือกโหมดผู้กำกับ AI —</option>
             {AI_MODE_OPTIONS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
           </select>
         </label>
         <label>
           <span>ความแตกต่างจากครั้งก่อน</span>
-          <select value={novelty} onChange={(event) => onNoveltyChange(event.target.value as AiDirectorNovelty)} disabled={busy}>
+          <select value={novelty} onChange={(event) => onNoveltyChange(event.target.value as AiDirectorNovelty | "")} disabled={busy}>
+            <option value="">— เลือกระดับความแตกต่าง —</option>
             {AI_NOVELTY_OPTIONS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
           </select>
         </label>
