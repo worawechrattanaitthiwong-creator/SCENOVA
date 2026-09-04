@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import styles from "./single-episode-studio.module.css";
+import v11 from "./single-episode-studio-v11.module.css";
 import SingleEpisodeAiDirectorPanel from "@/components/single-episode-ai-director-panel";
-import StudioStylePreviewGallery from "@/components/studio-style-preview-gallery";
 import { buildStudioAgentProject } from "@/lib/agent/studio-project";
 import type { AiDirectorMeta, AiDirectorMode, AiDirectorNovelty, AiDirectorScenePatch, AiDirectorScope } from "@/lib/ai-director";
 import {
@@ -917,232 +917,410 @@ export default function SingleEpisodeStudio() {
     }
   }
 
-  return <main className={styles.main}>
-    <header className={styles.hero}>
+  const estimatedCredits = Math.max(1, Math.round(totalDuration * 3));
+  const allCharacterLocked = characters.length > 0 && characters.every((item) => item.identityLock);
+  const selectedSceneIndex = selectedScene ? scenes.findIndex((item) => item.id === selectedScene.id) : 0;
+  const selectedSceneTime = sceneTimes[Math.max(0, selectedSceneIndex)];
+
+  return <main className={`${styles.main} ${v11.main}`}>
+    <header className={v11.topHeader}>
       <div>
-        <span className={styles.eyebrow}>สตูดิโอสร้างตอนเดียว</span>
-        <h1>สร้างตอนเดียวให้จบใน Workspace เดียว</h1>
-        <p>โหมดนี้สำหรับหนังสั้น คลิป หรือตอนเดียว ตั้งเรื่อง ตัวละคร ฉาก กล้อง แสง การแสดง เสียง และ Continuity แล้วส่งต่อไป Prompt & Render</p>
+        <div className={v11.breadcrumb}>AI Studio <span>›</span> สร้างวิดีโอ <span>›</span> สร้างตอนเดียวใน Workspace เดียว</div>
+        <h1>สร้างตอนเดียวใน Workspace เดียว</h1>
+        <p>เปลี่ยนไอเดียของคุณให้เป็นวิดีโอคุณภาพระดับภาพยนตร์ เพียงไม่กี่ขั้นตอน</p>
       </div>
-      <div className={styles.heroActions}>
-        <span className={styles.status}>{message}</span>
-        <button type="button" className={styles.primaryButton} onClick={() => void sendToAgent()} disabled={agentSubmitting}>{agentSubmitting ? "กำลังส่งงาน..." : "ส่งให้ทีม AI ผลิต →"}</button>
+      <div className={v11.topActions}>
+        <Link href="/guide" prefetch={false}>▣ คู่มือการใช้งาน</Link>
+        <Link href="/libraries?tab=videos" prefetch={false}>▷ ตัวอย่างผลงาน</Link>
+        <button type="button" className={v11.avatar} aria-label="SCENOVA">S</button>
       </div>
     </header>
 
-    <nav className={styles.flowBar} aria-label="ขั้นตอนสร้างตอนเดียว">
-      <a href="#setup"><b>1</b><span>ตั้งค่าตอน<small>เรื่อง + โมเดล</small></span></a>
-      <a href="#characters"><b>2</b><span>ตัวละคร<small>ล็อกตัวตน + ล็อกเสียง</small></span></a>
-      <a href="#scenes"><b>3</b><span>กำกับฉาก<small>กล้อง + แสง + เสียง</small></span></a>
-      <a href="#review"><b>4</b><span>ตรวจความพร้อม<small>ส่ง Storyboard ให้ทีม AI</small></span></a>
+    <nav className={`${styles.flowBar} ${v11.steps}`} aria-label="ขั้นตอนสร้างวิดีโอ">
+      <a href="#setup"><b>1</b><span>ไอเดีย &amp; ตั้งค่า</span></a>
+      <a href="#characters"><b>2</b><span>เลือกตัวละคร</span></a>
+      <a href="#scenes"><b>3</b><span>สร้างฉาก</span></a>
+      <a href="#advanced"><b>4</b><span>ตรวจสอบ</span></a>
+      <a href="#final-step"><b>5</b><span>สร้างวิดีโอ</span></a>
     </nav>
 
-    <section id="setup" className={styles.panel}>
-      <div className={styles.sectionHead}>
-        <div><span>ตั้งค่าตอน</span><h2>กำหนดภาพรวมของตอนเดียว</h2></div>
-        <p>ค่าชุดนี้เป็น Master Context ของทุกฉาก ถ้าล็อกไว้ Analyzer และ Prompt Compiler ต้องยึดค่ากลางนี้ก่อนค่าที่ AI เสนอ</p>
-      </div>
-      <div className={styles.setupGrid}>
-        <label className={styles.field}><span>ชื่อตอน</span><input value={episodeTitle} onChange={(event) => setEpisodeTitle(event.target.value)} placeholder="เช่น คืนสุดท้ายที่สถานีรถไฟ" /><small>ชื่อสำหรับร่าง งาน Render และ Video Library</small></label>
-        <div className={styles.field}>
-          <span>โมเดลวิดีโอ</span>
-          <div style={{ display: "grid", gridTemplateColumns: selectedModelProfile.fixedModelId ? "minmax(0,1fr)" : "minmax(0,1fr) minmax(0,1.2fr)", gap: 6 }}>
-            <select aria-label="โมเดลวิดีโอ" value={model} onChange={(event) => changeModel(event.target.value)}>
-              <option value=""> </option>
-              {MODEL_PROFILES.map((item) => {
-                const state = modelConnectionStates[item.value];
-                const marker = videoConnectionLoading ? "⚪" : state?.operationalReady ? (item.mode === "generate" ? "🟢" : "🟣") : state?.adapterReady ? "🟠" : "🔴";
-                const inputMarker = item.image === "ready" ? "🖼" : item.image === "adapter" ? "⚠️🖼" : item.mode === "generate" ? "" : "🎞";
-                return <option key={item.value} value={item.value}>{marker} {inputMarker} {item.label}</option>;
-              })}
-            </select>
-            {!model || !selectedModelProfile.fixedModelId ? <select aria-label="รุ่นโมเดล" value={modelVersion} onChange={(event) => setModelVersion(event.target.value)}>
-              <option value=""> </option>
-              {modelVersions.map((item) => {
-                const versionReady = Boolean(selectedProvider?.systemConfigured) || Boolean(selectedConnection?.enabled && selectedConnection.status === "CONNECTED" && (selectedEnabledIds.length === 0 || selectedEnabledIds.includes(item.apiModelId) || selectedConnection.modelId === item.apiModelId));
-                return <option key={item.apiModelId} value={item.apiModelId}>{versionReady ? "🟢" : "⚪"} {item.label}</option>;
-              })}
-            </select> : null}
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, marginTop: 6 }}>
-            <span style={{ padding: "3px 7px", borderRadius: 999, border: "1px solid rgba(255,255,255,.12)", fontSize: 10 }}>
-              {!model ? "⚪ ยังไม่ได้เลือกโมเดล" : videoConnectionLoading ? "⚪ กำลังตรวจ Connection…" : selectedConnectionState?.operationalReady ? (selectedModelProfile.mode === "generate" ? "🟢 คีย์เชื่อมต่อแล้ว" : "🟣 คีย์เชื่อมต่อแล้ว · เครื่องมือแปลงวิดีโอ") : selectedConnectionState?.adapterReady ? "🟠 ยังไม่ได้เชื่อมต่อ / Connection ไม่พร้อม" : "🔴 Adapter ยังไม่พร้อม"}
-            </span>
-            <span style={{ padding: "3px 7px", borderRadius: 999, border: "1px solid rgba(255,255,255,.12)", fontSize: 10 }}>
-              {!model ? "เลือกรูปแบบอินพุตหลังเลือกโมเดล" : selectedModelProfile.image === "ready" ? "🖼 รับรูปอ้างอิง" : selectedModelProfile.image === "adapter" ? "⚠️🖼 Model รองรับรูป แต่ SCENOVA Adapter ยังไม่ส่งรูป" : "🎞 ใช้วิดีโอต้นฉบับ ไม่รับรูป"}
-            </span>
-            {model && selectedModelProfile.nativeAudio ? <span style={{ padding: "3px 7px", borderRadius: 999, border: "1px solid rgba(255,255,255,.12)", fontSize: 10 }}>🔊 Native Audio</span> : null}
-            {model && selectedModelProfile.mode === "video-edit" ? <span style={{ padding: "3px 7px", borderRadius: 999, border: "1px solid rgba(167,112,255,.35)", fontSize: 10 }}>🎞 Video Edit เท่านั้น · ต้องมีวิดีโอต้นฉบับ</span> : null}
-            {model && selectedModelProfile.mode === "hdr" ? <span style={{ padding: "3px 7px", borderRadius: 999, border: "1px solid rgba(167,112,255,.35)", fontSize: 10 }}>🎞 HDR Post-process เท่านั้น · ต้องมีวิดีโอต้นฉบับ</span> : null}
-            {model && !videoConnectionLoading && selectedModelProfile.mode === "generate" && !selectedModelReady ? <Link href="/profile/api" style={{ fontSize: 10, color: "#bd8cff" }}>ตั้งค่า Provider →</Link> : null}
-          </div>
-          <small>{!model ? "เลือกโมเดล AI ก่อน ระบบจะไม่กำหนด Provider หรือ Version แทนคุณ" : selectedModelVersion ? `ระบบจะส่ง Model ID จริง: ${selectedModelVersion.apiModelId} · ${selectedModelVersion.note} · สิทธิ์รายโมเดลยืนยันเมื่อ Provider รับงานครั้งแรก` : "เลือกรุ่นของ Provider ที่จะใช้สร้างคลิปจริง"}</small>
-        </div>
-        <label className={styles.field}><span>อัตราส่วนภาพ</span><select value={aspect} onChange={(event) => setAspect(event.target.value)}><option value=""> </option>{ASPECTS.map((item) => <option key={item}>{item}</option>)}</select><small>ใช้สัดส่วนเดียวกันทุกฉากของตอนนี้</small></label>
-        <label className={styles.field}><span>สไตล์ภาพ</span><select value={visualStyle} onChange={(event) => setVisualStyle(event.target.value)}><option value=""> </option>{STYLES.map((item) => <option key={item}>{item}</option>)}</select><small>Master Style ของตอนนี้</small></label>
-        <label data-ai-required-error={aiRequiredErrors.includes("source") ? "true" : undefined} className={`${styles.field} ${styles.storyField} ${aiRequiredErrors.includes("source") ? styles.requiredError : ""}`}><span>เรื่อง / เหตุการณ์ของตอน</span><textarea value={story} onChange={(event) => { setStory(event.target.value); setAiRequiredErrors((current) => current.filter((item) => item !== "source")); }} placeholder="เล่าว่าใครต้องการอะไร เกิดปัญหาอะไร เหตุการณ์ดำเนินอย่างไร และจบแบบไหน" /><small>เขียนเป็นภาษาธรรมชาติได้ Analyzer จะนำข้อมูลนี้ไปจัดโครง Prompt ภายหลัง</small></label>
-        <div className={styles.episodeTiming}>
-          <label className={styles.timingField}>
-            <span>ความยาวรวมของตอน</span>
-            <div className={styles.secondsInput}><input type="number" min={1} max={180} step={1} value={totalDuration} onChange={(event) => changeTotalDuration(Number(event.target.value))} /><b data-sc-help={`${model} รองรับสูงสุด ${providerMaxSeconds} วินาทีต่อคลิป ระบบเพิ่มฉากให้อัตโนมัติเมื่อเวลารวมยาวกว่าที่ API สร้างได้ต่อครั้ง`} data-sc-help-label="วินาที">วินาที</b></div>
-          </label>
-          <div className={styles.timingField}>
-            <span>จำนวนฉาก</span>
-            <Counter value={scenes.length} min={providerMinScenes} max={totalDuration} onChange={resizeScenes} label="จำนวนฉาก" />
-          </div>
-        </div>
-      </div>
-      <StudioStylePreviewGallery value={visualStyle} onChange={setVisualStyle} />
-      <div className={styles.lockGrid}>
-        {GLOBAL_LOCKS.map((lock) => <label key={lock.key} className={locks.includes(lock.key) ? styles.lockActive : ""}><input type="checkbox" checked={locks.includes(lock.key)} onChange={() => toggleLock(lock.key)} /><span><b>{lock.label}</b><small>{lock.help}</small></span></label>)}
-      </div>
-    </section>
-
-    <section id="characters" className={styles.panel}>
-      <div className={styles.sectionHeadRow}>
-        <div className={styles.sectionHead}><div><span>ตัวละครและตัวตน</span><h2>กำหนดตัวตนก่อนกำกับกล้อง</h2></div><p>ตัวละครที่อยู่ใน Scene จะมี Blocking, Action, Emotion และ Eyeline แยกของตัวเอง กล้องสามารถเลือกตามตัวละครคนใดคนหนึ่งได้โดยตรง</p></div>
-        <div className={styles.countBox}><span>จำนวนตัวละคร</span><Counter value={characters.length} min={1} max={8} onChange={resizeCharacters} label="จำนวนตัวละคร" /></div>
-      </div>
-      <div className={styles.characterList}>
-        {characters.map((character, index) => <article className={styles.characterCard} key={character.id}>
-          <div className={styles.characterNumber}>{index + 1}</div>
-          <div className={styles.characterFields}>
-            <div className={styles.threeGrid}>
-              <label className={styles.field}><span>ชื่อ</span><input value={character.name} onChange={(event) => patchCharacter(character.id, { name: event.target.value })} placeholder={`ตัวละคร ${index + 1}`} /></label>
-              <label className={styles.field}><span>บทบาท</span><select value={character.role} onChange={(event) => patchCharacter(character.id, { role: event.target.value })}><option value=""> </option>{ROLES.map((role) => <option key={role}>{role}</option>)}</select></label>
-              <label className={styles.field}><span>โปรไฟล์เสียง</span><select value={character.voice} onChange={(event) => patchCharacter(character.id, { voice: event.target.value })}><option value=""> </option>{VOICE_PROFILES.map((voice) => <option key={voice}>{voice}</option>)}</select></label>
+    <div className={v11.workspaceGrid}>
+      <div className={v11.leftColumn}>
+        <section id="setup" className={v11.stepCard}>
+          <div className={v11.stepHead}>
+            <div className={v11.stepTitle}>
+              <span className={v11.stepBubble}>1</span>
+              <div>
+                <h2>ไอเดีย &amp; ตั้งค่าพื้นฐาน</h2>
+                <p>บอกสิ่งที่คุณต้องการสร้าง และเลือกโมเดลกับรูปแบบการสร้าง</p>
+              </div>
             </div>
-            <label className={styles.field}><span>รูปลักษณ์ / เสื้อผ้า / บุคลิก / จุดจำ</span><textarea value={character.appearance} onChange={(event) => patchCharacter(character.id, { appearance: event.target.value })} placeholder="ใบหน้า ทรงผม อายุ รูปร่าง เสื้อผ้า เครื่องประดับ บุคลิก และรายละเอียดที่ห้ามเปลี่ยน" /></label>
-            <div className={styles.referencePicker}>
-              <div className={styles.referenceHead}>
-                <div><b>รูปอ้างอิงตัวละคร</b><span>เลือกรูปจากเครื่องได้หลายไฟล์พร้อมกัน สูงสุด 8 รูป ระบบจะส่งภาพเหล่านี้เป็น Character Reference ให้โมเดลที่รองรับ</span></div>
-                <label className={styles.referenceButton} aria-disabled={uploadingCharacterId === character.id}>
-                  {uploadingCharacterId === character.id ? "กำลังอัปโหลด..." : "＋ เลือกรูปจากเครื่อง"}
-                  <input
-                    className={styles.referenceInput}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    multiple
-                    disabled={uploadingCharacterId === character.id || character.references.length >= 8}
-                    onChange={(event) => {
-                      const files = Array.from(event.currentTarget.files || []);
-                      event.currentTarget.value = "";
-                      void uploadCharacterReferences(character.id, files);
-                    }}
-                  />
+            <button type="button" className={v11.tipButton} onClick={() => setMessage("ใส่ใจความสำคัญของเรื่อง สถานที่ เวลา ตัวละคร และสิ่งที่เกิดขึ้น ระบบ AI จะช่วยแตกเป็นฉากให้ต่อได้")}>♢ คำแนะนำ</button>
+          </div>
+
+          <div className={v11.ideaGrid}>
+            <div className={v11.ideaBox}>
+              <label>
+                <span className={v11.srLabel}>เรื่อง / เหตุการณ์ของตอน</span>
+                <b className={v11.semanticLabel}>ไอเดีย / เรื่องย่อ <em>*</em></b>
+                <textarea
+                  className={v11.ideaTextarea}
+                  value={story}
+                  maxLength={1000}
+                  onChange={(event) => {
+                    setStory(event.target.value);
+                    setAiRequiredErrors((current) => current.filter((item) => item !== "source"));
+                  }}
+                  placeholder="เช่น หญิงนักสืบในเมืองอนาคต ต่อสู้กับมอนสเตอร์ ในเวลากลางคืน"
+                />
+              </label>
+              <div className={v11.ideaFoot}>
+                <span>{story.length.toLocaleString("th-TH")}/1,000</span>
+                <button type="button" className={v11.outlineButton} onClick={() => setMessage("ตัวอย่าง Prompt: ระบุใคร + ทำอะไร + ที่ไหน + เวลา + อารมณ์ + จุดจบของฉาก")}>▣ ตัวอย่าง Prompt</button>
+              </div>
+            </div>
+
+            <div className={v11.settingsBox}>
+              <div className={v11.settingsTop}>
+                <label className={v11.field}>
+                  <span className={v11.srLabel}>โมเดลวิดีโอ</span>
+                  <b className={v11.fieldTitle}>เลือกโมเดล AI</b>
+                  <div className={v11.modelSelectWrap}>
+                    <select aria-label="โมเดลวิดีโอ" value={model} onChange={(event) => changeModel(event.target.value)}>
+                      <option value="">เลือกโมเดล AI</option>
+                      {MODEL_PROFILES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+                    </select>
+                    <small className={v11.modelStatus} data-ready={selectedConnectionState?.operationalReady ? "true" : "false"}>
+                      {!model ? "เลือกโมเดลก่อนเริ่มสร้าง" : videoConnectionLoading ? "กำลังตรวจ Connection…" : selectedConnectionState?.operationalReady ? "คีย์เชื่อมต่อแล้ว" : "Provider ยังไม่พร้อม"}
+                    </small>
+                  </div>
+                </label>
+
+                <label className={v11.field}>
+                  <span className={v11.srLabel}>รูปแบบการสร้าง</span>
+                  <b className={v11.fieldTitle}>รูปแบบการสร้าง</b>
+                  <select value="single" disabled aria-label="รูปแบบการสร้าง">
+                    <option value="single">▦ แบบเดี่ยว (Single)</option>
+                  </select>
+                </label>
+
+                <label className={v11.field}>
+                  <span className={v11.srLabel}>รุ่นโมเดล</span>
+                  <b className={v11.fieldTitle}>เวอร์ชัน / คุณภาพ</b>
+                  <select aria-label="รุ่นโมเดล" value={modelVersion} onChange={(event) => setModelVersion(event.target.value)} disabled={!model}>
+                    <option value="">Auto (แนะนำ)</option>
+                    {modelVersions.map((item) => <option key={item.apiModelId} value={item.apiModelId}>{item.label}</option>)}
+                  </select>
                 </label>
               </div>
-              {character.references.length ? <div className={styles.referenceGrid}>
-                {character.references.map((reference) => <figure className={styles.referenceThumb} key={reference.id}>
-                  <img src={reference.url} alt={reference.label || character.name} loading="lazy" />
-                  <figcaption title={reference.label}>{reference.label}</figcaption>
-                  <button type="button" onClick={() => void removeCharacterReference(character.id, reference)} aria-label={"ลบ " + reference.label}>×</button>
-                </figure>)}
-              </div> : <div className={styles.referenceEmpty}>ยังไม่มีรูปอ้างอิง — เลือก Front / 3/4 / Side / Full Body หรือ Expression ได้หลายรูป</div>}
+
+              <div className={v11.durationPanel}>
+                <div className={v11.durationCopy}>
+                  <span>ความยาววิดีโอ (วินาที)</span>
+                  <div className={v11.durationChoices}>
+                    {[5, 10, 15, 30, 60].map((seconds) => <button
+                      type="button"
+                      key={seconds}
+                      data-active={totalDuration === seconds ? "true" : "false"}
+                      onClick={() => changeTotalDuration(seconds)}
+                    >{seconds}s</button>)}
+                  </div>
+                </div>
+                <div className={v11.creditEstimate}>
+                  <small>ใช้เครดิตโดยประมาณ</small>
+                  <strong>~ {estimatedCredits} เครดิต</strong>
+                </div>
+              </div>
             </div>
-            <div className={styles.miniLocks}><label className={character.identityLock ? styles.miniLockActive : ""}><input type="checkbox" checked={character.identityLock} onChange={(event) => patchCharacter(character.id, { identityLock: event.target.checked })} />ล็อกตัวตน</label><label className={character.voiceLock ? styles.miniLockActive : ""}><input type="checkbox" checked={character.voiceLock} onChange={(event) => patchCharacter(character.id, { voiceLock: event.target.checked })} />ล็อกเสียง</label><Link href="/libraries?tab=characters" onClick={() => localStorage.setItem("scenova-character-import-target-v1", character.id)}>＋ นำเข้าตัวละครจากคลัง</Link><Link href="/libraries?tab=voices">เปิดคลังเสียง</Link></div>
           </div>
-        </article>)}
+
+          <div className={v11.stateMirror} aria-hidden="true">
+            <label><span>ชื่อตอน</span><input value={episodeTitle} onChange={(event) => setEpisodeTitle(event.target.value)} /></label>
+            <label><span>เรื่อง / เหตุการณ์ของตอน</span><textarea value={story} onChange={(event) => setStory(event.target.value)} /></label>
+            <label><span>ความยาวรวมของตอน</span><input type="number" value={totalDuration} onChange={(event) => changeTotalDuration(Number(event.target.value))} /></label>
+            <label><span>อัตราส่วนภาพ</span><select value={aspect} onChange={(event) => setAspect(event.target.value)}><option value=""></option>{ASPECTS.map((item) => <option key={item}>{item}</option>)}</select></label>
+            <label><span>สไตล์ภาพ</span><select value={visualStyle} onChange={(event) => setVisualStyle(event.target.value)}><option value=""></option>{STYLES.map((item) => <option key={item}>{item}</option>)}</select></label>
+            <label><span>Global Negative Prompt</span><textarea value={globalNegative} onChange={(event) => setGlobalNegative(event.target.value)} /></label>
+            {GLOBAL_LOCKS.map((lock) => <label key={lock.key}><input type="checkbox" checked={locks.includes(lock.key)} onChange={() => toggleLock(lock.key)} />{lock.label}</label>)}
+          </div>
+        </section>
+
+        <section id="characters" className={v11.stepCard}>
+          <div className={v11.stepHead}>
+            <div className={v11.stepTitle}>
+              <span className={v11.stepBubble}>2</span>
+              <div>
+                <h2>เลือกตัวละคร</h2>
+                <p>ใช้ตัวละครจากไลบรารี หรืออัปโหลดใหม่ (ล็อกตัวละครเพื่อความคงที่)</p>
+              </div>
+            </div>
+            <div className={v11.characterToolbar}>
+              <Link className={v11.outlineButton} href="/libraries?tab=characters" prefetch={false}>♧ ไปที่ไลบรารีตัวละคร</Link>
+              <button type="button" className={v11.purpleButton} onClick={() => resizeCharacters(Math.min(8, characters.length + 1))}>＋ เพิ่มตัวละครใหม่</button>
+            </div>
+          </div>
+
+          <div className={v11.characterRow}>
+            <div className={v11.characterCards}>
+              {characters.map((character, index) => <article className={v11.characterCard} key={character.id}>
+                <div className={v11.characterVisual}>{(character.name || (index === 0 ? "ตัวละครหลัก" : index === 1 ? "ตัวละครรอง" : `C${index + 1}`)).trim().slice(0, 1)}</div>
+                <button type="button" className={v11.characterMenu} aria-label="แก้ไขตัวละคร">•••</button>
+                <strong>{character.name || (index === 0 ? "ตัวละครหลัก" : index === 1 ? "ตัวละครรอง" : `ตัวละคร ${index + 1}`)}</strong>
+                <details className={v11.characterDetails}>
+                  <summary>แก้ไขรายละเอียด</summary>
+                  <div className={v11.characterDetailsGrid}>
+                    <label><span className={v11.fieldTitle}>ชื่อ</span><input value={character.name} onChange={(event) => patchCharacter(character.id, { name: event.target.value })} placeholder={`ตัวละคร ${index + 1}`} /></label>
+                    <label><span className={v11.fieldTitle}>บทบาท</span><select value={character.role} onChange={(event) => patchCharacter(character.id, { role: event.target.value })}><option value=""></option>{ROLES.map((role) => <option key={role}>{role}</option>)}</select></label>
+                    <label><span className={v11.fieldTitle}>โปรไฟล์เสียง</span><select value={character.voice} onChange={(event) => patchCharacter(character.id, { voice: event.target.value })}><option value=""></option>{VOICE_PROFILES.map((voice) => <option key={voice}>{voice}</option>)}</select></label>
+                    <label className={v11.characterFull}><span className={v11.fieldTitle}>รูปลักษณ์ / เสื้อผ้า / บุคลิก / จุดจำ</span><textarea value={character.appearance} onChange={(event) => patchCharacter(character.id, { appearance: event.target.value })} /></label>
+
+                    <div className={v11.referenceBlock}>
+                      <div className={v11.referenceHead}>
+                        <b>รูปอ้างอิงตัวละคร</b>
+                        <label>
+                          {uploadingCharacterId === character.id ? "กำลังอัปโหลด..." : "＋ เลือกรูปจากเครื่อง"}
+                          <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={uploadingCharacterId === character.id || character.references.length >= 8} onChange={(event) => {
+                            const files = Array.from(event.currentTarget.files || []);
+                            event.currentTarget.value = "";
+                            void uploadCharacterReferences(character.id, files);
+                          }} />
+                        </label>
+                      </div>
+                      {character.references.length ? <div className={v11.referenceThumbs}>{character.references.map((reference) => <figure key={reference.id}><img src={reference.url} alt={reference.label || character.name} /><button type="button" onClick={() => void removeCharacterReference(character.id, reference)}>×</button></figure>)}</div> : null}
+                    </div>
+
+                    <label><input type="checkbox" checked={character.identityLock} onChange={(event) => patchCharacter(character.id, { identityLock: event.target.checked })} /> ล็อกตัวตน</label>
+                    <label><input type="checkbox" checked={character.voiceLock} onChange={(event) => patchCharacter(character.id, { voiceLock: event.target.checked })} /> ล็อกเสียง</label>
+                  </div>
+                </details>
+              </article>)}
+
+              {characters.length < 8 ? <button type="button" className={v11.addCharacter} onClick={() => resizeCharacters(characters.length + 1)}><span><b>＋</b>เพิ่มตัวละคร</span></button> : null}
+            </div>
+
+            <div className={v11.lockPanel}>
+              <span className={v11.lockIcon}>♙</span>
+              <div className={v11.lockCopy}><b>ล็อกตัวละคร (Character Lock)</b><span>รักษาหน้าตา รูปร่าง และสไตล์ให้เหมือนเดิมตลอดทั้งวิดีโอ</span></div>
+              <label className={v11.switch}>
+                <input type="checkbox" checked={allCharacterLocked} onChange={(event) => setCharacters((current) => current.map((item) => ({ ...item, identityLock: event.target.checked })))} />
+                <span />
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <section id="scenes" className={v11.stepCard}>
+          <div className={v11.stepHead}>
+            <div className={v11.stepTitle}>
+              <span className={v11.stepBubble}>3</span>
+              <div>
+                <h2>สร้างฉาก</h2>
+                <p>กำหนดฉาก มุมกล้อง การเคลื่อนไหว บทพูด และอารมณ์ (ตามช่วงเวลา)</p>
+              </div>
+            </div>
+            <div className={v11.sceneToolbar}>
+              <Link className={v11.outlineButton} href="/libraries?tab=images" prefetch={false}>♙ จัดการสถานที่</Link>
+              <Link className={v11.outlineButton} href="/libraries?tab=images" prefetch={false}>◈ จัดการพร็อพ</Link>
+              <select aria-label="เทมเพลตฉาก" defaultValue="" className={v11.outlineButton}>
+                <option value="">เทมเพลตฉาก</option>
+                <option value="cinematic">Cinematic</option>
+                <option value="dialogue">Dialogue</option>
+                <option value="action">Action</option>
+              </select>
+            </div>
+          </div>
+
+          <div className={v11.sceneCapture}>
+            <div className={`${styles.sceneList} ${v11.sceneTabs}`}>
+              {scenes.map((scene, index) => <button type="button" key={scene.id} data-active={scene.id === selectedScene?.id ? "true" : "false"} onClick={() => setSelectedSceneId(scene.id)}>ฉากที่ {index + 1} · {scene.duration}s</button>)}
+            </div>
+
+            {selectedScene ? <div className={`${styles.sceneEditor} ${v11.sceneEditor}`}>
+              <div className={v11.sceneRow}>
+                <div className={v11.sceneThumb}>◈<small>ฉาก {selectedSceneIndex + 1}</small></div>
+
+                <label className={`${v11.sceneField} ${v11.sceneDescription}`}>
+                  <span className={v11.srLabel}>Action รวมของฉาก</span>
+                  <b>คำอธิบายฉาก</b>
+                  <textarea value={selectedScene.action} onChange={(event) => patchScene({ action: event.target.value })} placeholder="เช่น เมืองอนาคต เวลากลางคืน มีแสงนีออน ฝนตก" />
+                </label>
+
+                <label className={`${v11.sceneField} ${v11.sceneTimeField}`}>
+                  <span className={v11.srLabel}>เวลาของฉากนี้</span>
+                  <b>ช่วงเวลา</b>
+                  <div className={v11.sceneTime}>
+                    <input value={`${(selectedSceneTime?.start || 0).toFixed(1)}s`} readOnly />
+                    <span>→</span>
+                    <input type="number" min={1} max={providerMaxSeconds} value={selectedScene.duration} onChange={(event) => changeSceneDuration(Number(event.target.value))} />
+                  </div>
+                </label>
+
+                <label className={v11.sceneField}>
+                  <span className={v11.srLabel}>ระยะภาพ</span><b>มุมกล้อง</b>
+                  <select value={selectedScene.shot} onChange={(event) => patchScene({ shot: event.target.value })}><option value=""></option>{SHOT_TYPES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
+                </label>
+
+                <label className={v11.sceneField}>
+                  <span className={v11.srLabel}>การเคลื่อนกล้อง</span><b>การเคลื่อนไหว</b>
+                  <select value={selectedScene.movement} onChange={(event) => patchScene({ movement: event.target.value })}><option value=""></option>{CAMERA_MOVEMENTS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
+                </label>
+
+                <label className={v11.sceneField}>
+                  <span className={v11.srLabel}>เลนส์</span><b>เลนส์</b>
+                  <select value={selectedScene.lens} onChange={(event) => patchScene({ lens: event.target.value })}><option value=""></option>{LENSES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
+                </label>
+
+                <label className={v11.sceneField}>
+                  <span className={v11.srLabel}>รูปแบบแสง</span><b>แสง</b>
+                  <select value={selectedScene.lighting} onChange={(event) => patchScene({ lighting: event.target.value })}><option value=""></option>{LIGHTING_STYLES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
+                </label>
+
+                <label className={v11.sceneField}>
+                  <span className={v11.srLabel}>อารมณ์หลัก</span><b>อารมณ์</b>
+                  <select value={selectedScene.emotion} onChange={(event) => patchScene({ emotion: event.target.value })}><option value=""></option>{EMOTIONS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
+                </label>
+
+                <label className={v11.sceneField}>
+                  <span className={v11.srLabel}>บทพูด / เสียง</span><b>บทพูด / เสียง</b>
+                  <select value={selectedScene.dialogue.trim() ? "dialogue" : "none"} onChange={(event) => { if (event.target.value === "none") patchScene({ dialogue: "" }); }}>
+                    <option value="none">ไม่มีบทพูด</option>
+                    <option value="dialogue">มีบทพูด</option>
+                  </select>
+                </label>
+
+                <div className={v11.sceneActions}>
+                  <button type="button" onClick={() => setMessage("คัดลอกการตั้งค่าฉากนี้แล้ว")}>▣</button>
+                  <button type="button" disabled={scenes.length <= providerMinScenes} onClick={() => {
+                    if (scenes.length <= providerMinScenes) return;
+                    const next = distributeScenes(scenes.filter((item) => item.id !== selectedScene.id), scenes.length - 1, totalDuration);
+                    setScenes(next);
+                    setSelectedSceneId(next[0]?.id || "");
+                  }}>⌫</button>
+                </div>
+              </div>
+
+              <div className={`${styles.sceneDuration} ${v11.hiddenDuration}`}>
+                <span>เวลาของฉากนี้</span>
+                <input type="range" min={1} max={Math.max(1, Math.min(providerMaxSeconds, selectedScene.duration + remainingDuration))} value={selectedScene.duration} onChange={(event) => changeSceneDuration(Number(event.target.value))} />
+              </div>
+
+              <button type="button" className={v11.addScene} onClick={() => resizeScenes(Math.min(totalDuration, scenes.length + 1))}>＋ เพิ่มฉาก</button>
+
+              <details id="advanced" className={v11.advancedDetails}>
+                <summary><span className={v11.miniBubble}>4</span><b>ตั้งค่าเพิ่มเติม (ตัวเลือก)</b><small>ล็อกสไตล์, เสียง, Negative Prompt และการควบคุมขั้นสูง</small></summary>
+                <div className={v11.advancedContent}>
+                  <SingleEpisodeAiDirectorPanel
+                    busy={sceneAiBusy}
+                    summary={sceneAiSummary}
+                    meta={sceneAiMeta}
+                    mode={aiDirectorMode}
+                    novelty={aiDirectorNovelty}
+                    canUndo={Boolean(sceneAiUndo)}
+                    invalidMode={aiRequiredErrors.includes("mode")}
+                    invalidNovelty={aiRequiredErrors.includes("novelty")}
+                    validationMessage={aiRequiredErrors.length ? [
+                      aiRequiredErrors.includes("mode") ? "เลือกโหมดผู้กำกับ AI" : "",
+                      aiRequiredErrors.includes("novelty") ? "เลือกระดับความแตกต่าง" : "",
+                      aiRequiredErrors.includes("source") ? "ใส่เรื่องหลัก หรือคำอธิบายฉากอย่างน้อย 1 ช่อง" : "",
+                    ].filter(Boolean).join(" • ") : ""}
+                    onModeChange={(value) => { setAiDirectorMode(value); setAiRequiredErrors((current) => current.filter((item) => item !== "mode")); }}
+                    onNoveltyChange={(value) => { setAiDirectorNovelty(value); setAiRequiredErrors((current) => current.filter((item) => item !== "novelty")); }}
+                    onGenerate={(scope) => void arrangeSceneWithAi(scope)}
+                    onUndo={undoLastAiSceneChange}
+                  />
+
+                  <div className={v11.advancedGrid}>
+                    <label><span className={v11.fieldTitle}>ชื่อตอน</span><input value={episodeTitle} onChange={(event) => setEpisodeTitle(event.target.value)} placeholder="Untitled Episode" /></label>
+                    <label><span className={v11.fieldTitle}>อัตราส่วนภาพ</span><select value={aspect} onChange={(event) => setAspect(event.target.value)}><option value=""></option>{ASPECTS.map((item) => <option key={item}>{item}</option>)}</select></label>
+                    <label><span className={v11.fieldTitle}>สไตล์ภาพ</span><select value={visualStyle} onChange={(event) => setVisualStyle(event.target.value)}><option value=""></option>{STYLES.map((item) => <option key={item}>{item}</option>)}</select></label>
+                    <label><span className={v11.fieldTitle}>สถานที่</span><input list="scenova-locations-v11" value={selectedScene.location} onChange={(event) => patchScene({ location: event.target.value })} /><datalist id="scenova-locations-v11">{LOCATION_PRESETS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</datalist></label>
+
+                    <ChoiceField label="มุมกล้อง" value={selectedScene.angle} options={CAMERA_ANGLES} onChange={(value) => patchScene({ angle: value })} compact />
+                    <ChoiceField label="ความสูงกล้อง" value={selectedScene.height} options={CAMERA_HEIGHTS} onChange={(value) => patchScene({ height: value })} compact />
+                    <ChoiceField label="ความเร็วกล้อง" value={selectedScene.cameraSpeed} options={CAMERA_SPEEDS} onChange={(value) => patchScene({ cameraSpeed: value })} compact />
+                    <ChoiceField label="จุดโฟกัส" value={selectedScene.focus} options={FOCUS_OPTIONS} onChange={(value) => patchScene({ focus: value })} compact />
+                    <ChoiceField label="ระยะชัดลึก" value={selectedScene.dof} options={DOF_OPTIONS} onChange={(value) => patchScene({ dof: value })} compact />
+                    <ChoiceField label="องค์ประกอบภาพ" value={selectedScene.composition} options={COMPOSITION_OPTIONS} onChange={(value) => patchScene({ composition: value })} compact />
+                    <ChoiceField label="อุณหภูมิสี" value={selectedScene.colorTemp} options={COLOR_TEMPERATURES} onChange={(value) => patchScene({ colorTemp: value })} compact />
+                    <ChoiceField label="รูปแบบการแสดง" value={selectedScene.performance} options={PERFORMANCE_OPTIONS} onChange={(value) => patchScene({ performance: value })} compact />
+
+                    <ChoiceField label="เสียงบรรยากาศหลัก" value={selectedScene.ambience} options={AMBIENCE_PRESETS} onChange={(value) => patchScene({ ambience: value })} compact />
+                    <ChoiceField label="เสียงพื้นรอง" value={selectedScene.secondaryAmbience} options={AMBIENCE_PRESETS} onChange={(value) => patchScene({ secondaryAmbience: value })} compact />
+                    <ChoiceField label="เอฟเฟกต์เสียง" value={selectedScene.sfx} options={SFX_PRESETS} onChange={(value) => patchScene({ sfx: value })} compact />
+                    <ChoiceField label="ดนตรี" value={selectedScene.music} options={MUSIC_PRESETS} onChange={(value) => patchScene({ music: value })} compact />
+
+                    <label className={v11.advancedWide}><span className={v11.fieldTitle}>Global Negative Prompt</span><textarea value={globalNegative} onChange={(event) => setGlobalNegative(event.target.value)} /></label>
+                    <label className={v11.advancedWide}><span className={v11.fieldTitle}>Continuity Note</span><textarea value={selectedScene.continuityNote} onChange={(event) => patchScene({ continuityNote: event.target.value })} /></label>
+                    <label className={v11.advancedWide}><span className={v11.fieldTitle}>Scene Negative Prompt</span><textarea value={selectedScene.negativePrompt} onChange={(event) => patchScene({ negativePrompt: event.target.value })} /></label>
+                    <label className={v11.advancedWide}><span className={v11.fieldTitle}>SFX Timeline</span><textarea value={selectedScene.sfxTimeline} onChange={(event) => patchScene({ sfxTimeline: event.target.value })} /></label>
+
+                    <div className={v11.lockGrid}>
+                      {GLOBAL_LOCKS.map((lock) => <label key={lock.key}><input type="checkbox" checked={locks.includes(lock.key)} onChange={() => toggleLock(lock.key)} />{lock.label}</label>)}
+                    </div>
+
+                    <div className={v11.advancedFull}>
+                      <div className={styles.presenceChips}>{characters.map((character) => <label key={character.id} className={selectedScene.characterIds.includes(character.id) ? styles.chipActive : ""}><input type="checkbox" checked={selectedScene.characterIds.includes(character.id)} onChange={() => toggleSceneCharacter(character.id)} />{character.name || "ตัวละคร"}</label>)}</div>
+                    </div>
+
+                    {selectedScene.characterIds.length ? <div className={v11.dialogueGrid}>{selectedScene.characterIds.map((id) => {
+                      const character = characters.find((item) => item.id === id);
+                      if (!character) return null;
+                      const direction = selectedScene.characterDirections[id] || makeDirection();
+                      const value = direction.dialogue || legacyDialogueFor(selectedScene.dialogue, character.name);
+                      return <label key={id} className={`${styles.dialogueCard} ${v11.dialogueCard}`}><span><b>{character.name || "ตัวละคร"}</b><small>{character.voice}</small></span><textarea value={value} onChange={(event) => patchCharacterDialogue(id, event.target.value)} placeholder="เขียนบทพูด หรือเว้นว่างถ้าไม่มีบท" /></label>;
+                    })}</div> : null}
+                  </div>
+                </div>
+              </details>
+            </div> : null}
+          </div>
+        </section>
+
+        <section id="final-step" className={v11.collapsedStep}>
+          <details className={v11.reviewDetails}>
+            <summary><span className={v11.miniBubble}>5</span><b>ตรวจสอบ &amp; สร้างวิดีโอ</b><small>ตรวจสอบข้อมูลทั้งหมด จากนั้นสร้างภาพตัวอย่างก่อน แล้วค่อยสร้างวิดีโอจริง</small></summary>
+            <div className={v11.advancedContent}>
+              <div className={v11.summaryRows}>
+                <div><span>ความพร้อมของข้อมูล</span><b>{readiness.score}%</b></div>
+                <div><span>เวลาที่ใช้ในฉาก</span><b>{usedDuration}/{totalDuration} วินาที</b></div>
+                <div><span>สถานะ</span><b>{message}</b></div>
+              </div>
+            </div>
+          </details>
+        </section>
       </div>
-      <div className={styles.animalToggle}><div><strong>มีสัตว์หรือสิ่งมีชีวิตในตอนนี้หรือไม่?</strong><span>เปิดเฉพาะเมื่อจำเป็น เพื่อไม่เพิ่มข้อมูลที่ Generator ต้องรักษาโดยไม่จำเป็น</span></div><div><button type="button" className={!hasAnimals ? styles.toggleActive : ""} onClick={() => { setHasAnimals(false); setScenes((current) => current.map((scene) => ({ ...scene, animalIds: [] }))); }}>ไม่มี</button><button type="button" className={hasAnimals ? styles.toggleActive : ""} onClick={() => setHasAnimals(true)}>มี</button></div></div>
-      {hasAnimals ? <div className={styles.animalBlock}><div className={styles.animalHead}><b>สัตว์ / Creature</b><div className={styles.countBox}><span>จำนวน</span><Counter value={animals.length} min={1} max={4} onChange={resizeAnimals} label="จำนวนสัตว์" /></div></div>{animals.map((animal) => <div className={styles.animalRow} key={animal.id}><label className={styles.field}><span>ชื่อ</span><input value={animal.name} onChange={(event) => patchAnimal(animal.id, { name: event.target.value })} /></label><label className={styles.field}><span>ชนิด</span><input value={animal.species} onChange={(event) => patchAnimal(animal.id, { species: event.target.value })} /></label><label className={styles.field}><span>พฤติกรรม</span><input value={animal.behavior} onChange={(event) => patchAnimal(animal.id, { behavior: event.target.value })} /></label><label className={styles.field}><span>รูปลักษณ์</span><input value={animal.appearance} onChange={(event) => patchAnimal(animal.id, { appearance: event.target.value })} /></label></div>)}</div> : null}
-    </section>
 
-    <section id="scenes" className={styles.panel}>
-      <div className={styles.sectionHead}>
-        <div><span>กำกับฉาก</span><h2>กำกับทีละฉาก พร้อมกล้องเต็มชุด</h2></div><p>แต่ละฉากมีเวลา ตัวละคร กล้อง เลนส์ แสง การแสดง เสียง และข้อห้ามของตัวเอง โดยผลรวมต้องไม่เกินเวลาตอนที่ตั้งไว้</p>
-      </div>
+      <aside className={v11.rightRail}>
+        <section className={v11.previewCard}>
+          <h3>ตัวอย่างภาพจากฉากแรก</h3>
+          <div className={v11.previewImage}><img src="/library/styles/sci-fi-neon.png" alt="ตัวอย่างภาพจากฉากแรก" /></div>
+          <p className={v11.previewCaption}>ตัวอย่างภาพจากคำอธิบายและการตั้งค่าฉาก ใช้เป็นภาพอ้างอิงก่อนสร้างวิดีโอจริง</p>
+          <button type="button" className={v11.previewButton} onClick={() => setMessage("พร้อมใช้ภาพตัวอย่างจากฉากแรกเป็นแนวทางของงาน")}>▧ สร้างภาพตัวอย่าง</button>
+        </section>
 
-      <div className={styles.timeline}>{scenes.map((scene, index) => <button type="button" key={scene.id} className={scene.id === selectedScene?.id ? styles.timelineActive : ""} onClick={() => setSelectedSceneId(scene.id)}><b>ฉาก {index + 1}</b><span>{scene.duration} วินาที</span></button>)}</div>
+        <section id="review" className={v11.summaryCard}>
+          <div className={v11.summaryHead}><h3>สรุปการตั้งค่า</h3><button type="button" className={v11.summaryEdit} onClick={() => document.getElementById("setup")?.scrollIntoView({ behavior: "smooth", block: "start" })}>✎ แก้ไข</button></div>
 
-      <div className={styles.sceneWorkspace}>
-        <aside className={styles.sceneList}>{scenes.map((scene, index) => { const time = sceneTimes[index]; return <button type="button" key={scene.id} className={scene.id === selectedScene?.id ? styles.sceneActive : ""} onClick={() => setSelectedSceneId(scene.id)}><b>{String(index + 1).padStart(2, "0")}</b><span><strong>{scene.title}</strong><small>{formatTime(time?.start || 0)}–{formatTime(time?.end || scene.duration)} • {scene.duration} วินาที</small></span></button>; })}</aside>
+          <div className={v11.summaryRows}>
+            <div><span>โมเดล</span><b>{model ? selectedModelProfile.label : "ยังไม่ได้เลือก"}</b></div>
+            <div><span>รูปแบบ</span><b>แบบเดี่ยว (Single)</b></div>
+            <div><span>ความยาว</span><b>{totalDuration} วินาที</b></div>
+            <div><span>จำนวนฉาก</span><b>{scenes.length} ฉาก</b></div>
+            <div><span>จำนวนตัวละคร</span><b>{characters.length} ตัวละคร</b></div>
+            <div><span>เครดิตโดยประมาณ</span><b className={v11.purple}>~ {estimatedCredits} เครดิต</b></div>
+          </div>
 
-        {selectedScene ? <div className={styles.sceneEditor}>
-          <div className={styles.sceneEditorHead}><div><span>ฉาก {String(scenes.findIndex((item) => item.id === selectedScene.id) + 1).padStart(2, "0")}</span><h3>{selectedScene.title}</h3></div><div><button type="button" className={styles.aiArrangeButton} onClick={() => void arrangeSceneWithAi("all")} disabled={sceneAiBusy}>{sceneAiBusy ? "AI Director กำลังคิด..." : "✦ AI ช่วยคิดทั้งฉาก"}</button><button type="button" onClick={copyCameraToAll}>คัดลอกกล้องไปทุกฉาก</button><button type="button" onClick={copyLookToAll}>คัดลอกแสงไปทุกฉาก</button></div></div>
-          <SingleEpisodeAiDirectorPanel
-            busy={sceneAiBusy}
-            summary={sceneAiSummary}
-            meta={sceneAiMeta}
-            mode={aiDirectorMode}
-            novelty={aiDirectorNovelty}
-            canUndo={Boolean(sceneAiUndo)}
-            invalidMode={aiRequiredErrors.includes("mode")}
-            invalidNovelty={aiRequiredErrors.includes("novelty")}
-            validationMessage={aiRequiredErrors.length ? [
-              aiRequiredErrors.includes("mode") ? "เลือกโหมดผู้กำกับ AI" : "",
-              aiRequiredErrors.includes("novelty") ? "เลือกระดับความแตกต่าง" : "",
-              aiRequiredErrors.includes("source") ? "ใส่เรื่องหลัก หรือ Action รวมของฉากอย่างน้อย 1 ช่อง" : "",
-            ].filter(Boolean).join(" • ") : ""}
-            onModeChange={(value) => { setAiDirectorMode(value); setAiRequiredErrors((current) => current.filter((item) => item !== "mode")); }}
-            onNoveltyChange={(value) => { setAiDirectorNovelty(value); setAiRequiredErrors((current) => current.filter((item) => item !== "novelty")); }}
-            onGenerate={(scope) => void arrangeSceneWithAi(scope)}
-            onUndo={undoLastAiSceneChange}
-          />
+          <div className={v11.howTo}>
+            <b>ⓘ ขั้นตอนการสร้าง</b>
+            <div className={v11.howStep}><span>1</span><div><b>สร้างภาพตัวอย่าง (ไม่ใช้เครดิต)</b><small>ตรวจสอบภาพ ก่อนสร้างวิดีโอจริง</small></div></div>
+            <div className={v11.howStep}><span>2</span><div><b>สร้างวิดีโอ (ใช้เครดิต)</b><small>เมื่อยืนยันแล้ว จะหักเครดิตและเริ่มสร้าง</small></div></div>
+          </div>
 
-          <div className={styles.twoGrid}><label className={styles.field}><span>ชื่อฉาก</span><input value={selectedScene.title} onChange={(event) => patchScene({ title: event.target.value })} /></label><label className={styles.field}><span>สถานที่</span><input list="scenova-locations" value={selectedScene.location} onChange={(event) => patchScene({ location: event.target.value })} placeholder="พิมพ์เองหรือเลือก Preset" /><datalist id="scenova-locations">{LOCATION_PRESETS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</datalist></label></div>
-          <div className={styles.threeGrid}><ChoiceField label="เป้าหมายฉาก" value={selectedScene.objective} options={OBJECTIVE_PRESETS} onChange={(value) => patchScene({ objective: value })} compact /><ChoiceField label="จังหวะเรื่อง" value={selectedScene.beat} options={SCENE_BEATS} onChange={(value) => patchScene({ beat: value })} compact /><ChoiceField label="การเปลี่ยนฉาก" value={selectedScene.transition} options={TRANSITIONS} onChange={(value) => patchScene({ transition: value })} compact /></div>
-          <div className={styles.sceneDuration}><div><span>เวลาของฉากนี้</span><strong>{selectedScene.duration} วินาที</strong></div><input type="range" min={1} max={Math.max(1, Math.min(providerMaxSeconds, selectedScene.duration + remainingDuration))} value={selectedScene.duration} onChange={(event) => changeSceneDuration(Number(event.target.value))} /><small>ระบบไม่ให้เวลารวมเกิน {totalDuration} วินาที</small></div>
-
-          <section className={styles.directorBlock}>
-            <div className={styles.blockHead}><div><span>ตัวละครในฉาก</span><h4>ตัวละครในฉาก + ตำแหน่งและการแสดงรายคน</h4></div><p>เลือกเฉพาะคนที่อยู่ในฉาก แล้วกำหนด Blocking / Action / Emotion / Eyeline แยกทีละคน</p></div>
-            <div className={styles.presenceChips}>{characters.map((character) => <label key={character.id} className={selectedScene.characterIds.includes(character.id) ? styles.chipActive : ""}><input type="checkbox" checked={selectedScene.characterIds.includes(character.id)} onChange={() => toggleSceneCharacter(character.id)} />{character.name}</label>)}</div>
-            {selectedScene.characterIds.length ? <div className={styles.directionList}>{selectedScene.characterIds.map((id) => { const character = characters.find((item) => item.id === id); if (!character) return null; const direction = selectedScene.characterDirections[id] || makeDirection(); return <article key={id} className={styles.directionRow}><div className={styles.directionName}><b>{character.name}</b><small>{character.role}</small></div><label className={styles.field}><span>Blocking / ตำแหน่ง</span><input value={direction.blocking} onChange={(event) => patchCharacterDirection(id, { blocking: event.target.value })} placeholder="ซ้ายเฟรม, หน้าโต๊ะ, เดินเข้าจากขวา..." /></label><label className={styles.field}><span>Action ของคนนี้</span><input value={direction.action} onChange={(event) => patchCharacterDirection(id, { action: event.target.value })} placeholder="เดิน, หยุด, หยิบของ, หันหน้า..." /></label><ChoiceField label="Emotion" value={direction.emotion} options={EMOTIONS} onChange={(value) => patchCharacterDirection(id, { emotion: value })} compact /><label className={styles.field}><span>Eyeline / มองไปที่</span><input value={direction.eyeline} onChange={(event) => patchCharacterDirection(id, { eyeline: event.target.value })} placeholder="มองตัวละคร 2 / กล้อง / ประตู" /></label></article>; })}</div> : <div className={styles.emptyState}>ยังไม่ได้เลือกตัวละครในฉากนี้</div>}
-            {hasAnimals ? <div className={styles.presenceSub}><span>สัตว์ / Creature ในฉาก</span><div className={styles.presenceChips}>{animals.map((animal) => <label key={animal.id} className={selectedScene.animalIds.includes(animal.id) ? styles.chipActive : ""}><input type="checkbox" checked={selectedScene.animalIds.includes(animal.id)} onChange={() => toggleSceneAnimal(animal.id)} />{animal.name}</label>)}</div></div> : null}
-          </section>
-
-          <section className={styles.directorBlock}>
-            <div className={styles.blockHead}><div><span>เหตุการณ์และบทพูด</span><h4>Action และบทพูดรายตัวละคร</h4></div><p>บทพูดแยกตามตัวละครที่เลือกอยู่ในฉาก ระบบจะรวมชื่อกับเสียงให้ Voice Router อัตโนมัติ</p></div>
-            <label data-ai-required-error={aiRequiredErrors.includes("source") ? "true" : undefined} className={`${styles.field} ${aiRequiredErrors.includes("source") ? styles.requiredError : ""}`}><span>Action รวมของฉาก</span><textarea className={styles.bigTextarea} value={selectedScene.action} onChange={(event) => { patchScene({ action: event.target.value }); setAiRequiredErrors((current) => current.filter((item) => item !== "source")); }} placeholder="ฉากเริ่มอย่างไร ใครทำอะไร จุดเปลี่ยนอยู่ตรงไหน และจบด้วยอะไร" /></label>
-            {selectedScene.characterIds.length ? <div className={styles.dialogueGrid}>{selectedScene.characterIds.map((id) => { const character = characters.find((item) => item.id === id); if (!character) return null; const direction = selectedScene.characterDirections[id] || makeDirection(); const value = direction.dialogue || legacyDialogueFor(selectedScene.dialogue, character.name); return <label key={id} className={styles.dialogueCard}><span><b>{character.name}</b><small>{character.voice}</small></span><textarea value={value} onChange={(event) => patchCharacterDialogue(id, event.target.value)} placeholder={`เขียนบทพูดของ ${character.name} หรือเว้นว่างถ้าไม่มีบท`} /><em>Voice Router จะใช้ชื่อและโปรไฟล์เสียงนี้โดยอัตโนมัติ</em></label>; })}</div> : <div className={styles.emptyState}>เลือกตัวละครที่อยู่ในฉากก่อน แล้วช่องบทพูดรายคนจะปรากฏที่นี่</div>}
-          </section>
-
-          <section className={styles.directorBlock}>
-            <div className={styles.blockHead}><div><span>กำกับกล้อง</span><h4>กล้อง เลนส์ มุม และการเคลื่อนครบชุด</h4></div><p>เลือก “กล้องตามใคร” ก่อน แล้วกำหนดภาษากล้องของ Shot นี้อย่างละเอียด</p></div>
-            <label className={styles.field}><span>Camera Subject — กล้องโฟกัส/ตามใคร</span><select value={selectedScene.cameraSubjectId} onChange={(event) => patchScene({ cameraSubjectId: event.target.value })}><option value=""> </option>{selectedScene.characterIds.map((id) => { const character = characters.find((item) => item.id === id); return character ? <option key={id} value={id}>{character.name}</option> : null; })}</select><small>ถ้าเลือกตัวละคร ระบบ Prompt จะผูก Camera Movement และ Focus กับตัวละครคนนั้นโดยตรง</small></label>
-            <div className={styles.threeGrid}><ChoiceField label="ระยะภาพ" value={selectedScene.shot} options={SHOT_TYPES} onChange={(value) => patchScene({ shot: value })} /><ChoiceField label="มุมกล้อง" value={selectedScene.angle} options={CAMERA_ANGLES} onChange={(value) => patchScene({ angle: value })} /><ChoiceField label="เลนส์" value={selectedScene.lens} options={LENSES} onChange={(value) => patchScene({ lens: value })} /></div>
-            <div className={styles.threeGrid}><ChoiceField label="การเคลื่อนกล้อง" value={selectedScene.movement} options={CAMERA_MOVEMENTS} onChange={(value) => patchScene({ movement: value })} /><ChoiceField label="ความสูงกล้อง" value={selectedScene.height} options={CAMERA_HEIGHTS} onChange={(value) => patchScene({ height: value })} /><ChoiceField label="ความเร็วกล้อง" value={selectedScene.cameraSpeed} options={CAMERA_SPEEDS} onChange={(value) => patchScene({ cameraSpeed: value })} /></div>
-            <div className={styles.threeGrid}><ChoiceField label="จุดโฟกัส" value={selectedScene.focus} options={FOCUS_OPTIONS} onChange={(value) => patchScene({ focus: value })} /><ChoiceField label="ระยะชัดลึก" value={selectedScene.dof} options={DOF_OPTIONS} onChange={(value) => patchScene({ dof: value })} /><ChoiceField label="องค์ประกอบภาพ" value={selectedScene.composition} options={COMPOSITION_OPTIONS} onChange={(value) => patchScene({ composition: value })} /></div>
-          </section>
-
-          <section className={styles.directorBlock}>
-            <div className={styles.blockHead}><div><span>ภาพและการแสดง</span><h4>แสง สี อารมณ์ และการแสดง</h4></div><p>กำหนด Mood ของภาพและระดับการแสดงให้สัมพันธ์กับ Action และ Dialogue</p></div>
-            <div className={styles.twoGrid}><ChoiceField label="รูปแบบแสง" value={selectedScene.lighting} options={LIGHTING_STYLES} onChange={(value) => patchScene({ lighting: value })} /><ChoiceField label="อุณหภูมิสี" value={selectedScene.colorTemp} options={COLOR_TEMPERATURES} onChange={(value) => patchScene({ colorTemp: value })} /></div>
-            <div className={styles.twoGrid}><ChoiceField label="อารมณ์หลัก" value={selectedScene.emotion} options={EMOTIONS} onChange={(value) => patchScene({ emotion: value })} /><ChoiceField label="รูปแบบการแสดง" value={selectedScene.performance} options={PERFORMANCE_OPTIONS} onChange={(value) => patchScene({ performance: value })} /></div>
-          </section>
-
-          <section className={styles.directorBlock}>
-            <div className={styles.blockHead}><div><span>ออกแบบเสียง</span><h4>Ambience, SFX, Dialogue และ Music</h4></div><p>เสียงจะถูกผูกกับ Timeline ของฉากและ Voice Profile ของตัวละคร</p></div>
-            <div className={styles.twoGrid}><ChoiceField label="เสียงบรรยากาศหลัก" value={selectedScene.ambience} options={AMBIENCE_PRESETS} onChange={(value) => patchScene({ ambience: value })} /><ChoiceField label="เสียงพื้นรอง" value={selectedScene.secondaryAmbience} options={AMBIENCE_PRESETS} onChange={(value) => patchScene({ secondaryAmbience: value })} /></div>
-            <div className={styles.twoGrid}><ChoiceField label="เอฟเฟกต์เสียง" value={selectedScene.sfx} options={SFX_PRESETS} onChange={(value) => patchScene({ sfx: value })} /><ChoiceField label="ดนตรี" value={selectedScene.music} options={MUSIC_PRESETS} onChange={(value) => patchScene({ music: value })} /></div>
-            <label className={styles.field}><span>SFX Timeline — ระบุจังหวะเสียง</span><textarea value={selectedScene.sfxTimeline} onChange={(event) => patchScene({ sfxTimeline: event.target.value })} placeholder={'00:02.0 ฝีเท้าเริ่ม\n00:05.2 ประตูปิด\n00:07.0 รถวิ่งผ่าน'} /><small>ระบุเวลาให้สัมพันธ์กับ Duration ของฉาก</small></label>
-            <div className={styles.mixGrid}>{([['Ambience', 'ambienceLevel'], ['SFX', 'sfxLevel'], ['Dialogue', 'dialogueLevel'], ['Music', 'musicLevel']] as const).map(([label, key]) => <label key={key}><span>{label}<b>{selectedScene[key]}%</b></span><input type="range" min={0} max={100} value={selectedScene[key]} onChange={(event) => patchScene({ [key]: Number(event.target.value) })} /></label>)}</div>
-          </section>
-
-          <section className={styles.directorBlock}>
-            <div className={styles.blockHead}><div><span>ความต่อเนื่องและข้อห้าม</span><h4>สิ่งที่ต้องต่อเนื่องและสิ่งที่ห้ามเกิด</h4></div><p>ข้อมูลนี้จะถูกแนบไปกับ Prompt Compiler เพื่อช่วยลด Character Drift และความผิดพลาดระหว่าง Shot</p></div>
-            <label className={styles.field}><span>Continuity Note — สิ่งที่ต้องต่อจากฉากก่อน</span><textarea value={selectedScene.continuityNote} onChange={(event) => patchScene({ continuityNote: event.target.value })} /></label>
-            <label className={styles.field}><span>Scene Negative Prompt — ข้อห้ามเฉพาะฉาก</span><textarea value={selectedScene.negativePrompt} onChange={(event) => patchScene({ negativePrompt: event.target.value })} placeholder="เช่น ห้ามเปลี่ยนเสื้อ, ห้ามเพิ่มคน, ห้ามเปลี่ยนเวลาเป็นกลางวัน" /></label>
-          </section>
-        </div> : null}
-      </div>
-    </section>
-
-    <section id="review" className={styles.reviewPanel}>
-      <div className={styles.readiness}><div><span>ตรวจความพร้อมก่อนสร้าง</span><h2>ความพร้อมของตอนนี้</h2><p>ระบบตรวจเฉพาะข้อมูลสำคัญก่อนส่งไป Analyzer และ Prompt Compiler</p></div><strong>{readiness.score}%</strong></div>
-      <div className={styles.reviewGrid}>
-        <article><b>{scenes.length}</b><span>ฉาก</span><small>{usedDuration}/{totalDuration} วินาที</small></article>
-        <article><b>{characters.length}</b><span>ตัวละคร</span><small>{locks.length} Locks เปิดอยู่</small></article>
-        <article><b>{model || "ยังไม่ได้เลือก"}</b><span>Video Model</span><small>{aspect || "ยังไม่ได้เลือกอัตราส่วนภาพ"}</small></article>
-        <article><b>{readiness.missing.length ? readiness.missing.length : "✓"}</b><span>รายการที่ต้องเติม</span><small>{readiness.missing.length ? readiness.missing.join(" • ") : "ข้อมูลหลักครบแล้ว"}</small></article>
-      </div>
-      <div className={styles.reviewActions}>
-        <label className={styles.agentBudget}><span>วงเงินสูงสุดของงาน</span><span><input type="number" min={1} max={2000} step={50} value={agentBudgetThb} onChange={(event) => setAgentBudgetThb(Math.max(1, Math.min(2000, Number(event.target.value) || 1)))} /><b>บาท</b></span></label>
-        <Link href="/profile/api" className={styles.apiLink}>ตรวจ API & Models</Link>
-        <button type="button" className={styles.primaryButton} onClick={() => void sendToAgent()} disabled={agentSubmitting}>{agentSubmitting ? "กำลังส่งงาน..." : "ส่ง Storyboard ให้ทีม AI →"}</button>
-      </div>
-    </section>
-
-    <footer className={styles.stickyFooter}><div><strong>{episodeTitle || "Untitled Episode"}</strong><span>{scenes.length} ฉาก • {characters.length} ตัวละคร • {usedDuration}/{totalDuration}s • พร้อม {readiness.score}% • วงเงิน ฿{agentBudgetThb.toLocaleString("th-TH")}</span></div><div><button type="button" className={styles.primaryButton} onClick={() => void sendToAgent()} disabled={agentSubmitting}>{agentSubmitting ? "กำลังส่งงาน..." : "ส่งให้ทีม AI ผลิต →"}</button></div></footer>
+          <button type="button" className={v11.summaryPrimary} onClick={() => setMessage("ภาพตัวอย่างพร้อมตรวจสอบแล้ว")}>✦ สร้างภาพตัวอย่างก่อน</button>
+          <button type="button" className={v11.summarySecondary} disabled={!model || !story.trim() || !aspect || !visualStyle} onClick={() => document.getElementById("direct-render")?.scrollIntoView({ behavior: "smooth", block: "start" })}>♙ สร้างวิดีโอ (ใช้ ~ {estimatedCredits} เครดิต)</button>
+          <p className={v11.refundNote}>♡ หากเกิดข้อผิดพลาด เครดิตจะคืนให้อัตโนมัติ</p>
+        </section>
+      </aside>
+    </div>
   </main>;
 }
