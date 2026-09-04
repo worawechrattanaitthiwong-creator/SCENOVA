@@ -1009,7 +1009,7 @@ export default function SingleEpisodeStudio() {
 
             <div className={v11.settingsBox}>
               <div className={v11.settingsTop}>
-                <div className={v11.field}>
+                <div className={v11.field} data-studio-model-ready={selectedModelReady ? "true" : "false"}>
                   <span className={v11.srLabel}>โมเดลวิดีโอ</span>
                   <b className={v11.fieldTitle}>เลือกโมเดล AI</b>
                   <div className={v11.modelSelectWrap}>
