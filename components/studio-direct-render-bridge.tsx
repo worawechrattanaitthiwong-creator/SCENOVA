@@ -174,7 +174,7 @@ function dialogueFromEditor(editor: HTMLElement, characterIdByName: Map<string, 
       start,
       end,
       text,
-      emotion: valueOf(editor, ["อารมณ์หลัก"]) || "Natural",
+      emotion: valueOf(editor, ["อารมณ์หลัก"]),
       speed: "Normal",
     }];
   });
@@ -199,28 +199,43 @@ async function captureSegments(characters: ReturnType<typeof captureCharacters>)
     cursor = end;
 
     const title = valueOf(editor, ["ชื่อฉาก"]) || `ฉาก ${index + 1}`;
-    const location = valueOf(editor, ["สถานที่"]) || "ยังไม่ระบุสถานที่";
+    const location = valueOf(editor, ["สถานที่"]);
     const action = valueOf(editor, ["Action รวมของฉาก"]);
     const continuity = valueOf(editor, ["Continuity Note"]);
     const negative = valueOf(editor, ["Scene Negative Prompt"]);
-    const shotType = valueOf(editor, ["ระยะภาพ"]) || "Medium";
-    const angle = valueOf(editor, ["มุมกล้อง"]) || "Eye Level";
-    const lens = valueOf(editor, ["เลนส์"]) || "50mm";
-    const movement = valueOf(editor, ["การเคลื่อนกล้อง"]) || "Static";
-    const height = valueOf(editor, ["ความสูงกล้อง"]) || "Eye";
-    const cameraSpeed = valueOf(editor, ["ความเร็วกล้อง"]) || "Normal";
-    const focus = valueOf(editor, ["จุดโฟกัส"]) || "Auto Subject";
-    const dof = valueOf(editor, ["ระยะชัดลึก"]) || "Natural";
-    const composition = valueOf(editor, ["องค์ประกอบภาพ"]) || "Rule of Thirds";
-    const lighting = [valueOf(editor, ["รูปแบบแสง"]), valueOf(editor, ["อุณหภูมิสี"])].filter(Boolean).join(" · ") || "Natural Soft";
-    const emotion = valueOf(editor, ["อารมณ์หลัก"]) || "Natural";
+    const shotType = valueOf(editor, ["ระยะภาพ"]);
+    const angle = valueOf(editor, ["มุมกล้อง"]);
+    const lens = valueOf(editor, ["เลนส์"]);
+    const movement = valueOf(editor, ["การเคลื่อนกล้อง"]);
+    const height = valueOf(editor, ["ความสูงกล้อง"]);
+    const cameraSpeed = valueOf(editor, ["ความเร็วกล้อง"]);
+    const focus = valueOf(editor, ["จุดโฟกัส"]);
+    const dof = valueOf(editor, ["ระยะชัดลึก"]);
+    const composition = valueOf(editor, ["องค์ประกอบภาพ"]);
+    const lighting = [valueOf(editor, ["รูปแบบแสง"]), valueOf(editor, ["อุณหภูมิสี"])].filter(Boolean).join(" · ");
+    const emotion = valueOf(editor, ["อารมณ์หลัก"]);
     const sound = [
       valueOf(editor, ["เสียงบรรยากาศหลัก"]),
       valueOf(editor, ["เสียงพื้นรอง"]),
       valueOf(editor, ["เอฟเฟกต์เสียง"]),
       valueOf(editor, ["SFX Timeline"]),
       valueOf(editor, ["ดนตรี"]),
-    ].filter(Boolean).join(" · ") || "Room Tone";
+    ].filter(Boolean).join(" · ");
+
+    const missingCamera = [
+      ["ระยะภาพ", shotType],
+      ["มุมกล้อง", angle],
+      ["เลนส์", lens],
+      ["การเคลื่อนกล้อง", movement],
+      ["ความสูงกล้อง", height],
+      ["ความเร็วกล้อง", cameraSpeed],
+      ["จุดโฟกัส", focus],
+      ["ระยะชัดลึก", dof],
+      ["องค์ประกอบภาพ", composition],
+    ].filter(([, value]) => !value).map(([label]) => label);
+    if (missingCamera.length) {
+      throw new Error(`ฉาก ${index + 1}: กรุณาเลือก ${missingCamera.join(", ")} ก่อนสร้าง Prompt`);
+    }
 
     const presenceLabels = Array.from(editor.querySelectorAll<HTMLLabelElement>("[class*='presenceChips'] label"));
     const names = presenceLabels.filter((label) => label.querySelector<HTMLInputElement>('input[type="checkbox"]')?.checked).map((label) => compact(label.textContent));
@@ -269,18 +284,21 @@ async function captureStudioSnapshot(): Promise<DirectSnapshot> {
   const modelSelect = setup.querySelector<HTMLSelectElement>('select[aria-label="โมเดลวิดีโอ"]');
   if (!modelSelect) throw new Error("VIDEO_MODEL_FIELD_NOT_FOUND");
   const modelValue = modelSelect.value;
+  if (!modelValue) throw new Error("กรุณาเลือกโมเดลวิดีโอก่อนสร้าง Prompt");
   const meta = MODEL_META[modelValue] || { providerId: modelValue.toLocaleLowerCase(), label: compact(modelSelect.selectedOptions[0]?.textContent) || modelValue, mode: "generate" as const };
   const versionSelect = setup.querySelector<HTMLSelectElement>('select[aria-label="รุ่นโมเดล"]');
   const version = versionSelect?.value || meta.fixedVersion;
   const modelField = findField(setup, ["โมเดลวิดีโอ"]);
   const modelReady = compact(modelField?.textContent).includes("คีย์เชื่อมต่อแล้ว");
+  const aspect = valueOf(setup, ["อัตราส่วนภาพ"]);
+  if (!aspect) throw new Error("กรุณาเลือกอัตราส่วนภาพก่อนสร้าง Prompt");
+  const visualStyle = valueOf(setup, ["สไตล์ภาพ"]);
+  if (!visualStyle) throw new Error("กรุณาเลือกสไตล์ภาพก่อนสร้าง Prompt");
   const characters = captureCharacters();
   const { segments, usedDuration } = await captureSegments(characters);
   const title = valueOf(setup, ["ชื่อตอน"]) || "Untitled Episode";
   const story = valueOf(setup, ["เรื่อง / เหตุการณ์ของตอน"]);
   const durationValue = Math.max(1, Number(valueOf(setup, ["ความยาวรวมของตอน"]) || usedDuration || 1));
-  const aspect = valueOf(setup, ["อัตราส่วนภาพ"]);
-  const visualStyle = valueOf(setup, ["สไตล์ภาพ"]);
   const sourceInstruction = window.sessionStorage.getItem(SOURCE_INSTRUCTION_KEY) || "";
   const masterPrompt = window.sessionStorage.getItem(MASTER_PROMPT_KEY) || "";
   const negativePrompt = window.sessionStorage.getItem(NEGATIVE_PROMPT_KEY) || "";
