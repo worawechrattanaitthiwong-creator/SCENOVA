@@ -1455,7 +1455,8 @@
   margin-top: 8px;
 }
 
-.durationFineTune > label {
+.durationFineTune > label,
+.counterField {
   min-height: 34px;
   padding: 4px 7px;
   display: flex;
