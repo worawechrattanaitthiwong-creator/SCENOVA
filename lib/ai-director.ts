@@ -657,7 +657,14 @@ function sfxTimeline(sfx: string, duration: number) {
 
 function continuityNote(input: AiDirectorRequest, selected: AiDirectorCastMember[], scene: AiDirectorScene) {
   const notes: string[] = [];
-  if (input.previousScene) notes.push("ต่อจากฉากก่อน: รักษาทิศทางการเคลื่อนและสถานะล่าสุดของตัวละคร/พร็อพ");
+  if (input.previousScene) {
+    const cause = (input.previousScene.action || input.previousScene.dialogue || input.previousScene.beat || input.previousScene.title || "").trim();
+    notes.push("ต่อจากฉากก่อน: รักษาทิศทางการเคลื่อนและสถานะล่าสุดของตัวละคร/พร็อพ" + (cause ? " · เหตุที่รับมา: " + cause.slice(0, 220) : ""));
+  }
+  if (input.nextScene) {
+    const consequence = (input.nextScene.action || input.nextScene.dialogue || input.nextScene.beat || input.nextScene.title || "").trim();
+    if (consequence) notes.push("ส่งเหตุไปฉากถัดไป: " + consequence.slice(0, 220));
+  }
   if (selected.length) notes.push("ตัวละครคงเดิม: " + selected.map((item) => item.name).join(", "));
   if (scene.location) notes.push("สถานที่: " + scene.location + " ต้องคงโครงสร้างและตำแหน่งวัตถุสำคัญ");
   if (input.locks.includes("Camera Language")) notes.push("รักษาภาษากล้องของตอนใน lens family และจังหวะ movement เดียวกัน");
