@@ -83,7 +83,7 @@ describe("provider model catalogs", () => {
 
     expect(studio).toContain('/api/api-connections');
     expect(studio).toContain('คีย์เชื่อมต่อแล้ว');
-    expect(studio).toContain('Adapter ยังไม่พร้อม');
+    expect(studio).toContain('Provider ยังไม่พร้อม');
     expect(studio).toContain('selectedConnectionState?.operationalReady');
     expect(studio).toContain('image: "ready"');
     expect(studio).toContain('image: "adapter"');
