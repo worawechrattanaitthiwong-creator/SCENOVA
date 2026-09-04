@@ -40,6 +40,7 @@ const requestSchema = z.object({
   mode: z.enum(["production", "cinematic", "story", "realistic", "emotion", "surprise"]).default("production"),
   novelty: z.enum(["safe", "balanced", "different", "experimental"]).default("balanced"),
   scope: z.enum(["all", "story", "camera", "look", "sound", "continuity"]).default("all"),
+  fillMode: z.enum(["replace-scope", "empty-only"]).default("replace-scope"),
   episodeTitle: z.string().max(500).default("Untitled Episode"),
   story: z.string().max(50_000).default(""),
   model: z.string().min(1).max(200),
@@ -71,16 +72,26 @@ function analyzerPrompt(input: z.infer<typeof requestSchema>) {
     sound: "วิเคราะห์สถานที่และ Action เพื่อออกแบบ Ambience, SFX และ Music โดยไม่แก้ส่วน Manual",
     continuity: "ตรวจ Continuity และ Negative Prompt โดยไม่แก้ส่วน Manual",
   };
+  const previous = input.previousScene ? JSON.stringify(input.previousScene) : "ไม่มี (ฉากแรกหรือไม่ส่งข้อมูล)";
+  const next = input.nextScene ? JSON.stringify(input.nextScene) : "ไม่มี (ฉากสุดท้ายหรือไม่ส่งข้อมูล)";
+  const fillPolicy = input.fillMode === "empty-only"
+    ? "โหมดเติมช่องว่าง: ค่าที่ผู้ใช้กรอกหรือเลือกไว้แล้วคือข้อเท็จจริง ห้ามเปลี่ยน ให้เสนอเฉพาะข้อมูลที่ยังว่าง"
+    : "โหมดสร้างใหม่เฉพาะ Scope: สามารถเสนอค่าใหม่ใน Scope ที่ร้องขอได้ ยกเว้น Manual/Lock";
   return [
     "ทำหน้าที่เป็น AI Director semantic pass สำหรับ SCENOVA",
     scopeCopy[input.scope],
+    fillPolicy,
     "Scene " + sceneNumber + "/" + input.sceneCount + " ของตอน " + input.episodeTitle,
     "เนื้อเรื่องหลัก: " + (input.story.trim() || String((input.currentScene as { action?: unknown }).action || "")),
-    "ให้คำแนะนำที่เป็นเหตุเป็นผลตาม Scene ก่อนหน้า/ถัดไปและ visual arc ของทั้งตอน",
+    "ฉากก่อนหน้า: " + previous,
+    "ฉากปัจจุบัน: " + JSON.stringify(input.currentScene),
+    "ฉากถัดไป: " + next,
+    "ลำดับความสำคัญ: (1) เหตุและผลของเนื้อเรื่องและแรงจูงใจตัวละคร (2) ความต่อเนื่องจากฉากก่อนและสิ่งที่ต้องส่งต่อไปฉากถัดไป (3) รักษาค่าที่ผู้ใช้เลือกแล้ว (4) Camera/Look/Sound ที่เสริมเรื่อง ไม่ใช่แย่งความสำคัญจากเรื่อง",
+    "วิเคราะห์ฉากนี้เป็นสะพานเชิงเหตุผล: อะไรเกิดจากฉากก่อน → ฉากนี้เปลี่ยนอะไร → ฉากถัดไปต้องรับผลอะไร",
     "ใช้ชื่อเฉพาะ Cast ที่ส่งให้เท่านั้น ห้ามสร้างตัวละครใหม่",
     "บทพูดทั้งหมดควรพูดได้ภายในประมาณ " + spokenBudget + " วินาที เพื่อเหลือเวลาให้ Action และ Reaction",
     "ค่าที่ Lock หรือ Manual ใน context เป็นข้อบังคับ ห้ามเสนอการเปลี่ยนอัตลักษณ์ เสียง สไตล์ สถานที่ที่ล็อก หรือข้อมูล Canon",
-    "หลีกเลี่ยงการทำ Camera/Lens/Movement/Lighting combination ซ้ำกับ recent history ถ้ายังมีทางเลือกที่เหมาะสมกว่า",
+    "หลีกเลี่ยงการทำ Camera/Lens/Movement/Lighting combination ซ้ำกับ recent history ถ้ายังมีทางเลือกที่เหมาะสมกว่าและยังสัมพันธ์กับเรื่อง",
   ].join("\n");
 }
 
@@ -113,6 +124,8 @@ export async function POST(request: Request) {
         currentScene: input.currentScene,
         previousScene: input.previousScene || null,
         nextScene: input.nextScene || null,
+        fillMode: input.fillMode,
+        preserveFilledValues: input.fillMode === "empty-only",
         cast: input.cast,
         manualSections: input.manualSections,
         recentCreativeFingerprints: input.history.slice(-12).map((item) => item.fingerprint),
@@ -125,6 +138,7 @@ export async function POST(request: Request) {
       mode: input.mode,
       novelty: input.novelty,
       scope: input.scope,
+      fillMode: input.fillMode,
       seed: randomInt(1, 2_147_483_646),
       episodeTitle: input.episodeTitle,
       story: input.story,
