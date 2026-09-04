@@ -1147,6 +1147,7 @@ export default function SingleEpisodeStudio() {
     </section>
 
     <aside
+      id="studio-kept-preview-summary"
       className={v11.rightRail}
       aria-label="ตัวอย่างภาพและสรุปการตั้งค่า"
       style={{ width: "min(520px, 100%)", margin: "16px 0 0 auto", position: "static" }}
