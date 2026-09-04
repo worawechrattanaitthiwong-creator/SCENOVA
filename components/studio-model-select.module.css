@@ -164,7 +164,7 @@
   font-size: 6.5px;
 }
 
-:global(.sc-model-brand) {
+.root :global(.sc-model-brand) {
   display: grid;
   place-items: center;
   flex: 0 0 auto;
@@ -175,42 +175,42 @@
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
 }
 
-:global(.sc-model-brand svg) {
+.root :global(.sc-model-brand svg) {
   width: 100%;
   height: 100%;
   display: block;
 }
 
-:global(.sc-model-brand-seedance) {
+.root :global(.sc-model-brand-seedance) {
   background: transparent;
   box-shadow: none;
 }
 
-:global(.sc-model-brand-gemini) {
+.root :global(.sc-model-brand-gemini) {
   background: #101125;
 }
 
-:global(.sc-model-brand-aleph) {
+.root :global(.sc-model-brand-aleph) {
   background: #091a4b;
   color: #3d79ff;
 }
 
-:global(.sc-model-brand-ruby) {
+.root :global(.sc-model-brand-ruby) {
   background: #241017;
 }
 
-:global(.sc-model-brand-kling) {
+.root :global(.sc-model-brand-kling) {
   background: #07141a;
 }
 
-:global(.sc-model-brand-veo) {
+.root :global(.sc-model-brand-veo) {
   background: #111217;
 }
 
-:global(.sc-model-brand-wan) {
+.root :global(.sc-model-brand-wan) {
   background: #17102e;
 }
 
-:global(.sc-model-brand-ai) {
+.root :global(.sc-model-brand-ai) {
   color: #ae64ef;
 }
