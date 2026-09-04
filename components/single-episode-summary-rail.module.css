@@ -1,0 +1,230 @@
+.rail {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  position: sticky;
+  top: 74px;
+}
+
+.card {
+  min-width: 0;
+  padding: 20px;
+  overflow: hidden;
+  border: 1px solid rgba(161, 98, 227, .36);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(93, 41, 157, .10), transparent 38%),
+    linear-gradient(180deg, #0f0b18 0%, #09070f 100%);
+  box-shadow: 0 18px 42px rgba(0,0,0,.18), inset 0 1px rgba(255,255,255,.018);
+}
+
+.card h3 {
+  margin: 0;
+  color: #f5f0f8;
+  font-size: 20px;
+  line-height: 1.25;
+  letter-spacing: -.015em;
+}
+
+.previewImage {
+  width: 100%;
+  aspect-ratio: 1.92 / 1;
+  margin-top: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(163, 99, 221, .30);
+  border-radius: 12px;
+  background: #07060b;
+}
+
+.previewImage img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.previewCaption {
+  margin: 11px 0 14px;
+  color: #8f8499;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.previewButton,
+.summaryPrimary,
+.summarySecondary {
+  width: 100%;
+  min-height: 48px;
+  border-radius: 11px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.previewButton {
+  border: 1px solid rgba(171, 86, 249, .82);
+  background: linear-gradient(180deg, #7635d9 0%, #5a27bd 100%);
+  color: #fff;
+  font-size: 14px;
+  box-shadow: inset 0 1px rgba(255,255,255,.11);
+}
+
+.summaryHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 17px;
+}
+
+.summaryEdit {
+  min-height: 38px;
+  padding: 7px 13px;
+  border: 1px solid rgba(175, 99, 236, .47);
+  border-radius: 10px;
+  background: rgba(28, 17, 43, .72);
+  color: #d6abff;
+  font-size: 12px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.summaryRows {
+  display: grid;
+}
+
+.summaryRows > div {
+  min-height: 54px;
+  padding: 11px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid rgba(143, 91, 195, .17);
+}
+
+.summaryRows span {
+  color: #9b90a5;
+  font-size: 11px;
+}
+
+.summaryRows b {
+  max-width: 210px;
+  overflow: hidden;
+  color: #f0eaf4;
+  font-size: 12px;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.summaryRows .purple {
+  color: #ca70ff;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.howTo {
+  margin: 18px 0 16px;
+  padding: 14px;
+  border: 1px solid rgba(171, 91, 238, .52);
+  border-radius: 12px;
+  background: linear-gradient(145deg, rgba(62, 27, 101, .40), rgba(27, 13, 45, .52));
+}
+
+.howTo > b {
+  display: block;
+  margin-bottom: 11px;
+  color: #d899ff;
+  font-size: 11px;
+}
+
+.howStep {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 11px;
+  align-items: start;
+}
+
+.howStep + .howStep {
+  margin-top: 12px;
+}
+
+.howStep > span {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #9f52f0, #6b30df);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.howStep b,
+.howStep small {
+  display: block;
+}
+
+.howStep b {
+  color: #eee7f2;
+  font-size: 11px;
+}
+
+.howStep small {
+  margin-top: 3px;
+  color: #8e8397;
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.summaryPrimary {
+  border: 1px solid rgba(183, 99, 251, .84);
+  background: linear-gradient(100deg, #6a2ae0, #a15fda);
+  color: #fff;
+  font-size: 13px;
+  box-shadow: inset 0 1px rgba(255,255,255,.12);
+}
+
+.summarySecondary {
+  margin-top: 12px;
+  border: 1px solid rgba(141, 98, 187, .26);
+  background: rgba(17, 13, 25, .88);
+  color: #7b7085;
+  font-size: 13px;
+}
+
+.summarySecondary:not(:disabled) {
+  border-color: rgba(173, 92, 238, .48);
+  color: #d6b1f8;
+}
+
+.summarySecondary:disabled {
+  cursor: not-allowed;
+  opacity: .62;
+}
+
+.refundNote {
+  margin: 14px 0 0;
+  color: #5fe0a7;
+  font-size: 9px;
+  text-align: center;
+}
+
+@media (max-width: 1120px) {
+  .rail {
+    position: static;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .rail {
+    grid-template-columns: 1fr;
+  }
+
+  .card {
+    padding: 16px;
+  }
+}
