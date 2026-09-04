@@ -416,6 +416,8 @@ export default function StudioDirectRenderBridge() {
       const episode = next.project.episodes[0];
       setStatus(`ซิงก์แล้ว · ${episode.segments.length} Scenes · ${episode.duration}s · ${next.modelLabel} · พร้อมสร้าง Prompt`);
     } catch (reason) {
+      setSnapshot(null);
+      setStale(true);
       setError(reason instanceof Error ? reason.message : "ซิงก์ข้อมูล Studio ไม่สำเร็จ");
     } finally {
       capturingRef.current = false;
@@ -429,13 +431,13 @@ export default function StudioDirectRenderBridge() {
       <div className={styles.syncCopy}><strong>Direct Render Data Sync</strong><span className={error ? styles.error : stale ? styles.stale : snapshot ? styles.ready : ""}>{error || status}</span></div>
       <div className={styles.actions}><button type="button" onClick={() => void syncNow()} disabled={syncing}>{syncing ? "กำลังซิงก์..." : snapshot ? "↻ ซิงก์ข้อมูลล่าสุด" : "ซิงก์ข้อมูล Studio"}</button></div>
     </div>
-    {snapshot ? <DirectRenderPanel
+    {snapshot && !stale ? <DirectRenderPanel
       project={snapshot.project}
       providerId={snapshot.providerId}
       modelVersionId={snapshot.modelVersionId}
       modelLabel={snapshot.modelLabel}
       modelReady={snapshot.modelReady}
       modelMode={snapshot.modelMode}
-    /> : <div className={styles.placeholder}>Direct Render จะใช้ข้อมูลที่คุณกรอกใน AI Studio เท่านั้น กด “ซิงก์ข้อมูล Studio” เพื่อเตรียม Structured Project สำหรับสร้าง Prompt / Copy Prompt / สร้างวิดีโอตรง โดยไม่ผ่าน AI Agent</div>}
+    /> : <div className={styles.placeholder}>Direct Render จะใช้ข้อมูลล่าสุดจาก AI Studio เท่านั้น หากข้อมูลเปลี่ยน ระบบจะหยุด Panel เดิมและซิงก์ใหม่ก่อนอนุญาตให้สร้างวิดีโอ</div>}
   </div>, host);
 }
