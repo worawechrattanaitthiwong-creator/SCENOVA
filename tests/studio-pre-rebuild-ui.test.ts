@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 
 const studio = readFileSync("components/single-episode-studio.tsx", "utf8");
 const page = readFileSync("app/studio/page.tsx", "utf8");
+const shell = readFileSync("components/app-shell.tsx", "utf8");
+const draftTray = readFileSync("components/workspace-draft-tray.tsx", "utf8");
 
 describe("AI Studio pre-rebuild UI regression guard", () => {
   it("restores the original Single Episode workspace structure", () => {
@@ -20,6 +22,12 @@ describe("AI Studio pre-rebuild UI regression guard", () => {
     expect(page).toContain("SingleEpisodeStudioPolish");
     expect(page).toContain("StudioModelPickerPolish");
     expect(page).toContain("SingleEpisodeAiAuto");
+  });
+
+  it("restores the original Studio shell and draft tray behavior", () => {
+    expect(shell).not.toContain('const studioShell = pathname === "/studio"');
+    expect(draftTray).toContain("if (!authenticated) return null;");
+    expect(draftTray).not.toContain('!authenticated || pathname === "/studio"');
   });
 
   it("keeps only the requested preview and settings summary section from the rebuild", () => {
