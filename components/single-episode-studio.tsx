@@ -1117,6 +1117,10 @@ export default function SingleEpisodeStudio() {
 
                     <label><input type="checkbox" checked={character.identityLock} onChange={(event) => patchCharacter(character.id, { identityLock: event.target.checked })} /> ล็อกตัวตน</label>
                     <label><input type="checkbox" checked={character.voiceLock} onChange={(event) => patchCharacter(character.id, { voiceLock: event.target.checked })} /> ล็อกเสียง</label>
+                    <div className={v11.characterFull}>
+                      <Link className={v11.inlineLink} href="/libraries?tab=characters" prefetch={false} onClick={() => localStorage.setItem("scenova-character-import-target-v1", character.id)}>＋ นำเข้าตัวละครจากคลัง</Link>
+                      <Link className={v11.inlineLink} href="/libraries?tab=voices" prefetch={false}>เปิดคลังเสียง</Link>
+                    </div>
                   </div>
                 </details>
               </article>)}
@@ -1133,6 +1137,29 @@ export default function SingleEpisodeStudio() {
               </label>
             </div>
           </div>
+
+          <div className={v11.creatureToggle}>
+            <div><b>มีสัตว์หรือสิ่งมีชีวิตในตอนนี้หรือไม่?</b><small>เปิดเมื่อจำเป็น ข้อมูลจะส่งต่อไป AI Director, Prompt และ Agent เหมือน Logic เดิม</small></div>
+            <div>
+              <button type="button" data-active={!hasAnimals ? "true" : "false"} onClick={() => {
+                setHasAnimals(false);
+                setScenes((current) => current.map((scene) => ({ ...scene, animalIds: [] })));
+              }}>ไม่มี</button>
+              <button type="button" data-active={hasAnimals ? "true" : "false"} onClick={() => setHasAnimals(true)}>มี</button>
+            </div>
+          </div>
+
+          {hasAnimals ? <div className={v11.creaturePanel}>
+            <div className={v11.creatureHead}><b>สัตว์ / Creature</b><Counter value={animals.length} min={1} max={4} onChange={resizeAnimals} label="จำนวนสัตว์" /></div>
+            <div className={v11.creatureGrid}>
+              {animals.map((animal) => <article key={animal.id}>
+                <label><span>ชื่อ</span><input value={animal.name} onChange={(event) => patchAnimal(animal.id, { name: event.target.value })} /></label>
+                <label><span>ชนิด</span><input value={animal.species} onChange={(event) => patchAnimal(animal.id, { species: event.target.value })} /></label>
+                <label><span>พฤติกรรม</span><input value={animal.behavior} onChange={(event) => patchAnimal(animal.id, { behavior: event.target.value })} /></label>
+                <label><span>รูปลักษณ์</span><input value={animal.appearance} onChange={(event) => patchAnimal(animal.id, { appearance: event.target.value })} /></label>
+              </article>)}
+            </div>
+          </div> : null}
         </section>
 
         <section id="scenes" className={v11.sceneStage}>
@@ -1147,6 +1174,8 @@ export default function SingleEpisodeStudio() {
               </div>
             </div>
             <div className={v11.sceneToolbar}>
+              <button type="button" className={v11.outlineButton} onClick={copyCameraToAll}>คัดลอกกล้องทุกฉาก</button>
+              <button type="button" className={v11.outlineButton} onClick={copyLookToAll}>คัดลอกแสงทุกฉาก</button>
               <Link className={v11.outlineButton} href="/libraries?tab=images" prefetch={false}>♙ จัดการสถานที่</Link>
               <Link className={v11.outlineButton} href="/libraries?tab=images" prefetch={false}>◈ จัดการพร็อพ</Link>
               <select aria-label="เทมเพลตฉาก" defaultValue="" className={v11.outlineButton}>
@@ -1160,7 +1189,10 @@ export default function SingleEpisodeStudio() {
 
           <div className={v11.sceneCapture}>
             <div className={`${styles.sceneList} ${v11.sceneTabs} ${scenes.length === 1 ? v11.sceneTabsSingle : ""}`}>
-              {scenes.map((scene, index) => <button type="button" key={scene.id} data-active={scene.id === selectedScene?.id ? "true" : "false"} onClick={() => setSelectedSceneId(scene.id)}>ฉากที่ {index + 1} · {scene.duration}s</button>)}
+              {scenes.map((scene, index) => {
+                const time = sceneTimes[index];
+                return <button type="button" key={scene.id} data-active={scene.id === selectedScene?.id ? "true" : "false"} onClick={() => setSelectedSceneId(scene.id)}>ฉากที่ {index + 1} · {formatTime(time?.start || 0)}–{formatTime(time?.end || scene.duration)}</button>;
+              })}
             </div>
 
             {selectedScene ? <>
