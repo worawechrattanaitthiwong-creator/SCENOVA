@@ -194,6 +194,18 @@ const STYLES = [
   "Cinematic Romance — โรแมนติกภาพยนตร์",
   "Period Drama — ดราม่าย้อนยุค",
 ];
+const STYLE_PREVIEW_BY_VALUE: Record<string, string> = {
+  "Cinematic Anime — อนิเมะภาพยนตร์": "/library/styles/cinematic-anime.png",
+  "Photorealistic Film — สมจริงแบบภาพยนตร์": "/library/styles/photorealistic-film.png",
+  "Warm Golden Hour — อบอุ่นแสงทอง": "/library/styles/warm-golden-hour.png",
+  "Action Blockbuster — แอ็กชันบล็อกบัสเตอร์": "/library/styles/action-blockbuster.png",
+  "Sci-Fi Neon — ไซไฟนีออน": "/library/styles/sci-fi-neon.png",
+  "Fantasy Storybook — แฟนตาซีภาพเล่าเรื่อง": "/library/styles/fantasy-storybook.png",
+  "Dark Thriller — ทริลเลอร์โทนมืด": "/library/styles/dark-thriller.png",
+  "Gothic Horror — สยองขวัญโกธิก": "/library/styles/gothic-horror.png",
+  "Cinematic Romance — โรแมนติกภาพยนตร์": "/library/styles/cinematic-romance.png",
+  "Period Drama — ดราม่าย้อนยุค": "/library/styles/period-drama.png",
+};
 const ROLES = ["ตัวละครหลัก", "ตัวละครรอง", "ฝ่ายตรงข้าม", "ตัวละครรับเชิญ"];
 const GLOBAL_LOCKS = [
   { key: "Character", label: "ล็อกตัวละคร", help: "รักษาหน้าตา รูปร่าง เสื้อผ้า และจุดจำของตัวละครตลอดทั้งตอน" },
@@ -949,6 +961,7 @@ export default function SingleEpisodeStudio() {
   const allCharacterLocked = characters.length > 0 && characters.every((item) => item.identityLock);
   const selectedSceneIndex = selectedScene ? scenes.findIndex((item) => item.id === selectedScene.id) : 0;
   const selectedSceneTime = sceneTimes[Math.max(0, selectedSceneIndex)];
+  const previewImage = STYLE_PREVIEW_BY_VALUE[visualStyle] || "/library/styles/sci-fi-neon.png";
 
   return <main className={`${styles.main} ${v11.main}`}>
     <header className={v11.topHeader}>
@@ -1398,9 +1411,9 @@ export default function SingleEpisodeStudio() {
       <aside className={v11.rightRail}>
         <section className={v11.previewCard}>
           <h3>ตัวอย่างภาพจากฉากแรก</h3>
-          <div className={v11.previewImage}><img src="/library/styles/sci-fi-neon.png" alt="ตัวอย่างภาพจากฉากแรก" /></div>
-          <p className={v11.previewCaption}>ตัวอย่างภาพจากคำอธิบายและการตั้งค่าฉาก ใช้เป็นภาพอ้างอิงก่อนสร้างวิดีโอจริง</p>
-          <button type="button" className={v11.previewButton} onClick={() => setMessage("พร้อมใช้ภาพตัวอย่างจากฉากแรกเป็นแนวทางของงาน")}>▧ สร้างภาพตัวอย่าง</button>
+          <div className={v11.previewImage}><img src={previewImage} alt={visualStyle ? `ตัวอย่างสไตล์ ${visualStyle}` : "ตัวอย่างภาพอ้างอิง"} /></div>
+          <p className={v11.previewCaption}>ภาพอ้างอิง 1 รูปจาก SCENOVA Style Library เพื่อดูโทนภาพก่อนสร้างจริง ไม่ใช้เครดิตและไม่ใช่ผลลัพธ์จากโมเดลวิดีโอ</p>
+          <button type="button" className={v11.previewButton} onClick={() => setMessage(visualStyle ? `ใช้ภาพตัวอย่าง ${visualStyle} เป็นแนวทางแล้ว` : "เลือกสไตล์ภาพในตั้งค่าเพิ่มเติมก่อนใช้ภาพตัวอย่าง")}>▧ ใช้ภาพตัวอย่างนี้เป็นแนวทาง</button>
         </section>
 
         <section id="review" className={v11.summaryCard}>
@@ -1417,11 +1430,11 @@ export default function SingleEpisodeStudio() {
 
           <div className={v11.howTo}>
             <b>ⓘ ขั้นตอนการสร้าง</b>
-            <div className={v11.howStep}><span>1</span><div><b>สร้างภาพตัวอย่าง (ไม่ใช้เครดิต)</b><small>ตรวจสอบภาพ ก่อนสร้างวิดีโอจริง</small></div></div>
+            <div className={v11.howStep}><span>1</span><div><b>ตรวจภาพตัวอย่าง (ไม่ใช้เครดิต)</b><small>ตรวจสอบภาพ ก่อนสร้างวิดีโอจริง</small></div></div>
             <div className={v11.howStep}><span>2</span><div><b>สร้างวิดีโอ (ใช้เครดิต)</b><small>เมื่อยืนยันแล้ว จะหักเครดิตและเริ่มสร้าง</small></div></div>
           </div>
 
-          <button type="button" className={v11.summaryPrimary} onClick={() => setMessage("ภาพตัวอย่างพร้อมตรวจสอบแล้ว")}>✦ สร้างภาพตัวอย่างก่อน</button>
+          <button type="button" className={v11.summaryPrimary} onClick={() => setMessage("ภาพตัวอย่างพร้อมตรวจสอบแล้ว")}>✦ ตรวจภาพตัวอย่างก่อน</button>
           <button type="button" className={v11.summarySecondary} disabled={!model || !story.trim() || !aspect || !visualStyle} onClick={() => {
             const target = document.getElementById("scenova-direct-render-host") || document.getElementById("review");
             target?.scrollIntoView({ behavior: "smooth", block: "start" });
