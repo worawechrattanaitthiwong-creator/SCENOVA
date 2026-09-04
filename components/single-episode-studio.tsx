@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import styles from "./single-episode-studio.module.css";
 import SingleEpisodeAiDirectorPanel from "@/components/single-episode-ai-director-panel";
+import StudioStylePreviewGallery from "@/components/studio-style-preview-gallery";
 import { buildStudioAgentProject } from "@/lib/agent/studio-project";
 import type { AiDirectorMeta, AiDirectorMode, AiDirectorNovelty, AiDirectorScenePatch, AiDirectorScope } from "@/lib/ai-director";
 import {
@@ -991,6 +992,7 @@ export default function SingleEpisodeStudio() {
           </div>
         </div>
       </div>
+      <StudioStylePreviewGallery value={visualStyle} onChange={setVisualStyle} />
       <div className={styles.lockGrid}>
         {GLOBAL_LOCKS.map((lock) => <label key={lock.key} className={locks.includes(lock.key) ? styles.lockActive : ""}><input type="checkbox" checked={locks.includes(lock.key)} onChange={() => toggleLock(lock.key)} /><span><b>{lock.label}</b><small>{lock.help}</small></span></label>)}
       </div>
