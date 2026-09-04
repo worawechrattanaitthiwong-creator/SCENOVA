@@ -1049,6 +1049,10 @@ export default function SingleEpisodeStudio() {
                       onClick={() => changeTotalDuration(seconds)}
                     >{seconds}s</button>)}
                   </div>
+                  <div className={v11.durationFineTune}>
+                    <label><span>กำหนดเอง</span><input type="number" min={1} max={180} value={totalDuration} onChange={(event) => changeTotalDuration(Number(event.target.value))} /><small>วินาที</small></label>
+                    <label><span>จำนวนฉาก</span><Counter value={scenes.length} min={providerMinScenes} max={totalDuration} onChange={resizeScenes} label="จำนวนฉาก" /></label>
+                  </div>
                 </div>
                 <div className={v11.creditEstimate}>
                   <small>ใช้เครดิตโดยประมาณ</small>
@@ -1297,6 +1301,10 @@ export default function SingleEpisodeStudio() {
                     <label><span className={v11.fieldTitle}>อัตราส่วนภาพ</span><select value={aspect} onChange={(event) => setAspect(event.target.value)}><option value=""></option>{ASPECTS.map((item) => <option key={item}>{item}</option>)}</select></label>
                     <label><span className={v11.fieldTitle}>สไตล์ภาพ</span><select value={visualStyle} onChange={(event) => setVisualStyle(event.target.value)}><option value=""></option>{STYLES.map((item) => <option key={item}>{item}</option>)}</select></label>
                     <label><span className={v11.fieldTitle}>สถานที่</span><input list="scenova-locations-v11" value={selectedScene.location} onChange={(event) => patchScene({ location: event.target.value })} /><datalist id="scenova-locations-v11">{LOCATION_PRESETS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</datalist></label>
+                    <label><span className={v11.fieldTitle}>ชื่อฉาก</span><input value={selectedScene.title} onChange={(event) => patchScene({ title: event.target.value })} /></label>
+                    <ChoiceField label="เป้าหมายฉาก" value={selectedScene.objective} options={OBJECTIVE_PRESETS} onChange={(value) => patchScene({ objective: value })} compact />
+                    <ChoiceField label="จังหวะเรื่อง" value={selectedScene.beat} options={SCENE_BEATS} onChange={(value) => patchScene({ beat: value })} compact />
+                    <ChoiceField label="การเปลี่ยนฉาก" value={selectedScene.transition} options={TRANSITIONS} onChange={(value) => patchScene({ transition: value })} compact />
 
                     <ChoiceField label="มุมกล้อง" value={selectedScene.angle} options={CAMERA_ANGLES} onChange={(value) => patchScene({ angle: value })} compact />
                     <ChoiceField label="ความสูงกล้อง" value={selectedScene.height} options={CAMERA_HEIGHTS} onChange={(value) => patchScene({ height: value })} compact />
@@ -1311,6 +1319,9 @@ export default function SingleEpisodeStudio() {
                     <ChoiceField label="เสียงพื้นรอง" value={selectedScene.secondaryAmbience} options={AMBIENCE_PRESETS} onChange={(value) => patchScene({ secondaryAmbience: value })} compact />
                     <ChoiceField label="เอฟเฟกต์เสียง" value={selectedScene.sfx} options={SFX_PRESETS} onChange={(value) => patchScene({ sfx: value })} compact />
                     <ChoiceField label="ดนตรี" value={selectedScene.music} options={MUSIC_PRESETS} onChange={(value) => patchScene({ music: value })} compact />
+                    <div className={`${v11.advancedFull} ${v11.mixGrid}`}>
+                      {([["Ambience", "ambienceLevel"], ["SFX", "sfxLevel"], ["Dialogue", "dialogueLevel"], ["Music", "musicLevel"]] as const).map(([label, key]) => <label key={key}><span>{label}<b>{selectedScene[key]}%</b></span><input type="range" min={0} max={100} value={selectedScene[key]} onChange={(event) => patchScene({ [key]: Number(event.target.value) })} /></label>)}
+                    </div>
 
                     <label className={v11.advancedWide}><span className={v11.fieldTitle}>Global Negative Prompt</span><textarea value={globalNegative} onChange={(event) => setGlobalNegative(event.target.value)} /></label>
                     <label className={v11.advancedWide}><span className={v11.fieldTitle}>Continuity Note</span><textarea value={selectedScene.continuityNote} onChange={(event) => patchScene({ continuityNote: event.target.value })} /></label>
@@ -1321,17 +1332,29 @@ export default function SingleEpisodeStudio() {
                       {GLOBAL_LOCKS.map((lock) => <label key={lock.key}><input type="checkbox" checked={locks.includes(lock.key)} onChange={() => toggleLock(lock.key)} />{lock.label}</label>)}
                     </div>
 
-                    <div className={v11.advancedFull}>
-                      <div className={styles.presenceChips}>{characters.map((character) => <label key={character.id} className={selectedScene.characterIds.includes(character.id) ? styles.chipActive : ""}><input type="checkbox" checked={selectedScene.characterIds.includes(character.id)} onChange={() => toggleSceneCharacter(character.id)} />{character.name || "ตัวละคร"}</label>)}</div>
-                    </div>
+                    <section className={`${v11.advancedFull} ${v11.peopleBlock}`}>
+                      <div className={v11.subsectionHead}><div><b>ตัวละครในฉาก</b><small>เลือกตัวละคร แล้วกำหนด Blocking / Action / Emotion / Eyeline / Dialogue รายคน</small></div>
+                        <label><span>Camera Subject</span><select value={selectedScene.cameraSubjectId} onChange={(event) => patchScene({ cameraSubjectId: event.target.value })}><option value="">Auto / ยังไม่ระบุ</option>{selectedScene.characterIds.map((id) => { const character = characters.find((item) => item.id === id); return character ? <option key={id} value={id}>{character.name || "ตัวละคร"}</option> : null; })}</select></label>
+                      </div>
+                      <div className={styles.presenceChips}>{characters.map((character, index) => <label key={character.id} className={selectedScene.characterIds.includes(character.id) ? styles.chipActive : ""}><input type="checkbox" checked={selectedScene.characterIds.includes(character.id)} onChange={() => toggleSceneCharacter(character.id)} />{character.name || `ตัวละคร ${index + 1}`}</label>)}</div>
 
-                    {selectedScene.characterIds.length ? <div className={v11.dialogueGrid}>{selectedScene.characterIds.map((id) => {
-                      const character = characters.find((item) => item.id === id);
-                      if (!character) return null;
-                      const direction = selectedScene.characterDirections[id] || makeDirection();
-                      const value = direction.dialogue || legacyDialogueFor(selectedScene.dialogue, character.name);
-                      return <label key={id} className={`${styles.dialogueCard} ${v11.dialogueCard}`}><span><b>{character.name || "ตัวละคร"}</b><small>{character.voice}</small></span><textarea value={value} onChange={(event) => patchCharacterDialogue(id, event.target.value)} placeholder="เขียนบทพูด หรือเว้นว่างถ้าไม่มีบท" /></label>;
-                    })}</div> : null}
+                      {hasAnimals ? <div className={v11.creaturePresence}><span>สัตว์ / Creature ในฉาก</span><div className={styles.presenceChips}>{animals.map((animal) => <label key={animal.id} className={selectedScene.animalIds.includes(animal.id) ? styles.chipActive : ""}><input type="checkbox" checked={selectedScene.animalIds.includes(animal.id)} onChange={() => toggleSceneAnimal(animal.id)} />{animal.name}</label>)}</div></div> : null}
+
+                      {selectedScene.characterIds.length ? <div className={v11.directionGrid}>{selectedScene.characterIds.map((id) => {
+                        const character = characters.find((item) => item.id === id);
+                        if (!character) return null;
+                        const direction = selectedScene.characterDirections[id] || makeDirection();
+                        const dialogue = direction.dialogue || legacyDialogueFor(selectedScene.dialogue, character.name);
+                        return <article key={id} className={v11.directionCard}>
+                          <div className={v11.directionHead}><b>{character.name || "ตัวละคร"}</b><small>{character.role || "ยังไม่กำหนดบทบาท"} · {character.voice || "ยังไม่กำหนดเสียง"}</small></div>
+                          <label><span>Blocking / ตำแหน่ง</span><input value={direction.blocking} onChange={(event) => patchCharacterDirection(id, { blocking: event.target.value })} placeholder="ซ้ายเฟรม, หน้าโต๊ะ, เดินเข้าจากขวา..." /></label>
+                          <label><span>Action ของคนนี้</span><input value={direction.action} onChange={(event) => patchCharacterDirection(id, { action: event.target.value })} placeholder="เดิน, หยุด, หยิบของ, หันหน้า..." /></label>
+                          <ChoiceField label="Emotion" value={direction.emotion} options={EMOTIONS} onChange={(value) => patchCharacterDirection(id, { emotion: value })} compact />
+                          <label><span>Eyeline / มองไปที่</span><input value={direction.eyeline} onChange={(event) => patchCharacterDirection(id, { eyeline: event.target.value })} placeholder="ตัวละครอีกคน / กล้อง / ประตู" /></label>
+                          <label className={v11.directionDialogue}><span>Dialogue</span><textarea value={dialogue} onChange={(event) => patchCharacterDialogue(id, event.target.value)} placeholder="เว้นว่างได้หากไม่มีบทพูด" /></label>
+                        </article>;
+                      })}</div> : <p className={v11.emptyHint}>ยังไม่ได้เลือกตัวละครในฉากนี้</p>}
+                    </section>
                   </div>
                 </div>
               </details> : null}
