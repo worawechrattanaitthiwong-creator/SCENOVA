@@ -181,6 +181,7 @@
 
 .stepCard {
   padding: 13px 15px 14px;
+  overflow: visible;
 }
 
 .stepHead {
