@@ -735,7 +735,8 @@ export default function SingleEpisodeStudio() {
     const manualSections = readManualAiSections();
     const historyKey = aiStorySignature(episodeTitle, story, sceneIndex);
     const history = readAiDirectorHistory(historyKey);
-    const scopeLabel = scope === "all" ? "ทั้งฉาก" : AI_SCOPE_OPTIONS.find((item) => item.value === scope)?.label || scope;
+    const scopeLabel = scope === "all" ? "ช่องว่างทั้งฉาก" : AI_SCOPE_OPTIONS.find((item) => item.value === scope)?.label || scope;
+    const fillMode = scope === "all" ? "empty-only" : "replace-scope";
     setSceneAiBusy(true);
     setSceneAiSummary("");
     setMessage(`AI Director กำลังสร้าง Candidate และตรวจ ${scopeLabel} ของฉาก ${sceneIndex + 1}...`);
@@ -748,6 +749,7 @@ export default function SingleEpisodeStudio() {
           mode: aiDirectorMode,
           novelty: aiDirectorNovelty,
           scope,
+          fillMode,
           episodeTitle,
           story,
           model,
@@ -777,14 +779,16 @@ export default function SingleEpisodeStudio() {
 
       setSceneAiUndo(cloneAiDirectorScenes(scenes));
       setScenes((current) => current.map((scene) => scene.id === selectedScene.id
-        ? applyAiDirectorPatch(scene, data.scene!, manualSections, locks)
+        ? applyAiDirectorPatch(scene, data.scene!, manualSections, locks, { preserveFilled: fillMode === "empty-only" })
         : scene));
       appendAiDirectorHistory(historyKey, data.meta.historyEntry);
       setSceneAiMeta(data.meta);
       const cost = Number(data.usage?.costThb || 0);
       const providerCopy = `${data.provider || "AI Director"}${cost > 0 ? ` · ฿${cost.toFixed(4)}` : " · BYOK"}`;
       setSceneAiSummary(`${data.meta.rationaleTh} · ${providerCopy}`);
-      setMessage(`AI Director จัด ${scopeLabel} แล้ว · เปลี่ยน ${data.meta.changedFields.length} ค่า · คุมความซ้ำด้วยประวัติ ${history.length + 1} รุ่น`);
+      setMessage(scope === "all"
+        ? `AI Director เติมช่องว่างแล้ว ${data.meta.changedFields.length} ค่า · ค่าที่คุณกรอก/เลือกไว้เดิมไม่ถูกเปลี่ยน · เชื่อมเนื้อเรื่องกับฉากก่อน/ถัดไปแล้ว`
+        : `AI Director จัด ${scopeLabel} ใหม่แล้ว · เปลี่ยน ${data.meta.changedFields.length} ค่า · คุมความซ้ำด้วยประวัติ ${history.length + 1} รุ่น`);
     } catch (error) {
       const raw = error instanceof Error ? error.message : "AI_DIRECTOR_FAILED";
       setMessage(raw === "AI_DIRECTOR_SOURCE_REQUIRED" ? "กรุณาใส่เรื่องหรือ Action ก่อนให้ AI ช่วยคิด" : friendlyAiError(raw));
