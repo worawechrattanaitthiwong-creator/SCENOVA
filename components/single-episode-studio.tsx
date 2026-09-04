@@ -482,6 +482,14 @@ export default function SingleEpisodeStudio() {
   }, [scenes, selectedSceneId]);
 
   useEffect(() => {
+    if (!model || !aspect) return;
+    const capability = getVideoUiCapability(selectedModelProfile.catalogKey);
+    if (capability.ratioValues.includes(aspect)) return;
+    setAspect(capability.ratioValues[0] || "");
+    setMessage("อัตราส่วนภาพเดิมไม่รองรับกับโมเดลที่เลือก ระบบเปลี่ยนเป็นค่าที่ Provider รองรับแล้ว");
+  }, [model, aspect, selectedModelProfile.catalogKey]);
+
+  useEffect(() => {
     setSceneAiMeta(null);
     setSceneAiSummary("");
     setSceneAiUndo(null);
