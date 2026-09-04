@@ -183,6 +183,24 @@ describe("production AI Director", () => {
     expect(result.meta.rationaleTh).toContain("เชื่อมเหตุและผลกับฉากข้างเคียง");
   });
 
+  it("can plan a scene before video model and aspect are selected", () => {
+    const input = request(7007);
+    input.model = "";
+    input.modelVersion = "";
+    input.aspect = "";
+    input.fillMode = "empty-only";
+    input.currentScene.angle = "";
+    input.currentScene.movement = "";
+
+    const result = buildAiDirectorPlan(input);
+
+    expect(result.meta.capability.model).toBe("AI Planning");
+    expect(result.meta.capability.durationSupported).toBe(true);
+    expect(result.meta.capability.aspectSupported).toBe(true);
+    expect(result.scene.angle).toBeTruthy();
+    expect(result.scene.movement).toBeTruthy();
+  });
+
   it("keeps locked lighting unchanged", () => {
     const input = request(5005);
     input.locks = [...input.locks, "Lighting"];
