@@ -232,7 +232,7 @@ export async function POST(request: Request) {
         fillMode: input.fillMode,
         preserveFilledValues: input.fillMode === "empty-only",
         cast: input.cast,
-        manualSections: input.manualSections
+        manualSections: input.manualSections,
         recentCreativeFingerprints: input.history.slice(-12).map((item) => item.fingerprint),
       },
       billingMode: input.billingMode,
