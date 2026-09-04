@@ -24,6 +24,7 @@ import { getVideoUiCapability } from "@/lib/providers/video-ui-capabilities";
 export type AiDirectorMode = "production" | "cinematic" | "story" | "realistic" | "emotion" | "surprise";
 export type AiDirectorNovelty = "safe" | "balanced" | "different" | "experimental";
 export type AiDirectorScope = "all" | "story" | "camera" | "look" | "sound" | "continuity";
+export type AiDirectorFillMode = "replace-scope" | "empty-only";
 
 export type ManualAiSections = {
   blocking: boolean;
@@ -157,6 +158,7 @@ export type AiDirectorRequest = {
   mode: AiDirectorMode;
   novelty: AiDirectorNovelty;
   scope: AiDirectorScope;
+  fillMode: AiDirectorFillMode;
   seed: number;
   episodeTitle: string;
   story: string;
@@ -349,9 +351,18 @@ function fingerprint(scene: AiDirectorScene) {
 function deriveSignals(input: AiDirectorRequest): Signal {
   const text = normalize([
     input.story,
+    input.previousScene?.objective,
+    input.previousScene?.beat,
+    input.previousScene?.action,
+    input.previousScene?.dialogue,
     input.currentScene.objective,
     input.currentScene.beat,
     input.currentScene.action,
+    input.currentScene.dialogue,
+    input.nextScene?.objective,
+    input.nextScene?.beat,
+    input.nextScene?.action,
+    input.nextScene?.dialogue,
     input.analysis.intent,
     input.analysis.summaryTh,
     input.analysis.scene.description,
@@ -553,6 +564,12 @@ function sceneTransition(profile: ProfileId, input: AiDirectorRequest, rng: () =
 }
 
 function selectCharacters(input: AiDirectorRequest) {
+  if (input.fillMode === "empty-only" && input.currentScene.characterIds.length) {
+    const fixed = input.currentScene.characterIds
+      .map((id) => input.cast.find((item) => item.id === id))
+      .filter((item): item is AiDirectorCastMember => Boolean(item));
+    if (fixed.length) return fixed;
+  }
   const matched: AiDirectorCastMember[] = [];
   for (const suggestion of input.analysis.characters) {
     const wanted = normalize(suggestion.name);
@@ -599,18 +616,25 @@ function buildDirections(profile: ProfileId, input: AiDirectorRequest, selected:
       const actual = normalize(character.name);
       return suggested === actual || suggested.includes(actual) || actual.includes(suggested);
     });
-    const current = input.currentScene.characterDirections[character.id] || { blocking: "", action: "", emotion: "Natural", eyeline: "", dialogue: "" };
+    const current = input.currentScene.characterDirections[character.id] || { blocking: "", action: "", emotion: "", eyeline: "", dialogue: "" };
     const opposite = selected.length > 1 ? selected[(index + 1) % selected.length] : null;
     const leftFirst = rng() < 0.5;
     const side = selected.length === 1 ? "กลางเฟรม / จุดเด่นหลัก" : ((index + (leftFirst ? 0 : 1)) % 2 === 0 ? "ซ้ายเฟรม" : "ขวาเฟรม");
     const blocking = side + (opposite ? " หันเข้าหา " + opposite.name : " เคลื่อนตาม Action หลักของฉาก");
-    result[character.id] = {
+    const generated: AiDirectorCharacterDirection = {
       blocking,
       action: suggestion?.action?.trim() || current.action || "ตอบสนองต่อเหตุการณ์หลักของฉากอย่างต่อเนื่อง",
       emotion: closestChoice(suggestion?.emotion, EMOTIONS, current.emotion || "Natural"),
       eyeline: opposite ? "มอง " + opposite.name : (profile === "reveal" ? "มองจุดข้อมูลสำคัญในฉาก" : current.eyeline || "มองตามทิศทาง Action"),
       dialogue: trimToBudget(suggestion?.dialogue || current.dialogue || "", perCharacter),
     };
+    result[character.id] = input.fillMode === "empty-only" ? {
+      blocking: current.blocking.trim() ? current.blocking : generated.blocking,
+      action: current.action.trim() ? current.action : generated.action,
+      emotion: current.emotion.trim() ? current.emotion : generated.emotion,
+      eyeline: current.eyeline.trim() ? current.eyeline : generated.eyeline,
+      dialogue: current.dialogue.trim() ? current.dialogue : generated.dialogue,
+    } : generated;
   });
   return result;
 }
@@ -633,7 +657,14 @@ function sfxTimeline(sfx: string, duration: number) {
 
 function continuityNote(input: AiDirectorRequest, selected: AiDirectorCastMember[], scene: AiDirectorScene) {
   const notes: string[] = [];
-  if (input.previousScene) notes.push("ต่อจากฉากก่อน: รักษาทิศทางการเคลื่อนและสถานะล่าสุดของตัวละคร/พร็อพ");
+  if (input.previousScene) {
+    const cause = (input.previousScene.action || input.previousScene.dialogue || input.previousScene.beat || input.previousScene.title || "").trim();
+    notes.push("ต่อจากฉากก่อน: รักษาทิศทางการเคลื่อนและสถานะล่าสุดของตัวละคร/พร็อพ" + (cause ? " · เหตุที่รับมา: " + cause.slice(0, 220) : ""));
+  }
+  if (input.nextScene) {
+    const consequence = (input.nextScene.action || input.nextScene.dialogue || input.nextScene.beat || input.nextScene.title || "").trim();
+    if (consequence) notes.push("ส่งเหตุไปฉากถัดไป: " + consequence.slice(0, 220));
+  }
   if (selected.length) notes.push("ตัวละครคงเดิม: " + selected.map((item) => item.name).join(", "));
   if (scene.location) notes.push("สถานที่: " + scene.location + " ต้องคงโครงสร้างและตำแหน่งวัตถุสำคัญ");
   if (input.locks.includes("Camera Language")) notes.push("รักษาภาษากล้องของตอนใน lens family และจังหวะ movement เดียวกัน");
@@ -657,6 +688,7 @@ function negativePrompt(input: AiDirectorRequest, selected: AiDirectorCastMember
 }
 
 function resolvedLocation(input: AiDirectorRequest) {
+  if (input.currentScene.location.trim() && input.fillMode === "empty-only") return input.currentScene.location;
   if (input.locks.includes("Location") && input.currentScene.location.trim()) return input.currentScene.location;
   return input.analysis.scene.location?.trim() || input.currentScene.location;
 }
@@ -770,12 +802,14 @@ function modelSupportScore(capability: AiDirectorCapability) {
 }
 
 function scoreWeights(mode: AiDirectorMode, novelty: AiDirectorNovelty) {
-  const noveltyWeight = novelty === "safe" ? 0.08 : novelty === "balanced" ? 0.15 : novelty === "different" ? 0.21 : 0.26;
-  const weights = { story: 0.3, coherence: 0.2, continuity: 0.15, novelty: noveltyWeight, model: 0.1, pacing: 0.1 };
-  if (mode === "story") weights.story += 0.08;
-  if (mode === "cinematic") weights.coherence += 0.06;
+  const noveltyWeight = novelty === "safe" ? 0.05 : novelty === "balanced" ? 0.08 : novelty === "different" ? 0.12 : 0.16;
+  // Story relationship is intentionally the strongest signal. Camera/look novelty
+  // is secondary to causal continuity with the surrounding scenes.
+  const weights = { story: 0.4, coherence: 0.16, continuity: 0.2, novelty: noveltyWeight, model: 0.08, pacing: 0.08 };
+  if (mode === "story") weights.story += 0.1;
+  if (mode === "cinematic") weights.coherence += 0.05;
   if (mode === "realistic") weights.continuity += 0.05;
-  if (mode === "surprise") weights.novelty += 0.08;
+  if (mode === "surprise") weights.novelty += 0.05;
   const sum = Object.values(weights).reduce((a, b) => a + b, 0);
   return Object.fromEntries(Object.entries(weights).map(([key, value]) => [key, value / sum])) as typeof weights;
 }
@@ -826,6 +860,38 @@ function chooseCandidate(candidates: Candidate[], input: AiDirectorRequest, rng:
   return { selected, alternatives };
 }
 
+function hasFilledValue(value: unknown) {
+  if (typeof value === "string") return value.trim().length > 0;
+  if (Array.isArray(value)) return value.length > 0;
+  if (value === null || value === undefined) return false;
+  if (typeof value === "number") return Number.isFinite(value);
+  if (typeof value === "object") return Object.keys(value as object).length > 0;
+  return true;
+}
+
+function preserveFilledDirections(
+  current: Record<string, AiDirectorCharacterDirection>,
+  generated: Record<string, AiDirectorCharacterDirection> | undefined,
+) {
+  if (!generated) return undefined;
+  const result: Record<string, AiDirectorCharacterDirection> = {};
+  Object.entries(generated).forEach(([id, direction]) => {
+    const existing = current[id];
+    if (!existing) {
+      result[id] = direction;
+      return;
+    }
+    result[id] = {
+      blocking: existing.blocking.trim() ? existing.blocking : direction.blocking,
+      action: existing.action.trim() ? existing.action : direction.action,
+      emotion: existing.emotion.trim() ? existing.emotion : direction.emotion,
+      eyeline: existing.eyeline.trim() ? existing.eyeline : direction.eyeline,
+      dialogue: existing.dialogue.trim() ? existing.dialogue : direction.dialogue,
+    };
+  });
+  return result;
+}
+
 function filterScope(scene: AiDirectorScene, input: AiDirectorRequest) {
   const patch: AiDirectorScenePatch = {};
   const copy = (keys: readonly (keyof AiDirectorScene)[]) => keys.forEach((key) => { (patch as unknown as Record<string, unknown>)[key] = scene[key]; });
@@ -847,6 +913,18 @@ function filterScope(scene: AiDirectorScene, input: AiDirectorRequest) {
     delete patch.colorTemp;
   }
   if (input.locks.includes("Location") && input.currentScene.location.trim()) delete patch.location;
+
+  if (input.fillMode === "empty-only") {
+    const current = input.currentScene;
+    Object.keys(patch).forEach((rawKey) => {
+      const key = rawKey as keyof AiDirectorScene;
+      if (key === "characterDirections") return;
+      if (hasFilledValue(current[key])) delete patch[key];
+    });
+    const directions = preserveFilledDirections(current.characterDirections, patch.characterDirections);
+    if (directions && Object.keys(directions).length) patch.characterDirections = directions;
+    else delete patch.characterDirections;
+  }
   return patch;
 }
 
@@ -896,6 +974,7 @@ function frozenSections(input: AiDirectorRequest) {
   if (input.manualSections.continuity) result.push("Continuity");
   if (input.locks.includes("Lighting")) result.push("Lighting Lock");
   if (input.locks.includes("Location") && input.currentScene.location.trim()) result.push("Location Lock");
+  if (input.fillMode === "empty-only") result.push("ค่าที่ผู้ใช้กรอก/เลือกไว้แล้ว");
   return Array.from(new Set(result));
 }
 
@@ -908,6 +987,7 @@ function rationale(profile: ProfileId, signal: Signal, scores: AiDirectorScores,
   if (signal.reveal > 0.8) reason.push("มีจุดเปิดเผยข้อมูล");
   if (signal.mystery > 0.8) reason.push("มีความลึกลับ/ความไม่แน่นอน");
   if (input.sceneIndex === input.sceneCount - 1) reason.push("เป็นช่วงท้ายของตอน");
+  if (input.previousScene || input.nextScene) reason.push("เชื่อมเหตุและผลกับฉากข้างเคียง");
   const suffix = reason.length ? reason.join(" • ") : "สมดุล Story, Camera และ Continuity";
   return PROFILE_LABELS[profile] + " — " + suffix + " · คะแนนรวม " + Math.round(scores.total * 100) + "%";
 }

@@ -74,7 +74,7 @@ export default function SingleEpisodeAiDirectorPanel({
     </div>
 
     {!meta ? <div className={styles.aiDirectorHint} aria-live="polite">
-      {busy ? "AI Director กำลังวิเคราะห์เหตุการณ์ สร้าง Candidate หลายชุด ตรวจความสัมพันธ์ Locks / Manual / Model และเลือกผลลัพธ์ที่เหมาะที่สุด…" : "ปุ่ม AI ช่วยคิดทั้งฉากด้านบนจะจัด Story → Blocking → Camera → Look → Sound → Continuity เป็นชุดเดียวกัน ส่วนที่ตั้ง Manual หรือ Lock ไว้จะไม่ถูกเปลี่ยน"}
+      {busy ? "AI Director กำลังวิเคราะห์เนื้อเรื่อง ฉากก่อนหน้า/ถัดไป และเติมเฉพาะช่องที่ยังว่าง โดยรักษาค่าที่คุณเลือกไว้…" : "ปุ่ม AI ช่วยคิดทั้งฉากด้านบนจะเติมเฉพาะช่องว่างตามลำดับ Story → Blocking → Camera → Look → Sound → Continuity และยึดความสัมพันธ์ของเนื้อเรื่องกับฉากก่อน/ถัดไปเป็นหลัก ค่าที่คุณกรอกหรือเลือกไว้แล้ว รวมถึง Manual/Lock จะไม่ถูกเปลี่ยน"}
       {summary ? <span> · {summary}</span> : null}
     </div> : <div className={styles.aiDirectorResults} aria-live="polite">
       <div className={styles.aiScoreGrid}>
