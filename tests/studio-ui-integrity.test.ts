@@ -54,6 +54,7 @@ describe("AI Studio UI integrity", () => {
     expect(studio).toContain('data-studio-character-card="true"');
     expect(studio).toContain('data-studio-character-presence="true"');
     expect(studio).toContain('data-studio-dialogue-card="true"');
+    expect(studio).toContain("data-studio-model-ready");
     expect(studio).toContain('label="จำนวนตัวละคร"');
     expect(studio).toContain('label="จำนวนฉาก"');
     expect(studio).toContain("scenova-direct-render-host");
@@ -61,6 +62,7 @@ describe("AI Studio UI integrity", () => {
     expect(directBridge).toContain('data-studio-character-card="true"');
     expect(directBridge).toContain('data-studio-character-presence="true"');
     expect(directBridge).toContain('data-studio-dialogue-card="true"');
+    expect(directBridge).toContain('data-studio-model-ready="true"');
     expect(directBridge).not.toContain("suppressLegacyAgentSubmit()");
     expect(agentBridge).toContain('data-studio-character-card="true"');
     expect(agentBridge).toContain('data-studio-character-presence="true"');
