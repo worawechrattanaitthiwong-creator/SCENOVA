@@ -226,3 +226,30 @@
   .aiScoreGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .aiValidation { display: grid; }
 }
+
+
+.aiRequiredField select {
+  border-color: rgba(255, 87, 116, 0.95);
+  box-shadow: 0 0 0 3px rgba(255, 87, 116, 0.13);
+  animation: aiRequiredPulse .9s ease-out 1;
+}
+
+.aiRequiredField > span {
+  color: #ff9aaa !important;
+}
+
+.aiRequiredMessage {
+  border: 1px solid rgba(255, 87, 116, 0.55);
+  border-radius: 8px;
+  background: rgba(129, 28, 48, 0.12);
+  color: #ffb1bd;
+  padding: 7px 9px;
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1.45;
+}
+
+@keyframes aiRequiredPulse {
+  0% { box-shadow: 0 0 0 0 rgba(255, 87, 116, 0.34); }
+  100% { box-shadow: 0 0 0 5px rgba(255, 87, 116, 0.08); }
+}
