@@ -1132,7 +1132,7 @@ export default function SingleEpisodeStudio() {
           </div>
 
           <div className={v11.sceneCapture}>
-            <div className={`${styles.sceneList} ${v11.sceneTabs}`}>
+            <div className={`${styles.sceneList} ${v11.sceneTabs} ${scenes.length === 1 ? v11.sceneTabsSingle : ""}`}>
               {scenes.map((scene, index) => <button type="button" key={scene.id} data-active={scene.id === selectedScene?.id ? "true" : "false"} onClick={() => setSelectedSceneId(scene.id)}>ฉากที่ {index + 1} · {scene.duration}s</button>)}
             </div>
 
