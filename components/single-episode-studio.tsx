@@ -959,7 +959,7 @@ export default function SingleEpisodeStudio() {
       <a href="#setup"><b>1</b><span>ตั้งค่าตอน<small>เรื่อง + โมเดล</small></span></a>
       <a href="#characters"><b>2</b><span>ตัวละคร<small>ล็อกตัวตน + ล็อกเสียง</small></span></a>
       <a href="#scenes"><b>3</b><span>กำกับฉาก<small>กล้อง + แสง + เสียง</small></span></a>
-      <a href="#review"><b>4</b><span>ตรวจความพร้อม<small>ส่ง Storyboard ให้ทีม AI</small></span></a>
+      <div id="studio-draft-actions-slot" className={styles.draftSlot} aria-label="บันทึกและงานร่าง" />
     </nav>
 
     <div className={styles.workspaceGrid}>
