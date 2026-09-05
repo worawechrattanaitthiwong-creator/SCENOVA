@@ -310,13 +310,13 @@ export default function SingleEpisodeStudioPolish() {
     <>
       <style>{`
         .sc-aspect-field{display:flex!important;flex-direction:column!important}
-        .sc-aspect-field>span{order:1}
+        .sc-aspect-field>span{order:1;min-height:14px!important;margin-bottom:4px!important;line-height:14px!important}
         .sc-aspect-field>.sc-ratio-picker{order:2}
         .sc-aspect-field>small{order:3}
         .sc-ratio-picker{position:relative;margin-top:0}
-        .sc-ratio-trigger{width:100%;min-height:44px;display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:9px;background:var(--input);color:var(--text);padding:7px 10px;text-align:left;cursor:pointer}
+        .sc-ratio-trigger{box-sizing:border-box;width:100%;height:44px;min-height:44px;display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:9px;background:var(--input);color:var(--text);padding:5px 9px;text-align:left;cursor:pointer}
         .sc-ratio-trigger:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent)}
-        .sc-ratio-frame-shell{width:42px;height:34px;flex:0 0 42px;display:grid;place-items:center;border:1px solid var(--border);border-radius:7px;background:var(--surface3)}
+        .sc-ratio-frame-shell{width:34px;height:30px;flex:0 0 34px;display:grid;place-items:center;border:1px solid var(--border);border-radius:6px;background:var(--surface3)}
         .sc-ratio-frame-shape{display:block;border:2px solid var(--accent);border-radius:3px;background:color-mix(in srgb,var(--accent) 9%,transparent)}
         .sc-ratio-trigger-copy{min-width:0;flex:1}.sc-ratio-trigger-copy strong,.sc-ratio-trigger-copy small{display:block}
         .sc-ratio-trigger-copy strong{font-size:11px}.sc-ratio-trigger-copy small{margin:1px 0 0;color:var(--muted);font-size:9px}

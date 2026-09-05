@@ -57,11 +57,22 @@
 .aspectField,
 .styleField {
   align-self: start !important;
+  min-width: 0 !important;
+}
+
+.titleField > span,
+.aspectField > span,
+.styleField > span {
+  min-height: 14px !important;
+  margin-bottom: 4px !important;
+  line-height: 14px !important;
 }
 
 .titleField > input,
 .styleField > select {
+  box-sizing: border-box !important;
   height: 44px !important;
+  min-height: 44px !important;
 }
 
 .grid :global(.single-episode-studio_field__),
@@ -71,6 +82,8 @@
 
 .grid :global(input),
 .grid :global(select) {
+  box-sizing: border-box !important;
+  height: 44px !important;
   min-height: 44px !important;
   padding: 7px 9px !important;
   border-radius: 8px !important;
@@ -85,6 +98,7 @@
 .modelField > span {
   margin-bottom: 4px !important;
   font-size: 11px !important;
+  line-height: 14px !important;
 }
 
 .grid :global(label) > small,
