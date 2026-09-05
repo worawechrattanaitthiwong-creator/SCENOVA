@@ -33,7 +33,7 @@
   display: grid !important;
   grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
   gap: 8px 9px !important;
-  align-items: start !important;
+  align-items: stretch !important;
 }
 
 .titleField {
@@ -52,6 +52,18 @@
   grid-column: span 2 !important;
 }
 
+.titleField,
+.modelField,
+.aspectField,
+.styleField {
+  align-self: start !important;
+}
+
+.titleField > input,
+.styleField > select {
+  height: 44px !important;
+}
+
 .grid :global(.single-episode-studio_field__),
 .grid :global(label) {
   min-width: 0;
@@ -59,8 +71,8 @@
 
 .grid :global(input),
 .grid :global(select) {
-  min-height: 36px !important;
-  padding: 6px 8px !important;
+  min-height: 44px !important;
+  padding: 7px 9px !important;
   border-radius: 8px !important;
 }
 
@@ -135,18 +147,31 @@
 
 .storyField {
   grid-column: 1 / 9 !important;
+  height: 112px !important;
+  padding: 8px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 9px !important;
+  background: var(--surface2) !important;
 }
 
 .storyField textarea {
-  min-height: 78px !important;
-  height: 78px !important;
-  resize: vertical;
+  min-height: 0 !important;
+  height: auto !important;
+  flex: 1 1 auto;
+  resize: none;
   line-height: 1.4 !important;
+}
+
+.storyField > small {
+  flex: 0 0 auto;
 }
 
 .timing {
   grid-column: 9 / 13 !important;
-  min-height: 78px !important;
+  height: 112px !important;
+  min-height: 112px !important;
   margin-top: 0 !important;
   padding: 8px !important;
   display: grid !important;
@@ -278,12 +303,19 @@
     grid-column: 1 !important;
   }
 
+  .storyField {
+    height: auto !important;
+  }
+
   .storyField textarea {
     min-height: 88px !important;
     height: 88px !important;
+    flex: none;
+    resize: vertical;
   }
 
   .timing {
+    height: auto !important;
     min-height: 0 !important;
     grid-template-columns: 1fr 1fr !important;
   }

@@ -250,6 +250,7 @@ export default function SingleEpisodeStudioPolish() {
     let stopped = false;
     let timer = 0;
     let discoveredAspectSelect: HTMLSelectElement | null = null;
+    let discoveredAspectField: HTMLElement | null = null;
 
     const discover = () => {
       if (stopped) return;
@@ -266,6 +267,8 @@ export default function SingleEpisodeStudioPolish() {
       const nextModelSelect = model?.querySelector<HTMLSelectElement>("select") || null;
 
       discoveredAspectSelect = nextAspectSelect;
+      discoveredAspectField = aspect;
+      if (aspect) aspect.classList.add("sc-aspect-field");
       if (nextAspectSelect && nextModelSelect) nextAspectSelect.style.display = "none";
       setAspectField(aspect);
       setAspectSelect(nextAspectSelect);
@@ -297,6 +300,7 @@ export default function SingleEpisodeStudioPolish() {
       stopped = true;
       window.clearTimeout(timer);
       if (discoveredAspectSelect) discoveredAspectSelect.style.display = "";
+      discoveredAspectField?.classList.remove("sc-aspect-field");
       const scenes = document.getElementById("scenes") as (HTMLElement & { __scPolishObserver?: MutationObserver }) | null;
       scenes?.__scPolishObserver?.disconnect();
     };
@@ -305,8 +309,12 @@ export default function SingleEpisodeStudioPolish() {
   return (
     <>
       <style>{`
+        .sc-aspect-field{display:flex!important;flex-direction:column!important}
+        .sc-aspect-field>span{order:1}
+        .sc-aspect-field>.sc-ratio-picker{order:2}
+        .sc-aspect-field>small{order:3}
         .sc-ratio-picker{position:relative;margin-top:0}
-        .sc-ratio-trigger{width:100%;min-height:43px;display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:9px;background:var(--input);color:var(--text);padding:7px 10px;text-align:left;cursor:pointer}
+        .sc-ratio-trigger{width:100%;min-height:44px;display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:9px;background:var(--input);color:var(--text);padding:7px 10px;text-align:left;cursor:pointer}
         .sc-ratio-trigger:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent)}
         .sc-ratio-frame-shell{width:42px;height:34px;flex:0 0 42px;display:grid;place-items:center;border:1px solid var(--border);border-radius:7px;background:var(--surface3)}
         .sc-ratio-frame-shape{display:block;border:2px solid var(--accent);border-radius:3px;background:color-mix(in srgb,var(--accent) 9%,transparent)}

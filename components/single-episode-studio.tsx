@@ -378,7 +378,7 @@ export default function SingleEpisodeStudio() {
   const [episodeTitle, setEpisodeTitle] = useState("");
   const [model, setModel] = useState("");
   const [modelVersion, setModelVersion] = useState("");
-  const [aspect, setAspect] = useState("");
+  const [aspect, setAspect] = useState("9:16 — Vertical");
   const [visualStyle, setVisualStyle] = useState("");
   const [story, setStory] = useState("");
   const [globalNegative, setGlobalNegative] = useState("");
