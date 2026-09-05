@@ -10,6 +10,8 @@ const studioProject = readFileSync("lib/agent/studio-project.ts", "utf8");
 const railCss = readFileSync("components/single-episode-summary-rail.module.css", "utf8");
 const studioCss = readFileSync("components/single-episode-studio.module.css", "utf8");
 const setupCss = readFileSync("components/single-episode-setup-compact.module.css", "utf8");
+const modelPicker = readFileSync("components/studio-model-picker-polish.tsx", "utf8");
+const studioPolish = readFileSync("components/single-episode-studio-polish.tsx", "utf8");
 
 describe("AI Studio pre-rebuild UI regression guard", () => {
   it("restores the original Single Episode workspace structure", () => {
@@ -65,6 +67,16 @@ describe("AI Studio pre-rebuild UI regression guard", () => {
     expect(setupCss).toContain("height: 112px");
     expect(setupCss).toContain("min-height: 112px");
     expect(setupCss).toContain("min-height: 44px");
+  });
+
+  it("keeps all five top setup controls on the same baseline and height", () => {
+    expect(setupCss).toContain("height: 44px !important");
+    expect(setupCss).toContain("min-height: 14px !important");
+    expect(setupCss).toContain("line-height: 14px !important");
+    expect(modelPicker).toContain("min-height:14px");
+    expect(modelPicker).toContain("height:44px;min-height:44px");
+    expect(studioPolish).toContain("height:44px;min-height:44px");
+    expect(studioPolish).toContain("width:34px;height:30px");
   });
 
   it("separates every model family from its version list", () => {
