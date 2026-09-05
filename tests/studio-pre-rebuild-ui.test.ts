@@ -8,6 +8,7 @@ const draftTray = readFileSync("components/workspace-draft-tray.tsx", "utf8");
 const directBridge = readFileSync("components/studio-direct-render-bridge.tsx", "utf8");
 const railCss = readFileSync("components/single-episode-summary-rail.module.css", "utf8");
 const studioCss = readFileSync("components/single-episode-studio.module.css", "utf8");
+const setupCss = readFileSync("components/single-episode-setup-compact.module.css", "utf8");
 
 describe("AI Studio pre-rebuild UI regression guard", () => {
   it("restores the original Single Episode workspace structure", () => {
@@ -48,6 +49,18 @@ describe("AI Studio pre-rebuild UI regression guard", () => {
     expect(studioCss).toContain("grid-template-columns:minmax(0,1fr) 360px");
     expect(railCss).toContain("position: sticky");
     expect(directBridge).toContain('review.insertAdjacentElement("afterend", node)');
+  });
+
+  it("keeps the setup card compact and orderly without changing its controls", () => {
+    expect(studio).toContain("setupCard.panel");
+    expect(studio).toContain("setupCard.grid");
+    expect(studio).toContain("setupCard.storyField");
+    expect(studio).toContain("setupCard.timing");
+    expect(studio).toContain("setupCard.locks");
+    expect(setupCss).toContain("grid-template-columns: repeat(12, minmax(0, 1fr))");
+    expect(setupCss).toContain("grid-column: 1 / 9");
+    expect(setupCss).toContain("grid-column: 9 / 13");
+    expect(setupCss).toContain("min-height: 104px");
   });
 
   it("keeps the original behavioral defaults and controls", () => {
