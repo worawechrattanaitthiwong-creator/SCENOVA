@@ -343,8 +343,8 @@ export default function StudioModelPickerPolish() {
     .sc-ai-model-field>span:first-child{display:none!important}
     .sc-ai-model-picker-shell{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;width:100%}
     .sc-ai-select{position:relative;min-width:0}
-    .sc-ai-picker-label{display:block;margin:0 0 4px;color:var(--text);font-size:9.5px;font-weight:850;letter-spacing:.01em}
-    .sc-ai-select-trigger{width:100%;min-height:44px;display:flex;align-items:center;gap:7px;padding:6px 9px;border:1px solid color-mix(in srgb,var(--accent) 34%,var(--borderStrong));border-radius:10px;background:linear-gradient(145deg,color-mix(in srgb,var(--surface3) 92%,var(--accent) 8%),var(--input));color:var(--text);text-align:left;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.025),0 8px 24px rgba(0,0,0,.10);transition:border-color .16s ease,box-shadow .16s ease,transform .16s ease}
+    .sc-ai-picker-label{display:block;min-height:14px;margin:0 0 4px;color:var(--text);font-size:11px;font-weight:850;line-height:14px;letter-spacing:.01em}
+    .sc-ai-select-trigger{box-sizing:border-box;width:100%;height:44px;min-height:44px;display:flex;align-items:center;gap:7px;padding:6px 9px;border:1px solid color-mix(in srgb,var(--accent) 34%,var(--borderStrong));border-radius:10px;background:linear-gradient(145deg,color-mix(in srgb,var(--surface3) 92%,var(--accent) 8%),var(--input));color:var(--text);text-align:left;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.025),0 8px 24px rgba(0,0,0,.10);transition:border-color .16s ease,box-shadow .16s ease,transform .16s ease}
     .sc-ai-select-trigger:disabled{cursor:not-allowed;opacity:.5}.sc-ai-select-trigger:hover{border-color:color-mix(in srgb,var(--accent) 62%,var(--borderStrong));box-shadow:0 10px 28px color-mix(in srgb,var(--accent) 9%,transparent)}
     .sc-ai-select-trigger.is-open{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 16%,transparent),0 14px 36px rgba(0,0,0,.18)}
     .sc-ai-select-trigger.is-locked{cursor:default;opacity:.88}
