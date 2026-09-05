@@ -54,6 +54,16 @@ describe("AI Studio pre-rebuild UI regression guard", () => {
     expect(directBridge).toContain('review.insertAdjacentElement("afterend", node)');
   });
 
+  it("replaces step four with embedded draft actions", () => {
+    expect(studio).not.toContain('<a href="#review"><b>4</b>');
+    expect(studio).toContain('id="studio-draft-actions-slot"');
+    expect(studio).toContain('aria-label="บันทึกและงานร่าง"');
+    expect(draftTray).toContain('createPortal');
+    expect(draftTray).toContain('pathname === "/studio"');
+    expect(draftTray).toContain('document.getElementById("studio-draft-actions-slot")');
+    expect(draftTray).toContain('styles.embedded');
+  });
+
   it("keeps the Studio hero and removes only the visible ready-status text", () => {
     expect(studio).toContain("className={styles.hero}");
     expect(studio).toContain("<h1>สร้างตอนเดียวให้จบใน Workspace เดียว</h1>");
