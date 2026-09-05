@@ -28,15 +28,22 @@ type DirectSnapshot = {
 };
 
 const MODEL_META: Record<string, ModelMeta> = {
-  "runway:gen4.5": { providerId: "runway", label: "Runway Gen-4.5", mode: "generate", fixedVersion: "gen4.5" },
-  "runway:gen4_turbo": { providerId: "runway", label: "Runway Gen-4 Turbo", mode: "generate", fixedVersion: "gen4_turbo" },
-  "runway:seedance2_5": { providerId: "runway", label: "Seedance 2.5", mode: "generate", fixedVersion: "seedance2_5" },
-  "runway:gemini_omni_flash": { providerId: "runway", label: "Gemini Omni Flash 1.1", mode: "generate", fixedVersion: "gemini_omni_flash" },
-  "runway:aleph2": { providerId: "runway", label: "Aleph 2.0", mode: "video-edit", fixedVersion: "aleph2" },
-  "runway:ruby": { providerId: "runway", label: "Ruby HDR", mode: "hdr", fixedVersion: "ruby" },
+  Runway: { providerId: "runway", label: "Runway", mode: "generate" },
+  Seedance: { providerId: "runway", label: "Seedance", mode: "generate" },
+  Gemini: { providerId: "runway", label: "Gemini", mode: "generate" },
+  Aleph: { providerId: "runway", label: "Aleph", mode: "video-edit" },
+  Ruby: { providerId: "runway", label: "Ruby", mode: "hdr" },
   Kling: { providerId: "kling", label: "Kling", mode: "generate" },
   Veo: { providerId: "veo", label: "Veo", mode: "generate" },
   Wan: { providerId: "wan", label: "Wan", mode: "generate" },
+
+  // Backward compatibility for old Studio drafts and pre-split model values.
+  "runway:gen4.5": { providerId: "runway", label: "Runway", mode: "generate", fixedVersion: "gen4.5" },
+  "runway:gen4_turbo": { providerId: "runway", label: "Runway", mode: "generate", fixedVersion: "gen4_turbo" },
+  "runway:seedance2_5": { providerId: "runway", label: "Seedance", mode: "generate", fixedVersion: "seedance2_5" },
+  "runway:gemini_omni_flash": { providerId: "runway", label: "Gemini", mode: "generate", fixedVersion: "gemini_omni_flash" },
+  "runway:aleph2": { providerId: "runway", label: "Aleph", mode: "video-edit", fixedVersion: "aleph2" },
+  "runway:ruby": { providerId: "runway", label: "Ruby", mode: "hdr", fixedVersion: "ruby" },
 };
 
 function compact(value: string | null | undefined) {
