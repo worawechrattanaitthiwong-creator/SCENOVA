@@ -169,18 +169,30 @@ type StudioModelProfile = {
 };
 
 const MODEL_PROFILES: StudioModelProfile[] = [
-  { value: "runway:gen4.5", label: "Runway Gen-4.5", providerId: "runway", catalogKey: "Runway", fixedModelId: "gen4.5", image: "ready", mode: "generate" },
-  { value: "runway:gen4_turbo", label: "Runway Gen-4 Turbo", providerId: "runway", catalogKey: "Runway", fixedModelId: "gen4_turbo", image: "ready", mode: "generate" },
-  { value: "runway:seedance2_5", label: "Seedance 2.5", providerId: "runway", catalogKey: "Seedance 2.5 (Runway)", fixedModelId: "seedance2_5", image: "ready", mode: "generate", nativeAudio: true },
-  { value: "runway:gemini_omni_flash", label: "Gemini Omni Flash 1.1", providerId: "runway", catalogKey: "Gemini Omni Flash 1.1 (Runway)", fixedModelId: "gemini_omni_flash", image: "ready", mode: "generate", nativeAudio: true },
-  { value: "runway:aleph2", label: "Aleph 2.0", providerId: "runway", catalogKey: "Aleph 2.0 (Runway)", fixedModelId: "aleph2", image: "no", mode: "video-edit" },
-  { value: "runway:ruby", label: "Ruby HDR", providerId: "runway", catalogKey: "Ruby HDR (Runway)", fixedModelId: "ruby", image: "no", mode: "hdr", nativeAudio: true },
+  { value: "Runway", label: "Runway", providerId: "runway", catalogKey: "Runway", image: "ready", mode: "generate" },
+  { value: "Seedance", label: "Seedance", providerId: "runway", catalogKey: "Seedance 2.5 (Runway)", image: "ready", mode: "generate", nativeAudio: true },
+  { value: "Gemini", label: "Gemini", providerId: "runway", catalogKey: "Gemini Omni Flash 1.1 (Runway)", image: "ready", mode: "generate", nativeAudio: true },
+  { value: "Aleph", label: "Aleph", providerId: "runway", catalogKey: "Aleph 2.0 (Runway)", image: "no", mode: "video-edit" },
+  { value: "Ruby", label: "Ruby", providerId: "runway", catalogKey: "Ruby HDR (Runway)", image: "no", mode: "hdr", nativeAudio: true },
   { value: "Kling", label: "Kling", providerId: "kling", catalogKey: "Kling", image: "ready", mode: "generate", nativeAudio: true },
   { value: "Veo", label: "Veo", providerId: "veo", catalogKey: "Veo", image: "adapter", mode: "generate", nativeAudio: true },
   { value: "Wan", label: "Wan", providerId: "wan", catalogKey: "Wan", image: "ready", mode: "generate", nativeAudio: true },
 ];
 
 const ASPECTS = ["16:9 — Widescreen", "9:16 — Vertical", "1:1 — Square", "4:5 — Portrait"];
+
+function studioVersionLabel(model: string, label: string) {
+  const clean = label.trim();
+  if (model === "Runway") return clean.replace(/^Runway\s+/i, "");
+  if (model === "Seedance") return clean.replace(/^Seedance\s+/i, "");
+  if (model === "Gemini") return clean.replace(/^Gemini\s+/i, "");
+  if (model === "Aleph") return clean.replace(/^Aleph\s+/i, "");
+  if (model === "Ruby") return clean.replace(/^Ruby\s+/i, "");
+  if (model === "Kling") return clean.replace(/^Kling\s+/i, "");
+  if (model === "Veo") return clean.replace(/^Veo\s+/i, "");
+  if (model === "Wan") return clean.replace(/^Wan\s+/i, "");
+  return clean;
+}
 const STYLES = [
   "Cinematic Anime — อนิเมะภาพยนตร์",
   "Photorealistic Film — สมจริงแบบภาพยนตร์",
@@ -595,7 +607,7 @@ export default function SingleEpisodeStudio() {
     const requiredScenes = Math.max(1, Math.ceil(totalDuration / maxSeconds));
     setModel(nextModel);
     const versions = getVideoModelVersions(profile.catalogKey);
-    setModelVersion(profile.fixedModelId || versions.find((item) => item.recommended)?.apiModelId || versions[0]?.apiModelId || "");
+    setModelVersion(versions.find((item) => item.recommended)?.apiModelId || versions[0]?.apiModelId || "");
     setScenes((current) => {
       const nextCount = Math.max(requiredScenes, Math.min(current.length, totalDuration));
       const needsRedistribution = current.length !== nextCount || current.some((scene) => scene.duration > maxSeconds);
@@ -964,7 +976,7 @@ export default function SingleEpisodeStudio() {
         <label className={`${styles.field} ${setupCard.titleField}`}><span>ชื่อตอน</span><input value={episodeTitle} onChange={(event) => setEpisodeTitle(event.target.value)} placeholder="เช่น คืนสุดท้ายที่สถานีรถไฟ" /><small>ชื่อสำหรับร่าง งาน Render และ Video Library</small></label>
         <div className={`${styles.field} ${setupCard.modelField}`}>
           <span>โมเดลวิดีโอ</span>
-          <div className={setupCard.modelSelects} data-fixed-version={selectedModelProfile.fixedModelId ? "true" : "false"}>
+          <div className={setupCard.modelSelects}>
             <select aria-label="โมเดลวิดีโอ" value={model} onChange={(event) => changeModel(event.target.value)}>
               <option value=""> </option>
               {MODEL_PROFILES.map((item) => {
@@ -974,13 +986,13 @@ export default function SingleEpisodeStudio() {
                 return <option key={item.value} value={item.value}>{marker} {inputMarker} {item.label}</option>;
               })}
             </select>
-            {!model || !selectedModelProfile.fixedModelId ? <select aria-label="รุ่นโมเดล" value={modelVersion} onChange={(event) => setModelVersion(event.target.value)}>
+            <select aria-label="รุ่นโมเดล" value={modelVersion} onChange={(event) => setModelVersion(event.target.value)} disabled={!model}>
               <option value=""> </option>
               {modelVersions.map((item) => {
                 const versionReady = Boolean(selectedProvider?.systemConfigured) || Boolean(selectedConnection?.enabled && selectedConnection.status === "CONNECTED" && (selectedEnabledIds.length === 0 || selectedEnabledIds.includes(item.apiModelId) || selectedConnection.modelId === item.apiModelId));
-                return <option key={item.apiModelId} value={item.apiModelId}>{versionReady ? "🟢" : "⚪"} {item.label}</option>;
+                return <option key={item.apiModelId} value={item.apiModelId}>{versionReady ? "🟢" : "⚪"} {studioVersionLabel(model, item.label)}</option>;
               })}
-            </select> : null}
+            </select>
           </div>
           <div className={setupCard.modelBadges}>
             <span className={setupCard.modelBadge}>
