@@ -15,7 +15,7 @@ describe("AI Studio pre-rebuild UI regression guard", () => {
     expect(studio).toContain("กำหนดตัวตนก่อนกำกับกล้อง");
     expect(studio).toContain("กำกับทีละฉาก พร้อมกล้องเต็มชุด");
     expect(studio).toContain("ความพร้อมของตอนนี้");
-    expect(studio).toContain("StudioStylePreviewGallery");
+    expect(studio).not.toContain("StudioStylePreviewGallery");
 
     expect(studio).not.toContain("ไอเดีย & ตั้งค่าพื้นฐาน");
     expect(studio).not.toContain("สร้างฉาก มุมกล้อง การเคลื่อนไหว บทพูด และอารมณ์");
@@ -41,6 +41,10 @@ describe("AI Studio pre-rebuild UI regression guard", () => {
     expect(studio).toContain('id="studio-kept-preview-summary"');
     expect(studio).toContain("workspaceGrid");
     expect(studio).toContain("primaryColumn");
+    expect(studio).toContain("STYLE_PREVIEW_IMAGE");
+    expect(studio).toContain("rightPreviewImage");
+    expect(studio).not.toContain("<StudioStylePreviewGallery");
+    expect(studio.split("className={rail.previewImage}").length - 1).toBe(1);
     expect(studioCss).toContain("grid-template-columns:minmax(0,1fr) 360px");
     expect(railCss).toContain("position: sticky");
     expect(directBridge).toContain('review.insertAdjacentElement("afterend", node)');
