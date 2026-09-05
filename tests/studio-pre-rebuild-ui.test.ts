@@ -54,6 +54,15 @@ describe("AI Studio pre-rebuild UI regression guard", () => {
     expect(directBridge).toContain('review.insertAdjacentElement("afterend", node)');
   });
 
+  it("removes the Studio hero and visible ready status without losing feedback state", () => {
+    expect(studio).not.toContain("className={styles.hero}");
+    expect(studio).not.toContain("<h1>สร้างตอนเดียวให้จบใน Workspace เดียว</h1>");
+    expect(studio).not.toContain("className={styles.status}");
+    expect(studio).toContain("data-studio-status");
+    expect(studio).toContain("styles.srOnly");
+    expect(studioPolish).toContain('querySelector<HTMLElement>("[data-studio-status]")');
+  });
+
   it("keeps the setup card compact and orderly without changing its controls", () => {
     expect(studio).toContain("setupCard.panel");
     expect(studio).toContain("setupCard.grid");

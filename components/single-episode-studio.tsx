@@ -945,18 +945,6 @@ export default function SingleEpisodeStudio() {
   const rightPreviewImage = STYLE_PREVIEW_IMAGE[visualStyle] || "/library/styles/photorealistic-film.png";
 
   return <main className={styles.main}>
-    <header className={styles.hero}>
-      <div>
-        <span className={styles.eyebrow}>สตูดิโอสร้างตอนเดียว</span>
-        <h1>สร้างตอนเดียวให้จบใน Workspace เดียว</h1>
-        <p>โหมดนี้สำหรับหนังสั้น คลิป หรือตอนเดียว ตั้งเรื่อง ตัวละคร ฉาก กล้อง แสง การแสดง เสียง และ Continuity แล้วส่งต่อไป Prompt & Render</p>
-      </div>
-      <div className={styles.heroActions}>
-        <span className={styles.status}>{message}</span>
-        <button type="button" className={styles.primaryButton} onClick={() => void sendToAgent()} disabled={agentSubmitting}>{agentSubmitting ? "กำลังส่งงาน..." : "ส่งให้ทีม AI ผลิต →"}</button>
-      </div>
-    </header>
-
     <nav className={styles.flowBar} aria-label="ขั้นตอนสร้างตอนเดียว">
       <a href="#setup"><b>1</b><span>ตั้งค่าตอน<small>เรื่อง + โมเดล</small></span></a>
       <a href="#characters"><b>2</b><span>ตัวละคร<small>ล็อกตัวตน + ล็อกเสียง</small></span></a>
@@ -1167,6 +1155,7 @@ export default function SingleEpisodeStudio() {
       <div className={styles.reviewActions}>
         <label className={styles.agentBudget}><span>วงเงินสูงสุดของงาน</span><span><input type="number" min={1} max={2000} step={50} value={agentBudgetThb} onChange={(event) => setAgentBudgetThb(Math.max(1, Math.min(2000, Number(event.target.value) || 1)))} /><b>บาท</b></span></label>
         <Link href="/profile/api" className={styles.apiLink}>ตรวจ API & Models</Link>
+        <span className={styles.srOnly} data-studio-status aria-live="polite">{message}</span>
         <button type="button" className={styles.primaryButton} onClick={() => void sendToAgent()} disabled={agentSubmitting}>{agentSubmitting ? "กำลังส่งงาน..." : "ส่ง Storyboard ให้ทีม AI →"}</button>
       </div>
     </section>
