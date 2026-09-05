@@ -337,6 +337,7 @@ export default function StudioModelPickerPolish() {
 
   const styles = useMemo(() => `
     .sc-ai-model-picker-host{width:100%;position:relative;z-index:45}
+    .sc-ai-model-field>span:first-child{display:none!important}
     .sc-ai-model-picker-shell{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;width:100%}
     .sc-ai-select{position:relative;min-width:0}
     .sc-ai-picker-label{display:block;margin:0 0 4px;color:var(--text);font-size:9.5px;font-weight:850;letter-spacing:.01em}
