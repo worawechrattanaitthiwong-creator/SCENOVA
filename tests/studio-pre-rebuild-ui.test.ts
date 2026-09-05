@@ -54,9 +54,21 @@ describe("AI Studio pre-rebuild UI regression guard", () => {
     expect(directBridge).toContain('review.insertAdjacentElement("afterend", node)');
   });
 
-  it("removes the Studio hero and visible ready status without losing feedback state", () => {
-    expect(studio).not.toContain("className={styles.hero}");
-    expect(studio).not.toContain("<h1>สร้างตอนเดียวให้จบใน Workspace เดียว</h1>");
+  it("replaces step four with embedded draft actions", () => {
+    expect(studio).not.toContain('<a href="#review"><b>4</b>');
+    expect(studio).toContain('id="studio-draft-actions-slot"');
+    expect(studio).toContain('aria-label="บันทึกและงานร่าง"');
+    expect(draftTray).toContain('createPortal');
+    expect(draftTray).toContain('pathname === "/studio"');
+    expect(draftTray).toContain('document.getElementById("studio-draft-actions-slot")');
+    expect(draftTray).toContain('styles.embedded');
+  });
+
+  it("keeps the Studio hero and removes only the visible ready-status text", () => {
+    expect(studio).toContain("className={styles.hero}");
+    expect(studio).toContain("<h1>สร้างตอนเดียวให้จบใน Workspace เดียว</h1>");
+    expect(studio).toContain("สตูดิโอสร้างตอนเดียว");
+    expect(studio).toContain("โหมดนี้สำหรับหนังสั้น คลิป หรือตอนเดียว");
     expect(studio).not.toContain("className={styles.status}");
     expect(studio).toContain("data-studio-status");
     expect(studio).toContain("styles.srOnly");
