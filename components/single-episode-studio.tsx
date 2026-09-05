@@ -162,7 +162,6 @@ type StudioModelProfile = {
   label: string;
   providerId: string;
   catalogKey: string;
-  fixedModelId?: string;
   image: "ready" | "adapter" | "no";
   mode: "generate" | "video-edit" | "hdr";
   nativeAudio?: boolean;
@@ -183,7 +182,7 @@ const ASPECTS = ["16:9 — Widescreen", "9:16 — Vertical", "1:1 — Square", "
 
 function studioVersionLabel(model: string, label: string) {
   const clean = label.trim();
-  if (model === "Runway") return clean.replace(/^Runway\s+/i, "");
+  if (model === "Runway") return clean.replace(/^Runway\s+/i, "").replace(/^Gen-/i, "Gen ");
   if (model === "Seedance") return clean.replace(/^Seedance\s+/i, "");
   if (model === "Gemini") return clean.replace(/^Gemini\s+/i, "");
   if (model === "Aleph") return clean.replace(/^Aleph\s+/i, "");
