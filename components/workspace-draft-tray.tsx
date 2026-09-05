@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   deleteWorkspaceDraft,
   listWorkspaceDrafts,
@@ -41,9 +42,24 @@ export default function WorkspaceDraftTray() {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [saveMessage, setSaveMessage] = useState("");
   const [floatingTop, setFloatingTop] = useState(14);
+  const [studioSlot, setStudioSlot] = useState<HTMLElement | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const saveResetTimer = useRef<number | null>(null);
   const canSaveHere = pathname === "/studio" || pathname === "/agent" || pathname === "/series";
+
+  const embeddedInStudio = pathname === "/studio";
+
+  useEffect(() => {
+    if (!embeddedInStudio) {
+      setStudioSlot(null);
+      return;
+    }
+    const sync = () => setStudioSlot(document.getElementById("studio-draft-actions-slot"));
+    sync();
+    const observer = new MutationObserver(sync);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [embeddedInStudio]);
 
   const refresh = () => setDrafts(listWorkspaceDrafts());
 
@@ -109,6 +125,7 @@ export default function WorkspaceDraftTray() {
   }, [open]);
 
   useEffect(() => {
+    if (embeddedInStudio) return;
     const syncFloatingTop = () => {
       const mobile = window.matchMedia("(max-width:700px)").matches;
       const baseTop = mobile ? 9 : 14;
@@ -130,12 +147,12 @@ export default function WorkspaceDraftTray() {
       observer.disconnect();
       window.removeEventListener("resize", syncFloatingTop);
     };
-  }, []);
+  }, [embeddedInStudio]);
 
   const title = useMemo(() => drafts.length ? `มีร่าง ${drafts.length} งาน · เก็บไว้ 24 ชั่วโมง` : "ยังไม่มีงานร่าง", [drafts.length]);
   if (!authenticated) return null;
 
-  return <div className={styles.root} ref={rootRef} data-sc-help-ignore style={{ top: floatingTop }}>
+  const tray = <div className={`${styles.root} ${embeddedInStudio ? styles.embedded : ""}`} ref={rootRef} data-sc-help-ignore style={embeddedInStudio ? undefined : { top: floatingTop }}>
     {canSaveHere ? <button
       type="button"
       className={styles.save}
@@ -172,4 +189,7 @@ export default function WorkspaceDraftTray() {
       <div className={styles.foot}>SCENOVA จะไม่สร้างร่างจากการพิมพ์หรือการเปลี่ยนค่าอัตโนมัติ · ร่างที่บันทึกจะหมดอายุใน 24 ชั่วโมงและไม่ใช้เครดิต</div>
     </div> : null}
   </div>;
+
+  if (embeddedInStudio) return studioSlot ? createPortal(tray, studioSlot) : null;
+  return tray;
 }
