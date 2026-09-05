@@ -66,6 +66,23 @@ describe("AI Studio pre-rebuild UI regression guard", () => {
     expect(setupCss).toContain("min-height: 44px");
   });
 
+  it("separates every model family from its version list", () => {
+    for (const family of ["Runway", "Seedance", "Gemini", "Aleph", "Ruby", "Kling", "Veo", "Wan"]) {
+      expect(studio).toContain(`value: "${family}", label: "${family}"`);
+    }
+    expect(studio).not.toContain('label: "Runway Gen-4.5"');
+    expect(studio).not.toContain('label: "Seedance 2.5"');
+    expect(studio).not.toContain('label: "Gemini Omni Flash 1.1"');
+    expect(studio).toContain('if (model === "Runway") return clean.replace(/^Runway\\s+/i, "").replace(/^Gen-/i, "Gen ");');
+    expect(studio).toContain('if (model === "Seedance") return clean.replace(/^Seedance\\s+/i, "");');
+    expect(studio).toContain('if (model === "Gemini") return clean.replace(/^Gemini\\s+/i, "");');
+    expect(studio).toContain('if (model === "Aleph") return clean.replace(/^Aleph\\s+/i, "");');
+    expect(studio).toContain('if (model === "Ruby") return clean.replace(/^Ruby\\s+/i, "");');
+    expect(studio).toContain('if (model === "Kling") return clean.replace(/^Kling\\s+/i, "");');
+    expect(studio).toContain('if (model === "Veo") return clean.replace(/^Veo\\s+/i, "");');
+    expect(studio).toContain('if (model === "Wan") return clean.replace(/^Wan\\s+/i, "");');
+  });
+
   it("keeps the original behavioral defaults and controls", () => {
     expect(studio).toContain('const [model, setModel] = useState("")');
     expect(studio).toContain('const [aspect, setAspect] = useState("9:16 — Vertical")');
