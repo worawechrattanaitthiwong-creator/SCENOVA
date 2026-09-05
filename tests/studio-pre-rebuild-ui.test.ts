@@ -61,12 +61,14 @@ describe("AI Studio pre-rebuild UI regression guard", () => {
     expect(setupCss).toContain("grid-column: 1 / 9");
     expect(setupCss).toContain("grid-template-columns: repeat(7, minmax(0, 1fr))");
     expect(setupCss).toContain("grid-column: 9 / 13");
-    expect(setupCss).toContain("min-height: 78px");
+    expect(setupCss).toContain("height: 112px");
+    expect(setupCss).toContain("min-height: 112px");
+    expect(setupCss).toContain("min-height: 44px");
   });
 
   it("keeps the original behavioral defaults and controls", () => {
     expect(studio).toContain('const [model, setModel] = useState("")');
-    expect(studio).toContain('const [aspect, setAspect] = useState("")');
+    expect(studio).toContain('const [aspect, setAspect] = useState("9:16 — Vertical")');
     expect(studio).toContain('const [visualStyle, setVisualStyle] = useState("")');
     expect(studio).toContain("const [totalDuration, setTotalDuration] = useState(30)");
     expect(studio).toContain("distributeScenes([], 3, 30)");
