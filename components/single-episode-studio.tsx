@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import styles from "./single-episode-studio.module.css";
 import rail from "./single-episode-summary-rail.module.css";
+import setupCard from "./single-episode-setup-compact.module.css";
 import SingleEpisodeAiDirectorPanel from "@/components/single-episode-ai-director-panel";
 import { buildStudioAgentProject } from "@/lib/agent/studio-project";
 import type { AiDirectorMeta, AiDirectorMode, AiDirectorNovelty, AiDirectorScenePatch, AiDirectorScope } from "@/lib/ai-director";
@@ -954,16 +955,16 @@ export default function SingleEpisodeStudio() {
 
     <div className={styles.workspaceGrid}>
       <div className={styles.primaryColumn}>
-    <section id="setup" className={styles.panel}>
-      <div className={styles.sectionHead}>
+    <section id="setup" className={`${styles.panel} ${setupCard.panel}`}>
+      <div className={`${styles.sectionHead} ${setupCard.head}`}>
         <div><span>ตั้งค่าตอน</span><h2>กำหนดภาพรวมของตอนเดียว</h2></div>
         <p>ค่าชุดนี้เป็น Master Context ของทุกฉาก ถ้าล็อกไว้ Analyzer และ Prompt Compiler ต้องยึดค่ากลางนี้ก่อนค่าที่ AI เสนอ</p>
       </div>
-      <div className={styles.setupGrid}>
-        <label className={styles.field}><span>ชื่อตอน</span><input value={episodeTitle} onChange={(event) => setEpisodeTitle(event.target.value)} placeholder="เช่น คืนสุดท้ายที่สถานีรถไฟ" /><small>ชื่อสำหรับร่าง งาน Render และ Video Library</small></label>
-        <div className={styles.field}>
+      <div className={`${styles.setupGrid} ${setupCard.grid}`}>
+        <label className={`${styles.field} ${setupCard.titleField}`}><span>ชื่อตอน</span><input value={episodeTitle} onChange={(event) => setEpisodeTitle(event.target.value)} placeholder="เช่น คืนสุดท้ายที่สถานีรถไฟ" /><small>ชื่อสำหรับร่าง งาน Render และ Video Library</small></label>
+        <div className={`${styles.field} ${setupCard.modelField}`}>
           <span>โมเดลวิดีโอ</span>
-          <div style={{ display: "grid", gridTemplateColumns: selectedModelProfile.fixedModelId ? "minmax(0,1fr)" : "minmax(0,1fr) minmax(0,1.2fr)", gap: 6 }}>
+          <div className={setupCard.modelSelects} data-fixed-version={selectedModelProfile.fixedModelId ? "true" : "false"}>
             <select aria-label="โมเดลวิดีโอ" value={model} onChange={(event) => changeModel(event.target.value)}>
               <option value=""> </option>
               {MODEL_PROFILES.map((item) => {
@@ -981,24 +982,24 @@ export default function SingleEpisodeStudio() {
               })}
             </select> : null}
           </div>
-          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, marginTop: 6 }}>
-            <span style={{ padding: "3px 7px", borderRadius: 999, border: "1px solid rgba(255,255,255,.12)", fontSize: 10 }}>
+          <div className={setupCard.modelBadges}>
+            <span className={setupCard.modelBadge}>
               {!model ? "⚪ ยังไม่ได้เลือกโมเดล" : videoConnectionLoading ? "⚪ กำลังตรวจ Connection…" : selectedConnectionState?.operationalReady ? (selectedModelProfile.mode === "generate" ? "🟢 คีย์เชื่อมต่อแล้ว" : "🟣 คีย์เชื่อมต่อแล้ว · เครื่องมือแปลงวิดีโอ") : selectedConnectionState?.adapterReady ? "🟠 ยังไม่ได้เชื่อมต่อ / Connection ไม่พร้อม" : "🔴 Adapter ยังไม่พร้อม"}
             </span>
-            <span style={{ padding: "3px 7px", borderRadius: 999, border: "1px solid rgba(255,255,255,.12)", fontSize: 10 }}>
+            <span className={setupCard.modelBadge}>
               {!model ? "เลือกรูปแบบอินพุตหลังเลือกโมเดล" : selectedModelProfile.image === "ready" ? "🖼 รับรูปอ้างอิง" : selectedModelProfile.image === "adapter" ? "⚠️🖼 Model รองรับรูป แต่ SCENOVA Adapter ยังไม่ส่งรูป" : "🎞 ใช้วิดีโอต้นฉบับ ไม่รับรูป"}
             </span>
-            {model && selectedModelProfile.nativeAudio ? <span style={{ padding: "3px 7px", borderRadius: 999, border: "1px solid rgba(255,255,255,.12)", fontSize: 10 }}>🔊 Native Audio</span> : null}
-            {model && selectedModelProfile.mode === "video-edit" ? <span style={{ padding: "3px 7px", borderRadius: 999, border: "1px solid rgba(167,112,255,.35)", fontSize: 10 }}>🎞 Video Edit เท่านั้น · ต้องมีวิดีโอต้นฉบับ</span> : null}
-            {model && selectedModelProfile.mode === "hdr" ? <span style={{ padding: "3px 7px", borderRadius: 999, border: "1px solid rgba(167,112,255,.35)", fontSize: 10 }}>🎞 HDR Post-process เท่านั้น · ต้องมีวิดีโอต้นฉบับ</span> : null}
-            {model && !videoConnectionLoading && selectedModelProfile.mode === "generate" && !selectedModelReady ? <Link href="/profile/api" style={{ fontSize: 10, color: "#bd8cff" }}>ตั้งค่า Provider →</Link> : null}
+            {model && selectedModelProfile.nativeAudio ? <span className={setupCard.modelBadge}>🔊 Native Audio</span> : null}
+            {model && selectedModelProfile.mode === "video-edit" ? <span className={`${setupCard.modelBadge} ${setupCard.modelBadgeAccent}`}>🎞 Video Edit เท่านั้น · ต้องมีวิดีโอต้นฉบับ</span> : null}
+            {model && selectedModelProfile.mode === "hdr" ? <span className={`${setupCard.modelBadge} ${setupCard.modelBadgeAccent}`}>🎞 HDR Post-process เท่านั้น · ต้องมีวิดีโอต้นฉบับ</span> : null}
+            {model && !videoConnectionLoading && selectedModelProfile.mode === "generate" && !selectedModelReady ? <Link href="/profile/api" className={setupCard.providerLink}>ตั้งค่า Provider →</Link> : null}
           </div>
           <small>{!model ? "เลือกโมเดล AI ก่อน ระบบจะไม่กำหนด Provider หรือ Version แทนคุณ" : selectedModelVersion ? `ระบบจะส่ง Model ID จริง: ${selectedModelVersion.apiModelId} · ${selectedModelVersion.note} · สิทธิ์รายโมเดลยืนยันเมื่อ Provider รับงานครั้งแรก` : "เลือกรุ่นของ Provider ที่จะใช้สร้างคลิปจริง"}</small>
         </div>
-        <label className={styles.field}><span>อัตราส่วนภาพ</span><select value={aspect} onChange={(event) => setAspect(event.target.value)}><option value=""> </option>{ASPECTS.map((item) => <option key={item}>{item}</option>)}</select><small>ใช้สัดส่วนเดียวกันทุกฉากของตอนนี้</small></label>
-        <label className={styles.field}><span>สไตล์ภาพ</span><select value={visualStyle} onChange={(event) => setVisualStyle(event.target.value)}><option value=""> </option>{STYLES.map((item) => <option key={item}>{item}</option>)}</select><small>Master Style ของตอนนี้</small></label>
-        <label data-ai-required-error={aiRequiredErrors.includes("source") ? "true" : undefined} className={`${styles.field} ${styles.storyField} ${aiRequiredErrors.includes("source") ? styles.requiredError : ""}`}><span>เรื่อง / เหตุการณ์ของตอน</span><textarea value={story} onChange={(event) => { setStory(event.target.value); setAiRequiredErrors((current) => current.filter((item) => item !== "source")); }} placeholder="เล่าว่าใครต้องการอะไร เกิดปัญหาอะไร เหตุการณ์ดำเนินอย่างไร และจบแบบไหน" /><small>เขียนเป็นภาษาธรรมชาติได้ Analyzer จะนำข้อมูลนี้ไปจัดโครง Prompt ภายหลัง</small></label>
-        <div className={styles.episodeTiming}>
+        <label className={`${styles.field} ${setupCard.aspectField}`}><span>อัตราส่วนภาพ</span><select value={aspect} onChange={(event) => setAspect(event.target.value)}><option value=""> </option>{ASPECTS.map((item) => <option key={item}>{item}</option>)}</select><small>ใช้สัดส่วนเดียวกันทุกฉากของตอนนี้</small></label>
+        <label className={`${styles.field} ${setupCard.styleField}`}><span>สไตล์ภาพ</span><select value={visualStyle} onChange={(event) => setVisualStyle(event.target.value)}><option value=""> </option>{STYLES.map((item) => <option key={item}>{item}</option>)}</select><small>Master Style ของตอนนี้</small></label>
+        <label data-ai-required-error={aiRequiredErrors.includes("source") ? "true" : undefined} className={`${styles.field} ${styles.storyField} ${setupCard.storyField} ${aiRequiredErrors.includes("source") ? styles.requiredError : ""}`}><span>เรื่อง / เหตุการณ์ของตอน</span><textarea value={story} onChange={(event) => { setStory(event.target.value); setAiRequiredErrors((current) => current.filter((item) => item !== "source")); }} placeholder="เล่าว่าใครต้องการอะไร เกิดปัญหาอะไร เหตุการณ์ดำเนินอย่างไร และจบแบบไหน" /><small>เขียนเป็นภาษาธรรมชาติได้ Analyzer จะนำข้อมูลนี้ไปจัดโครง Prompt ภายหลัง</small></label>
+        <div className={`${styles.episodeTiming} ${setupCard.timing}`}>
           <label className={styles.timingField}>
             <span>ความยาวรวมของตอน</span>
             <div className={styles.secondsInput}><input type="number" min={1} max={180} step={1} value={totalDuration} onChange={(event) => changeTotalDuration(Number(event.target.value))} /><b data-sc-help={`${model} รองรับสูงสุด ${providerMaxSeconds} วินาทีต่อคลิป ระบบเพิ่มฉากให้อัตโนมัติเมื่อเวลารวมยาวกว่าที่ API สร้างได้ต่อครั้ง`} data-sc-help-label="วินาที">วินาที</b></div>
@@ -1009,7 +1010,7 @@ export default function SingleEpisodeStudio() {
           </div>
         </div>
       </div>
-      <div className={styles.lockGrid}>
+      <div className={`${styles.lockGrid} ${setupCard.locks}`}>
         {GLOBAL_LOCKS.map((lock) => <label key={lock.key} className={locks.includes(lock.key) ? styles.lockActive : ""}><input type="checkbox" checked={locks.includes(lock.key)} onChange={() => toggleLock(lock.key)} /><span><b>{lock.label}</b><small>{lock.help}</small></span></label>)}
       </div>
     </section>
