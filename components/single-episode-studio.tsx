@@ -6,7 +6,6 @@ import { useEffect, useMemo, useState } from "react";
 import styles from "./single-episode-studio.module.css";
 import rail from "./single-episode-summary-rail.module.css";
 import SingleEpisodeAiDirectorPanel from "@/components/single-episode-ai-director-panel";
-import StudioStylePreviewGallery from "@/components/studio-style-preview-gallery";
 import { buildStudioAgentProject } from "@/lib/agent/studio-project";
 import type { AiDirectorMeta, AiDirectorMode, AiDirectorNovelty, AiDirectorScenePatch, AiDirectorScope } from "@/lib/ai-director";
 import {
@@ -193,6 +192,18 @@ const STYLES = [
   "Cinematic Romance — โรแมนติกภาพยนตร์",
   "Period Drama — ดราม่าย้อนยุค",
 ];
+const STYLE_PREVIEW_IMAGE: Record<string, string> = {
+  "Cinematic Anime — อนิเมะภาพยนตร์": "/library/styles/cinematic-anime.png",
+  "Photorealistic Film — สมจริงแบบภาพยนตร์": "/library/styles/photorealistic-film.png",
+  "Warm Golden Hour — อบอุ่นแสงทอง": "/library/styles/warm-golden-hour.png",
+  "Action Blockbuster — แอ็กชันบล็อกบัสเตอร์": "/library/styles/action-blockbuster.png",
+  "Sci-Fi Neon — ไซไฟนีออน": "/library/styles/sci-fi-neon.png",
+  "Fantasy Storybook — แฟนตาซีภาพเล่าเรื่อง": "/library/styles/fantasy-storybook.png",
+  "Dark Thriller — ทริลเลอร์โทนมืด": "/library/styles/dark-thriller.png",
+  "Gothic Horror — สยองขวัญโกธิก": "/library/styles/gothic-horror.png",
+  "Cinematic Romance — โรแมนติกภาพยนตร์": "/library/styles/cinematic-romance.png",
+  "Period Drama — ดราม่าย้อนยุค": "/library/styles/period-drama.png",
+};
 const ROLES = ["ตัวละครหลัก", "ตัวละครรอง", "ฝ่ายตรงข้าม", "ตัวละครรับเชิญ"];
 const GLOBAL_LOCKS = [
   { key: "Character", label: "ล็อกตัวละคร", help: "รักษาหน้าตา รูปร่าง เสื้อผ้า และจุดจำของตัวละครตลอดทั้งตอน" },
@@ -919,6 +930,7 @@ export default function SingleEpisodeStudio() {
   }
 
   const estimatedCredits = Math.max(1, Math.round(totalDuration * 3));
+  const rightPreviewImage = STYLE_PREVIEW_IMAGE[visualStyle] || "/library/styles/photorealistic-film.png";
 
   return <main className={styles.main}>
     <header className={styles.hero}>
@@ -997,7 +1009,6 @@ export default function SingleEpisodeStudio() {
           </div>
         </div>
       </div>
-      <StudioStylePreviewGallery value={visualStyle} onChange={setVisualStyle} />
       <div className={styles.lockGrid}>
         {GLOBAL_LOCKS.map((lock) => <label key={lock.key} className={locks.includes(lock.key) ? styles.lockActive : ""}><input type="checkbox" checked={locks.includes(lock.key)} onChange={() => toggleLock(lock.key)} /><span><b>{lock.label}</b><small>{lock.help}</small></span></label>)}
       </div>
@@ -1159,7 +1170,7 @@ export default function SingleEpisodeStudio() {
         <section className={rail.card}>
           <h3>ตัวอย่างภาพจากฉากแรก</h3>
           <div className={rail.previewImage}>
-            <img src="/library/styles/sci-fi-neon.png" alt="ตัวอย่างภาพจากฉากแรก" />
+            <img src={rightPreviewImage} alt={visualStyle ? `ตัวอย่างภาพ ${visualStyle}` : "ตัวอย่างภาพจากฉากแรก"} />
           </div>
           <p className={rail.previewCaption}>ตัวอย่างภาพจากคำอธิบายและการตั้งค่าฉาก ใช้เป็นภาพอ้างอิงก่อนสร้างวิดีโอจริง</p>
           <button type="button" className={rail.previewButton} onClick={() => setMessage("ภาพตัวอย่างพร้อมตรวจสอบแล้ว")}>▧ สร้างภาพตัวอย่าง</button>
