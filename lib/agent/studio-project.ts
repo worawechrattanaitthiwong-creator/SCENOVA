@@ -89,10 +89,17 @@ const AUTO_DEFAULTS: StudioPreferences = {
 };
 
 const MODEL_IDS: Record<string, string> = {
-  "Seedance 2.5": "seedance-2-5",
+  Runway: "runway",
+  Seedance: "runway",
+  Gemini: "runway",
+  Aleph: "runway",
+  Ruby: "runway",
   Kling: "kling",
   Veo: "veo",
-  Runway: "runway",
+  Wan: "wan",
+
+  // Backward compatibility for older Studio payloads.
+  "Seedance 2.5": "seedance-2-5",
   "runway:gen4.5": "runway",
   "runway:gen4_turbo": "runway",
   "runway:seedance2_5": "runway",
@@ -103,7 +110,6 @@ const MODEL_IDS: Record<string, string> = {
   "Gemini Omni Flash 1.1 (Runway)": "runway-gemini-omni",
   "Aleph 2.0 (Runway)": "runway-aleph",
   "Ruby HDR (Runway)": "runway-ruby",
-  Wan: "wan",
 };
 
 function aspectRatio(value: string): AspectRatio {
