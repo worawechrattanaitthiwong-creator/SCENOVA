@@ -69,17 +69,23 @@ describe("provider model catalogs", () => {
 
   it("shows all Studio video services with live readiness and image-input indicators", () => {
     const studio = readFileSync("components/single-episode-studio.tsx", "utf8");
-    for (const label of [
-      "Seedance 2.5",
-      "Kling",
-      "Veo",
-      "Runway Gen-4.5",
-      "Runway Gen-4 Turbo",
-      "Gemini Omni Flash 1.1",
-      "Aleph 2.0",
-      "Ruby HDR",
-      "Wan",
-    ]) expect(studio).toContain(label);
+    for (const family of [
+      'value: "Runway", label: "Runway"',
+      'value: "Seedance", label: "Seedance"',
+      'value: "Gemini", label: "Gemini"',
+      'value: "Aleph", label: "Aleph"',
+      'value: "Ruby", label: "Ruby"',
+      'value: "Kling", label: "Kling"',
+      'value: "Veo", label: "Veo"',
+      'value: "Wan", label: "Wan"',
+    ]) expect(studio).toContain(family);
+
+    expect(studio).toContain('studioVersionLabel(model, item.label)');
+    expect(studio).toContain('catalogKey: "Runway"');
+    expect(studio).toContain('catalogKey: "Seedance 2.5 (Runway)"');
+    expect(studio).toContain('catalogKey: "Gemini Omni Flash 1.1 (Runway)"');
+    expect(studio).toContain('catalogKey: "Aleph 2.0 (Runway)"');
+    expect(studio).toContain('catalogKey: "Ruby HDR (Runway)"');
 
     expect(studio).toContain('/api/api-connections');
     expect(studio).toContain('คีย์เชื่อมต่อแล้ว');
