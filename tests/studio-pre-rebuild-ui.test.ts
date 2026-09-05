@@ -59,8 +59,9 @@ describe("AI Studio pre-rebuild UI regression guard", () => {
     expect(studio).toContain("setupCard.locks");
     expect(setupCss).toContain("grid-template-columns: repeat(12, minmax(0, 1fr))");
     expect(setupCss).toContain("grid-column: 1 / 9");
+    expect(setupCss).toContain("grid-template-columns: repeat(7, minmax(0, 1fr))");
     expect(setupCss).toContain("grid-column: 9 / 13");
-    expect(setupCss).toContain("min-height: 104px");
+    expect(setupCss).toContain("min-height: 78px");
   });
 
   it("keeps the original behavioral defaults and controls", () => {
