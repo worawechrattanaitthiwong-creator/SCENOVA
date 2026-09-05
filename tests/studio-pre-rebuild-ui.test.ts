@@ -6,6 +6,7 @@ const page = readFileSync("app/studio/page.tsx", "utf8");
 const shell = readFileSync("components/app-shell.tsx", "utf8");
 const draftTray = readFileSync("components/workspace-draft-tray.tsx", "utf8");
 const directBridge = readFileSync("components/studio-direct-render-bridge.tsx", "utf8");
+const studioProject = readFileSync("lib/agent/studio-project.ts", "utf8");
 const railCss = readFileSync("components/single-episode-summary-rail.module.css", "utf8");
 const studioCss = readFileSync("components/single-episode-studio.module.css", "utf8");
 const setupCss = readFileSync("components/single-episode-setup-compact.module.css", "utf8");
@@ -81,6 +82,17 @@ describe("AI Studio pre-rebuild UI regression guard", () => {
     expect(studio).toContain('if (model === "Kling") return clean.replace(/^Kling\\s+/i, "");');
     expect(studio).toContain('if (model === "Veo") return clean.replace(/^Veo\\s+/i, "");');
     expect(studio).toContain('if (model === "Wan") return clean.replace(/^Wan\\s+/i, "");');
+
+    for (const runwayFamily of ["Runway", "Seedance", "Gemini", "Aleph", "Ruby"]) {
+      expect(directBridge).toContain(`${runwayFamily}: { providerId: "runway"`);
+      expect(studioProject).toContain(`${runwayFamily}: "runway"`);
+    }
+    expect(directBridge).toContain('Kling: { providerId: "kling"');
+    expect(directBridge).toContain('Veo: { providerId: "veo"');
+    expect(directBridge).toContain('Wan: { providerId: "wan"');
+    expect(studioProject).toContain('Kling: "kling"');
+    expect(studioProject).toContain('Veo: "veo"');
+    expect(studioProject).toContain('Wan: "wan"');
   });
 
   it("keeps the original behavioral defaults and controls", () => {
