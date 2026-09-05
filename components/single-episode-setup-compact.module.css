@@ -1,0 +1,257 @@
+.panel {
+  padding: 16px 18px 17px !important;
+  border-radius: 15px !important;
+}
+
+.head {
+  align-items: center !important;
+  gap: 16px !important;
+  margin-bottom: 13px !important;
+}
+
+.head > div {
+  min-width: 220px !important;
+}
+
+.head h2 {
+  margin-top: 2px !important;
+  font-size: 19px !important;
+  line-height: 1.2 !important;
+}
+
+.head p {
+  max-width: 660px !important;
+  font-size: 11px !important;
+  line-height: 1.45 !important;
+  text-align: right;
+}
+
+.grid {
+  grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+  gap: 10px 11px !important;
+  align-items: start;
+}
+
+.titleField {
+  grid-column: span 3 !important;
+}
+
+.modelField {
+  grid-column: span 4 !important;
+}
+
+.aspectField {
+  grid-column: span 2 !important;
+}
+
+.styleField {
+  grid-column: span 3 !important;
+}
+
+.grid :global(input),
+.grid :global(select) {
+  min-height: 39px !important;
+  padding: 7px 9px !important;
+}
+
+.grid :global(textarea) {
+  padding: 8px 10px !important;
+}
+
+.grid :global(label) > small,
+.modelField > small {
+  margin-top: 4px !important;
+  font-size: 9px !important;
+  line-height: 1.35 !important;
+}
+
+.modelSelects {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  gap: 6px;
+}
+
+.modelSelects[data-fixed-version="true"] {
+  grid-template-columns: 1fr;
+}
+
+.modelBadges {
+  min-height: 25px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: 5px;
+}
+
+.modelBadge {
+  max-width: 100%;
+  padding: 2px 6px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.modelBadgeAccent {
+  border-color: rgba(167,112,255,.30);
+  color: var(--accent);
+}
+
+.providerLink {
+  color: var(--accent);
+  font-size: 8px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.storyField {
+  grid-column: 1 / 9 !important;
+}
+
+.storyField textarea {
+  min-height: 104px !important;
+  height: 104px;
+  resize: vertical;
+}
+
+.timing {
+  grid-column: 9 / 13 !important;
+  min-height: 104px !important;
+  margin-top: 0 !important;
+  padding: 10px !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: start !important;
+  gap: 9px !important;
+  border-radius: 10px !important;
+}
+
+.timing :global(.single-episode-studio_timingField__),
+.timing > * {
+  min-width: 0;
+}
+
+.timing > :first-child {
+  min-width: 0;
+}
+
+.timing :global(input) {
+  min-height: 37px !important;
+}
+
+.timing :global(button) {
+  width: 30px !important;
+  height: 30px !important;
+}
+
+.locks {
+  margin-top: 11px !important;
+  padding-top: 11px !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 7px !important;
+}
+
+.locks label {
+  min-height: 49px;
+  padding: 8px 9px !important;
+  align-items: flex-start !important;
+  border-radius: 9px !important;
+}
+
+.locks b {
+  font-size: 10px !important;
+  line-height: 1.2 !important;
+}
+
+.locks small {
+  margin-top: 2px !important;
+  font-size: 8px !important;
+  line-height: 1.3 !important;
+}
+
+@media (max-width: 1380px) {
+  .titleField {
+    grid-column: span 4 !important;
+  }
+
+  .modelField {
+    grid-column: span 4 !important;
+  }
+
+  .aspectField,
+  .styleField {
+    grid-column: span 2 !important;
+  }
+}
+
+@media (max-width: 1120px) {
+  .head {
+    align-items: flex-start !important;
+  }
+
+  .head p {
+    text-align: left;
+  }
+
+  .titleField,
+  .modelField,
+  .aspectField,
+  .styleField {
+    grid-column: span 6 !important;
+  }
+
+  .storyField {
+    grid-column: 1 / 8 !important;
+  }
+
+  .timing {
+    grid-column: 8 / 13 !important;
+  }
+
+  .locks {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .panel {
+    padding: 14px !important;
+  }
+
+  .head {
+    flex-direction: column !important;
+    gap: 6px !important;
+  }
+
+  .grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .titleField,
+  .modelField,
+  .aspectField,
+  .styleField,
+  .storyField,
+  .timing {
+    grid-column: 1 !important;
+  }
+
+  .storyField textarea {
+    min-height: 96px !important;
+    height: 96px;
+  }
+
+  .timing {
+    min-height: 0 !important;
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .locks {
+    grid-template-columns: 1fr !important;
+  }
+}
