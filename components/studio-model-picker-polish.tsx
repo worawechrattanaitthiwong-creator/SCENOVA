@@ -46,11 +46,13 @@ function cleanLabel(raw: string) {
 }
 
 function readOptions(select: HTMLSelectElement): PickerOption[] {
-  return Array.from(select.options).map((option) => ({
-    value: option.value,
-    label: cleanLabel(option.textContent || option.label || option.value),
-    readiness: readinessFromText(option.textContent || option.label || ""),
-  }));
+  return Array.from(select.options)
+    .filter((option) => option.value)
+    .map((option) => ({
+      value: option.value,
+      label: cleanLabel(option.textContent || option.label || option.value),
+      readiness: readinessFromText(option.textContent || option.label || ""),
+    }));
 }
 
 function brandKey(label: string) {
@@ -155,7 +157,8 @@ function AiSelect({
     };
   }, [open]);
 
-  const selected = options.find((option) => option.value === value) || options[0];
+  const selected = options.find((option) => option.value === value);
+  const placeholder = kind === "model" ? "เลือกโมเดล" : "เลือกรุ่น";
   const iconLabel = kind === "version" ? (brandLabel || selected?.label || "AI") : (selected?.label || "AI");
 
   return (
@@ -166,17 +169,18 @@ function AiSelect({
         className={`sc-ai-select-trigger${open ? " is-open" : ""}`}
         aria-haspopup="listbox"
         aria-expanded={open}
+        disabled={select.disabled}
         onClick={(event) => {
           event.preventDefault();
           event.stopPropagation();
+          if (select.disabled) return;
           setOpen((current) => !current);
         }}
       >
         <BrandIcon label={iconLabel} large />
         <StatusDot readiness={selected?.readiness || "checking"} />
         <span className="sc-ai-select-copy">
-          <strong>{selected?.label || "เลือกรุ่น"}</strong>
-          {kind === "version" ? <small>รุ่น API ที่ใช้สร้างจริง</small> : <small>AI Video Model</small>}
+          <strong>{selected?.label || placeholder}</strong>
         </span>
         <span className="sc-ai-select-chevron" aria-hidden="true">⌄</span>
       </button>
@@ -209,7 +213,6 @@ function AiSelect({
                   <BrandIcon label={rowIconLabel} />
                   <span className="sc-ai-option-copy">
                     <strong>{option.label}</strong>
-                    <small>{kind === "version" ? option.value : brandKey(option.label) === "runway" ? "Runway" : brandKey(option.label) === "veo" ? "Google" : "AI Video"}</small>
                   </span>
                   <StatusPill readiness={option.readiness} compact />
                 </button>
@@ -342,7 +345,7 @@ export default function StudioModelPickerPolish() {
     .sc-ai-select{position:relative;min-width:0}
     .sc-ai-picker-label{display:block;margin:0 0 4px;color:var(--text);font-size:9.5px;font-weight:850;letter-spacing:.01em}
     .sc-ai-select-trigger{width:100%;min-height:44px;display:flex;align-items:center;gap:7px;padding:6px 9px;border:1px solid color-mix(in srgb,var(--accent) 34%,var(--borderStrong));border-radius:10px;background:linear-gradient(145deg,color-mix(in srgb,var(--surface3) 92%,var(--accent) 8%),var(--input));color:var(--text);text-align:left;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.025),0 8px 24px rgba(0,0,0,.10);transition:border-color .16s ease,box-shadow .16s ease,transform .16s ease}
-    .sc-ai-select-trigger:hover{border-color:color-mix(in srgb,var(--accent) 62%,var(--borderStrong));box-shadow:0 10px 28px color-mix(in srgb,var(--accent) 9%,transparent)}
+    .sc-ai-select-trigger:disabled{cursor:not-allowed;opacity:.5}.sc-ai-select-trigger:hover{border-color:color-mix(in srgb,var(--accent) 62%,var(--borderStrong));box-shadow:0 10px 28px color-mix(in srgb,var(--accent) 9%,transparent)}
     .sc-ai-select-trigger.is-open{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 16%,transparent),0 14px 36px rgba(0,0,0,.18)}
     .sc-ai-select-trigger.is-locked{cursor:default;opacity:.88}
     .sc-ai-select-copy{min-width:0;flex:1}.sc-ai-select-copy strong,.sc-ai-select-copy small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
