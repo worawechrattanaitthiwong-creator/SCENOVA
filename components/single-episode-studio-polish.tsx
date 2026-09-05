@@ -52,6 +52,8 @@ function findStudioSubmitButton() {
 }
 
 function readStudioSubmissionStatus() {
+  const explicitStatus = document.querySelector<HTMLElement>("[data-studio-status]");
+  if (explicitStatus) return compact(explicitStatus.textContent);
   const button = findStudioSubmitButton();
   if (!button) return "";
   const siblingStatus = button.parentElement?.querySelector<HTMLElement>("span");
