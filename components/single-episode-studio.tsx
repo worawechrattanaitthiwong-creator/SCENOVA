@@ -945,6 +945,16 @@ export default function SingleEpisodeStudio() {
   const rightPreviewImage = STYLE_PREVIEW_IMAGE[visualStyle] || "/library/styles/photorealistic-film.png";
 
   return <main className={styles.main}>
+    <header className={styles.hero}>
+      <div>
+        <span className={styles.eyebrow}>สตูดิโอสร้างตอนเดียว</span>
+        <h1>สร้างตอนเดียวให้จบใน Workspace เดียว</h1>
+        <p>โหมดนี้สำหรับหนังสั้น คลิป หรือตอนเดียว ตั้งเรื่อง ตัวละคร ฉาก กล้อง แสง การแสดง เสียง และ Continuity แล้วส่งต่อไป Prompt & Render</p>
+      </div>
+      <div className={styles.heroActions}>
+        <button type="button" className={styles.primaryButton} onClick={() => void sendToAgent()} disabled={agentSubmitting}>{agentSubmitting ? "กำลังส่งงาน..." : "ส่งให้ทีม AI ผลิต →"}</button>
+      </div>
+    </header>
     <nav className={styles.flowBar} aria-label="ขั้นตอนสร้างตอนเดียว">
       <a href="#setup"><b>1</b><span>ตั้งค่าตอน<small>เรื่อง + โมเดล</small></span></a>
       <a href="#characters"><b>2</b><span>ตัวละคร<small>ล็อกตัวตน + ล็อกเสียง</small></span></a>
